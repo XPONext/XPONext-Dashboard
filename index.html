@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>XPONext — Umsatzziel-Tracker 2026</title>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <style>
   :root{
     --accent:#3F5137; --accent-dark:#2E3D28; --accent-light:#E8EDE6;
@@ -282,18 +283,43 @@ const LEVERS = [
 ];
 const TOTAL_HEBEL = WEEKLY_TARGET.hebel * N_WEEKS; // 125
 
-const STORAGE_KEY = "xponext_umsatzziel_tracker_v1";
+const SUPABASE_URL = "https://powtvdmtphudlnsffmtk.supabase.co";
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBvd3R2ZG10cGh1ZGxuc2ZmbXRrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQwNTAzNTgsImV4cCI6MjA5OTYyNjM1OH0.WHE73m7pXpD3MnzPQQn0FJ0HTGx_bq0cVBL6G3DkYuo";
+const db = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-function loadData(){
-  try{
-    const raw = localStorage.getItem(STORAGE_KEY);
-    return raw ? JSON.parse(raw) : {};
-  }catch(e){ return {}; }
+async function fetchAllWeeks(){
+  const { data, error } = await db.from("weekly_kpis").select("*");
+  const obj = {};
+  if(error){ console.error(error); alert("Daten konnten nicht geladen werden: "+error.message); return obj; }
+  data.forEach(row=>{
+    obj[row.week_index] = {
+      calls: Number(row.calls)||0,
+      termineGebucht: Number(row.termine_gebucht)||0,
+      termineShowup: Number(row.termine_showup)||0,
+      closes: Number(row.closes)||0,
+      umsatz: Number(row.umsatz)||0,
+      hebel: row.hebel || {}
+    };
+  });
+  return obj;
 }
-function saveData(data){
-  try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); }catch(e){}
+
+async function upsertWeek(i){
+  const e = weekEntry(i);
+  const { error } = await db.from("weekly_kpis").upsert({
+    week_index: i,
+    calls: e.calls,
+    termine_gebucht: e.termineGebucht,
+    termine_showup: e.termineShowup,
+    closes: e.closes,
+    umsatz: e.umsatz,
+    hebel: e.hebel,
+    updated_at: new Date().toISOString()
+  });
+  if(error){ console.error(error); alert("Speichern fehlgeschlagen: "+error.message); }
 }
-let DATA = loadData(); // { "1": {calls, termineGebucht, termineShowup, closes, umsatz, hebel:{...}} }
+
+let DATA = {}; // { 1: {calls, termineGebucht, termineShowup, closes, umsatz, hebel:{...}} }
 
 function fmtDate(iso){
   const d = new Date(iso+"T00:00:00");
@@ -506,18 +532,22 @@ function renderAll(){
 
 /* ---------- Events ---------- */
 document.querySelectorAll(".tab-btn").forEach(btn=>{
-  btn.addEventListener("click", ()=>{
+  btn.addEventListener("click", async ()=>{
     document.querySelectorAll(".tab-btn").forEach(b=>b.classList.remove("active"));
     document.querySelectorAll(".view").forEach(v=>v.classList.remove("active"));
     btn.classList.add("active");
     document.getElementById("view-"+btn.dataset.view).classList.add("active");
+    DATA = await fetchAllWeeks();
+    loadWeekIntoForm();
+    loadWeekIntoHebelForm();
+    renderAll();
   });
 });
 
 document.getElementById("weekSelect").addEventListener("change", loadWeekIntoForm);
 document.getElementById("weekSelectHebel").addEventListener("change", loadWeekIntoHebelForm);
 
-document.getElementById("saveWeekBtn").addEventListener("click", ()=>{
+document.getElementById("saveWeekBtn").addEventListener("click", async ()=>{
   const i = Number(document.getElementById("weekSelect").value);
   const existing = DATA[i] || {};
   DATA[i] = {
@@ -529,14 +559,14 @@ document.getElementById("saveWeekBtn").addEventListener("click", ()=>{
     umsatz: Number(document.getElementById("inUmsatz").value)||0,
     hebel: existing.hebel || {}
   };
-  saveData(DATA);
+  await upsertWeek(i);
   const msg = document.getElementById("saveMsg");
   msg.style.display = "block";
   setTimeout(()=>msg.style.display="none", 1800);
   renderAll();
 });
 
-document.getElementById("saveHebelBtn").addEventListener("click", ()=>{
+document.getElementById("saveHebelBtn").addEventListener("click", async ()=>{
   const i = Number(document.getElementById("weekSelectHebel").value);
   const existing = DATA[i] || {};
   DATA[i] = {
@@ -549,7 +579,7 @@ document.getElementById("saveHebelBtn").addEventListener("click", ()=>{
       zielgruppe: Number(document.getElementById("hebelZielgruppe").value)||0,
     }
   };
-  saveData(DATA);
+  await upsertWeek(i);
   const msg = document.getElementById("saveHebelMsg");
   msg.style.display = "block";
   setTimeout(()=>msg.style.display="none", 1800);
@@ -557,10 +587,14 @@ document.getElementById("saveHebelBtn").addEventListener("click", ()=>{
 });
 
 /* ---------- Init ---------- */
-populateWeekSelects();
-loadWeekIntoForm();
-loadWeekIntoHebelForm();
-renderAll();
+async function init(){
+  DATA = await fetchAllWeeks();
+  populateWeekSelects();
+  loadWeekIntoForm();
+  loadWeekIntoHebelForm();
+  renderAll();
+}
+init();
 </script>
 </body>
 </html>
