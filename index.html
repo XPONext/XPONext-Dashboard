@@ -285,7 +285,35 @@ const TOTAL_HEBEL = WEEKLY_TARGET.hebel * N_WEEKS; // 125
 
 const SUPABASE_URL = "https://powtvdmtphudlnsffmtk.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBvd3R2ZG10cGh1ZGxuc2ZmbXRrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQwNTAzNTgsImV4cCI6MjA5OTYyNjM1OH0.WHE73m7pXpD3MnzPQQn0FJ0HTGx_bq0cVBL6G3DkYuo";
-const db = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+const SECRET_STORAGE_KEY = "xponext_kpi_secret";
+let db;
+
+function buildClient(secret){
+  return supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+    global: { headers: { "x-app-secret": secret } }
+  });
+}
+
+async function ensureAuthorized(){
+  let secret = localStorage.getItem(SECRET_STORAGE_KEY);
+  while(true){
+    if(!secret){
+      secret = window.prompt("Team-Passwort für den KPI-Tracker eingeben:");
+      if(secret === null){
+        document.body.innerHTML = "<p style='padding:2rem;font-family:sans-serif;'>Ohne Passwort kein Zugriff auf den Tracker.</p>";
+        throw new Error("Kein Passwort eingegeben");
+      }
+    }
+    db = buildClient(secret);
+    const { error } = await db.from("weekly_kpis").upsert({ week_index: -1, calls: 0 });
+    if(!error){
+      localStorage.setItem(SECRET_STORAGE_KEY, secret);
+      return;
+    }
+    alert("Falsches Passwort, bitte erneut versuchen.");
+    secret = null;
+  }
+}
 
 async function fetchAllWeeks(){
   const { data, error } = await db.from("weekly_kpis").select("*");
@@ -588,6 +616,7 @@ document.getElementById("saveHebelBtn").addEventListener("click", async ()=>{
 
 /* ---------- Init ---------- */
 async function init(){
+  await ensureAuthorized();
   DATA = await fetchAllWeeks();
   populateWeekSelects();
   loadWeekIntoForm();
