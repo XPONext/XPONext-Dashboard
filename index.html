@@ -1,0 +1,566 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>XPONext — Umsatzziel-Tracker 2026</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --accent:#3F5137; --accent-dark:#2E3D28; --accent-light:#E8EDE6;
+    --text-primary:#0D0D0D; --text-body:#4B5563; --text-muted:#9CA3AF;
+    --bg:#FFFFFF; --bg-subtle:#F9FAFB; --bg-dark:#0D0D0D;
+    --border:#E5E7EB;
+    --amber:#B45309; --amber-bg:#FEF3C7; --red:#B91C1C; --red-bg:#FEE2E2;
+  }
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+  body{font-family:'Inter',-apple-system,sans-serif;background:var(--bg-subtle);color:var(--text-primary);-webkit-font-smoothing:antialiased;padding-bottom:4rem;}
+  a{color:inherit;}
+  .container{max-width:1100px;margin:0 auto;padding:0 5%;}
+
+  nav{display:flex;align-items:center;justify-content:space-between;padding:1.1rem 5%;border-bottom:1px solid var(--border);background:#fff;position:sticky;top:0;z-index:100;}
+  .logo{font-size:1.2rem;font-weight:800;color:var(--text-primary);}
+  .logo span{color:var(--accent);}
+  .tabs{display:flex;gap:0.4rem;}
+  .tab-btn{background:none;border:none;padding:0.6rem 1.1rem;border-radius:8px;font-family:'Inter',sans-serif;font-weight:600;font-size:0.9rem;color:var(--text-body);cursor:pointer;}
+  .tab-btn.active{background:var(--accent-light);color:var(--accent-dark);}
+  .tab-btn:hover{opacity:0.85;}
+
+  .hero{padding:2.8rem 5% 1.5rem;}
+  .hero h1{font-size:clamp(1.7rem,3.4vw,2.3rem);font-weight:900;color:var(--text-primary);margin-bottom:0.4rem;}
+  .hero h1 span{color:var(--accent);}
+  .hero p{color:var(--text-body);font-size:1rem;}
+
+  section.view{display:none;padding:0 5% 2rem;}
+  section.view.active{display:block;}
+
+  .card{background:#fff;border:1px solid var(--border);border-radius:12px;padding:1.6rem;margin-bottom:1.4rem;}
+  .card h2{font-size:1.15rem;font-weight:800;margin-bottom:0.9rem;color:var(--text-primary);}
+  .card h2 small{display:block;font-weight:400;font-size:0.82rem;color:var(--text-muted);margin-top:0.2rem;}
+
+  .hero-progress{background:var(--bg-dark);border-radius:14px;padding:2rem 1.8rem;color:#fff;margin-bottom:1.4rem;}
+  .hero-progress .row{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:0.7rem;flex-wrap:wrap;gap:0.4rem;}
+  .hero-progress .row .label{font-size:0.95rem;color:#C7CDD6;}
+  .hero-progress .row .value{font-size:2rem;font-weight:900;}
+  .hero-progress .value span{color:var(--accent-light);}
+  .bar-track-lg{background:rgba(255,255,255,0.12);border-radius:99px;height:22px;overflow:hidden;position:relative;}
+  .bar-fill-lg{background:var(--accent);height:100%;border-radius:99px;transition:width .4s ease;}
+  .hero-progress .meta{margin-top:0.6rem;font-size:0.85rem;color:#9CA3AF;}
+
+  .grid4{display:grid;grid-template-columns:repeat(4,1fr);gap:1rem;}
+  @media(max-width:800px){.grid4{grid-template-columns:repeat(2,1fr);}}
+  .stat{background:#fff;border:1px solid var(--border);border-radius:12px;padding:1.1rem 1.2rem;}
+  .stat .lbl{font-size:0.78rem;color:var(--text-muted);font-weight:600;text-transform:uppercase;letter-spacing:0.03em;margin-bottom:0.35rem;}
+  .stat .num{font-size:1.5rem;font-weight:800;color:var(--text-primary);margin-bottom:0.5rem;}
+  .stat .num small{font-size:0.85rem;font-weight:500;color:var(--text-muted);}
+  .bar-track{background:var(--bg-subtle);border-radius:99px;height:9px;overflow:hidden;border:1px solid var(--border);}
+  .bar-fill{height:100%;border-radius:99px;transition:width .35s ease;}
+  .bar-fill.ok{background:var(--accent);}
+  .bar-fill.warn{background:#D97706;}
+  .bar-fill.low{background:#DC2626;}
+  .stat .pct{font-size:0.78rem;color:var(--text-muted);margin-top:0.3rem;}
+
+  .badge{display:inline-flex;align-items:center;gap:5px;background:var(--accent-light);color:var(--accent-dark);padding:0.25rem 0.7rem;border-radius:99px;font-size:0.78rem;font-weight:700;}
+  .badge.warn{background:var(--amber-bg);color:var(--amber);}
+  .badge.low{background:var(--red-bg);color:var(--red);}
+
+  select, input[type=number], input[type=date]{
+    font-family:'Inter',sans-serif;border:1.5px solid var(--border);border-radius:8px;padding:0.55rem 0.7rem;font-size:0.95rem;color:var(--text-primary);width:100%;background:#fff;
+  }
+  select:focus,input:focus{outline:none;border-color:var(--accent);}
+  label{display:block;font-size:0.82rem;font-weight:600;color:var(--text-body);margin-bottom:0.3rem;}
+  .field{margin-bottom:1rem;}
+  .form-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:1rem;}
+
+  .btn{background:var(--accent);color:#fff;padding:0.75rem 1.5rem;border-radius:8px;border:none;font-weight:700;font-size:0.95rem;cursor:pointer;font-family:'Inter',sans-serif;}
+  .btn:hover{opacity:0.9;}
+  .btn-outline{background:#fff;color:var(--text-primary);padding:0.75rem 1.5rem;border-radius:8px;border:1.5px solid #D1D5DB;font-weight:600;font-size:0.95rem;cursor:pointer;font-family:'Inter',sans-serif;}
+
+  table{width:100%;border-collapse:collapse;font-size:0.86rem;}
+  th{background:var(--accent);color:#fff;text-align:left;padding:0.6rem 0.7rem;font-weight:700;font-size:0.78rem;}
+  td{padding:0.55rem 0.7rem;border-bottom:1px solid var(--border);color:var(--text-body);}
+  tr:nth-child(even) td{background:var(--bg-subtle);}
+  tr.current-week td{background:var(--accent-light) !important;}
+  .cell-bar{display:flex;align-items:center;gap:0.5rem;min-width:110px;}
+  .cell-bar .bar-track{flex:1;}
+  .row-metric{margin-bottom:0.85rem;}
+  .row-metric .top{display:flex;justify-content:space-between;font-size:0.85rem;margin-bottom:0.3rem;}
+  .row-metric .top .name{font-weight:600;color:var(--text-primary);}
+  .row-metric .top .vals{color:var(--text-muted);}
+
+  .lever-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:0.9rem;margin-bottom:1rem;}
+  .lever{border:1px solid var(--border);border-radius:10px;padding:0.9rem;}
+  .lever .name{font-size:0.82rem;font-weight:700;margin-bottom:0.5rem;color:var(--text-primary);}
+
+  .save-msg{display:none;color:var(--accent-dark);background:var(--accent-light);padding:0.6rem 1rem;border-radius:8px;font-size:0.85rem;font-weight:600;margin-top:0.8rem;}
+  .streak{display:flex;gap:1.2rem;flex-wrap:wrap;margin-top:0.6rem;}
+  .streak .item{text-align:center;}
+  .streak .item .n{font-size:1.6rem;font-weight:900;color:var(--accent);}
+  .streak .item .l{font-size:0.75rem;color:var(--text-muted);font-weight:600;}
+
+  footer{text-align:center;color:var(--text-muted);font-size:0.8rem;padding:2rem 5% 0;}
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="logo">XPO<span>Next</span></div>
+  <div class="tabs">
+    <button class="tab-btn active" data-view="dashboard">Dashboard</button>
+    <button class="tab-btn" data-view="eingabe">Wochen-Eingabe</button>
+    <button class="tab-btn" data-view="hebel">Hebel</button>
+    <button class="tab-btn" data-view="verlauf">Verlauf</button>
+  </div>
+</nav>
+
+<div class="hero">
+  <h1>Fahrplan zum <span>Umsatzziel 2026</span></h1>
+  <p>€20.000 Umsatz bis 31.12.2026 — trag deine Wochenzahlen ein und beobachte den Fortschritt.</p>
+</div>
+
+<!-- DASHBOARD -->
+<section class="view active" id="view-dashboard">
+  <div class="container">
+
+    <div class="hero-progress">
+      <div class="row">
+        <div class="label">Gesamtfortschritt Umsatz</div>
+        <div class="value"><span id="dashUmsatzIst">€0</span> / €20.000</div>
+      </div>
+      <div class="bar-track-lg"><div class="bar-fill-lg" id="dashUmsatzBar" style="width:0%"></div></div>
+      <div class="meta" id="dashUmsatzMeta">0% erreicht</div>
+    </div>
+
+    <div class="grid4">
+      <div class="stat">
+        <div class="lbl">Calls</div>
+        <div class="num" id="statCalls">0 <small>/ 8.333</small></div>
+        <div class="bar-track"><div class="bar-fill ok" id="barCalls" style="width:0%"></div></div>
+        <div class="pct" id="pctCalls">0% vom Gesamtziel</div>
+      </div>
+      <div class="stat">
+        <div class="lbl">Termine gebucht</div>
+        <div class="num" id="statTermineGebucht">0 <small>/ 167</small></div>
+        <div class="bar-track"><div class="bar-fill ok" id="barTermineGebucht" style="width:0%"></div></div>
+        <div class="pct" id="pctTermineGebucht">0% vom Gesamtziel</div>
+      </div>
+      <div class="stat">
+        <div class="lbl">Termine (Show-up)</div>
+        <div class="num" id="statTermineShowup">0 <small>/ 100</small></div>
+        <div class="bar-track"><div class="bar-fill ok" id="barTermineShowup" style="width:0%"></div></div>
+        <div class="pct" id="pctTermineShowup">0% vom Gesamtziel</div>
+      </div>
+      <div class="stat">
+        <div class="lbl">Closes</div>
+        <div class="num" id="statCloses">0 <small>/ 10</small></div>
+        <div class="bar-track"><div class="bar-fill ok" id="barCloses" style="width:0%"></div></div>
+        <div class="pct" id="pctCloses">0% vom Gesamtziel</div>
+      </div>
+    </div>
+
+    <div class="card" style="margin-top:1.4rem;">
+      <h2>Diese Woche <small id="dashWeekLabel">—</small></h2>
+      <div id="dashCurrentWeekBody"></div>
+    </div>
+
+    <div class="card">
+      <h2>Hebel-Stunden gesamt <small>Ziel: 5 Std./Woche · 125 Std. gesamt über 25 Wochen</small></h2>
+      <div class="bar-track"><div class="bar-fill ok" id="barHebelTotal" style="width:0%"></div></div>
+      <div class="pct" id="pctHebelTotal" style="margin-top:0.4rem;">0 / 125 Std.</div>
+      <div class="streak">
+        <div class="item"><div class="n" id="streakWeeksLogged">0</div><div class="l">Wochen erfasst</div></div>
+        <div class="item"><div class="n" id="streakOnTarget">0</div><div class="l">Wochen ≥100% Umsatz</div></div>
+        <div class="item"><div class="n" id="streakBestWeek">—</div><div class="l">Beste Woche (Umsatz)</div></div>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<!-- EINGABE -->
+<section class="view" id="view-eingabe">
+  <div class="container">
+    <div class="card">
+      <h2>Wochenzahlen eintragen</h2>
+      <div class="field" style="max-width:340px;">
+        <label>Woche auswählen</label>
+        <select id="weekSelect"></select>
+      </div>
+      <div class="form-grid">
+        <div class="field"><label>Calls</label><input type="number" id="inCalls" min="0" step="1"></div>
+        <div class="field"><label>Termine gebucht</label><input type="number" id="inTermineGebucht" min="0" step="1"></div>
+        <div class="field"><label>Termine (Show-up)</label><input type="number" id="inTermineShowup" min="0" step="1"></div>
+        <div class="field"><label>Closes</label><input type="number" id="inCloses" min="0" step="1"></div>
+        <div class="field"><label>Umsatz (€)</label><input type="number" id="inUmsatz" min="0" step="10"></div>
+      </div>
+      <button class="btn" id="saveWeekBtn">Woche speichern</button>
+      <div class="save-msg" id="saveMsg">Gespeichert ✓</div>
+    </div>
+
+    <div class="card" id="previewCard">
+      <h2>Fortschritt dieser Woche <small id="previewWeekLabel"></small></h2>
+      <div id="previewBody"></div>
+    </div>
+  </div>
+</section>
+
+<!-- HEBEL -->
+<section class="view" id="view-hebel">
+  <div class="container">
+    <div class="card">
+      <h2>Hebel-Stunden eintragen <small>Ziel: je 1 Std./Woche pro Hebel, 5 Std./Woche gesamt</small></h2>
+      <div class="field" style="max-width:340px;">
+        <label>Woche auswählen</label>
+        <select id="weekSelectHebel"></select>
+      </div>
+      <div class="lever-grid">
+        <div class="lever"><div class="name">Call-Breakdowns</div><input type="number" id="hebelCallBreakdowns" min="0" step="0.25"></div>
+        <div class="lever"><div class="name">Cold-Call-Breakdowns</div><input type="number" id="hebelColdCall" min="0" step="0.25"></div>
+        <div class="lever"><div class="name">Coachings</div><input type="number" id="hebelCoachings" min="0" step="0.25"></div>
+        <div class="lever"><div class="name">Offer-Verbesserung</div><input type="number" id="hebelOffer" min="0" step="0.25"></div>
+        <div class="lever"><div class="name">Zielgruppenverständnis</div><input type="number" id="hebelZielgruppe" min="0" step="0.25"></div>
+      </div>
+      <button class="btn" id="saveHebelBtn">Hebel-Stunden speichern</button>
+      <div class="save-msg" id="saveHebelMsg">Gespeichert ✓</div>
+    </div>
+    <div class="card">
+      <h2>Hebel-Stunden diese Woche</h2>
+      <div id="hebelPreview"></div>
+    </div>
+  </div>
+</section>
+
+<!-- VERLAUF -->
+<section class="view" id="view-verlauf">
+  <div class="container">
+    <div class="card">
+      <h2>Alle Wochen im Überblick</h2>
+      <div style="overflow-x:auto;">
+      <table>
+        <thead>
+          <tr><th>Woche</th><th>Zeitraum</th><th>Calls</th><th>Termine geb.</th><th>Termine Show-up</th><th>Closes</th><th>Umsatz</th><th>Hebel-Std.</th></tr>
+        </thead>
+        <tbody id="historyBody"></tbody>
+      </table>
+      </div>
+    </div>
+  </div>
+</section>
+
+<footer>XPONext · Umsatzziel-Tracker 2026 · Daten werden lokal in deinem Browser gespeichert.</footer>
+
+<script>
+/* ---------- Wochen-Definition (14.07.2026 – 31.12.2026, 25 Kalenderwochen) ---------- */
+const WEEKS = [
+  ["2026-07-13","2026-07-19"],["2026-07-20","2026-07-26"],["2026-07-27","2026-08-02"],
+  ["2026-08-03","2026-08-09"],["2026-08-10","2026-08-16"],["2026-08-17","2026-08-23"],
+  ["2026-08-24","2026-08-30"],["2026-08-31","2026-09-06"],["2026-09-07","2026-09-13"],
+  ["2026-09-14","2026-09-20"],["2026-09-21","2026-09-27"],["2026-09-28","2026-10-04"],
+  ["2026-10-05","2026-10-11"],["2026-10-12","2026-10-18"],["2026-10-19","2026-10-25"],
+  ["2026-10-26","2026-11-01"],["2026-11-02","2026-11-08"],["2026-11-09","2026-11-15"],
+  ["2026-11-16","2026-11-22"],["2026-11-23","2026-11-29"],["2026-11-30","2026-12-06"],
+  ["2026-12-07","2026-12-13"],["2026-12-14","2026-12-20"],["2026-12-21","2026-12-27"],
+  ["2026-12-28","2026-12-31"]
+];
+const N_WEEKS = WEEKS.length;
+
+const TOTAL = { calls: 8333, termineGebucht: 167, termineShowup: 100, closes: 10, umsatz: 20000 };
+const WEEKLY_TARGET = {
+  calls: TOTAL.calls / N_WEEKS,
+  termineGebucht: TOTAL.termineGebucht / N_WEEKS,
+  termineShowup: TOTAL.termineShowup / N_WEEKS,
+  closes: TOTAL.closes / N_WEEKS,
+  umsatz: TOTAL.umsatz / N_WEEKS,
+  hebel: 5
+};
+const LEVERS = [
+  ["callBreakdowns","Call-Breakdowns"],
+  ["coldCall","Cold-Call-Breakdowns"],
+  ["coachings","Coachings"],
+  ["offer","Offer-Verbesserung"],
+  ["zielgruppe","Zielgruppenverständnis"]
+];
+const TOTAL_HEBEL = WEEKLY_TARGET.hebel * N_WEEKS; // 125
+
+const STORAGE_KEY = "xponext_umsatzziel_tracker_v1";
+
+function loadData(){
+  try{
+    const raw = localStorage.getItem(STORAGE_KEY);
+    return raw ? JSON.parse(raw) : {};
+  }catch(e){ return {}; }
+}
+function saveData(data){
+  try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(data)); }catch(e){}
+}
+let DATA = loadData(); // { "1": {calls, termineGebucht, termineShowup, closes, umsatz, hebel:{...}} }
+
+function fmtDate(iso){
+  const d = new Date(iso+"T00:00:00");
+  return d.toLocaleDateString("de-DE",{day:"2-digit",month:"2-digit"});
+}
+function weekLabel(i){
+  return `KW ${i+1} (${fmtDate(WEEKS[i][0])}–${fmtDate(WEEKS[i][1])})`;
+}
+function euro(n){
+  return "€" + Math.round(n).toLocaleString("de-DE");
+}
+function num(n, digits){
+  return n.toLocaleString("de-DE",{maximumFractionDigits: digits===undefined?1:digits});
+}
+
+function findCurrentWeekIndex(){
+  const today = new Date(); today.setHours(0,0,0,0);
+  for(let i=0;i<WEEKS.length;i++){
+    const s = new Date(WEEKS[i][0]+"T00:00:00");
+    const e = new Date(WEEKS[i][1]+"T23:59:59");
+    if(today>=s && today<=e) return i;
+  }
+  if(today < new Date(WEEKS[0][0]+"T00:00:00")) return 0;
+  return WEEKS.length-1;
+}
+
+function weekEntry(i){
+  const w = DATA[i] || {};
+  return {
+    calls: Number(w.calls)||0,
+    termineGebucht: Number(w.termineGebucht)||0,
+    termineShowup: Number(w.termineShowup)||0,
+    closes: Number(w.closes)||0,
+    umsatz: Number(w.umsatz)||0,
+    hebel: w.hebel || {}
+  };
+}
+
+function cumulative(){
+  const c = {calls:0,termineGebucht:0,termineShowup:0,closes:0,umsatz:0,hebel:0};
+  let weeksLogged = 0, onTarget = 0, bestWeek = null, bestUmsatz = -1;
+  for(let i=0;i<N_WEEKS;i++){
+    if(!DATA[i]) continue;
+    const e = weekEntry(i);
+    const hasAny = e.calls||e.termineGebucht||e.termineShowup||e.closes||e.umsatz||Object.values(e.hebel).some(v=>Number(v)>0);
+    if(!hasAny) continue;
+    weeksLogged++;
+    c.calls += e.calls; c.termineGebucht += e.termineGebucht; c.termineShowup += e.termineShowup;
+    c.closes += e.closes; c.umsatz += e.umsatz;
+    c.hebel += LEVERS.reduce((s,[k])=>s+(Number(e.hebel[k])||0),0);
+    if(e.umsatz >= WEEKLY_TARGET.umsatz) onTarget++;
+    if(e.umsatz > bestUmsatz){ bestUmsatz = e.umsatz; bestWeek = i; }
+  }
+  return {c, weeksLogged, onTarget, bestWeek, bestUmsatz};
+}
+
+function barClass(pct){
+  if(pct>=100) return "ok";
+  if(pct>=60) return "warn";
+  return "low";
+}
+
+/* ---------- Rendering ---------- */
+function renderDashboard(){
+  const {c, weeksLogged, onTarget, bestWeek, bestUmsatz} = cumulative();
+
+  document.getElementById("dashUmsatzIst").textContent = euro(c.umsatz);
+  const umsatzPct = Math.min(100, (c.umsatz/TOTAL.umsatz)*100);
+  document.getElementById("dashUmsatzBar").style.width = umsatzPct+"%";
+  document.getElementById("dashUmsatzMeta").textContent = num(umsatzPct,1)+"% des Jahresziels erreicht · noch "+euro(Math.max(0,TOTAL.umsatz-c.umsatz))+" bis €20.000";
+
+  const metrics = [
+    ["Calls","statCalls","barCalls","pctCalls",c.calls,TOTAL.calls,0],
+    ["Termine gebucht","statTermineGebucht","barTermineGebucht","pctTermineGebucht",c.termineGebucht,TOTAL.termineGebucht,0],
+    ["Termine (Show-up)","statTermineShowup","barTermineShowup","pctTermineShowup",c.termineShowup,TOTAL.termineShowup,0],
+    ["Closes","statCloses","barCloses","pctCloses",c.closes,TOTAL.closes,0],
+  ];
+  metrics.forEach(([label, numId, barId, pctId, ist, soll])=>{
+    const pct = soll>0 ? (ist/soll)*100 : 0;
+    document.getElementById(numId).innerHTML = num(ist,0)+" <small>/ "+num(soll,0)+"</small>";
+    const bar = document.getElementById(barId);
+    bar.style.width = Math.min(100,pct)+"%";
+    bar.className = "bar-fill "+barClass(pct);
+    document.getElementById(pctId).textContent = num(pct,1)+"% vom Gesamtziel";
+  });
+
+  const hebelPct = (c.hebel/TOTAL_HEBEL)*100;
+  const hb = document.getElementById("barHebelTotal");
+  hb.style.width = Math.min(100,hebelPct)+"%";
+  hb.className = "bar-fill "+barClass(hebelPct);
+  document.getElementById("pctHebelTotal").textContent = num(c.hebel,1)+" / "+TOTAL_HEBEL+" Std. ("+num(hebelPct,1)+"%)";
+
+  document.getElementById("streakWeeksLogged").textContent = weeksLogged;
+  document.getElementById("streakOnTarget").textContent = onTarget;
+  document.getElementById("streakBestWeek").textContent = bestWeek!==null && bestUmsatz>0 ? ("KW "+(bestWeek+1)+" · "+euro(bestUmsatz)) : "—";
+
+  const curIdx = findCurrentWeekIndex();
+  document.getElementById("dashWeekLabel").textContent = weekLabel(curIdx);
+  const e = weekEntry(curIdx);
+  const rows = [
+    ["Calls", e.calls, WEEKLY_TARGET.calls],
+    ["Termine gebucht", e.termineGebucht, WEEKLY_TARGET.termineGebucht],
+    ["Termine (Show-up)", e.termineShowup, WEEKLY_TARGET.termineShowup],
+    ["Closes", e.closes, WEEKLY_TARGET.closes],
+    ["Umsatz", e.umsatz, WEEKLY_TARGET.umsatz],
+  ];
+  document.getElementById("dashCurrentWeekBody").innerHTML = rows.map(([label,ist,soll])=>{
+    const pct = soll>0 ? (ist/soll)*100 : 0;
+    const displayIst = label==="Umsatz" ? euro(ist) : num(ist,0);
+    const displaySoll = label==="Umsatz" ? euro(soll) : num(soll,1);
+    return `<div class="row-metric">
+      <div class="top"><span class="name">${label}</span><span class="vals">${displayIst} / ${displaySoll}</span></div>
+      <div class="bar-track"><div class="bar-fill ${barClass(pct)}" style="width:${Math.min(100,pct)}%"></div></div>
+    </div>`;
+  }).join("");
+}
+
+function populateWeekSelects(){
+  ["weekSelect","weekSelectHebel"].forEach(id=>{
+    const sel = document.getElementById(id);
+    sel.innerHTML = WEEKS.map((w,i)=>`<option value="${i}">${weekLabel(i)}</option>`).join("");
+  });
+  const cur = findCurrentWeekIndex();
+  document.getElementById("weekSelect").value = cur;
+  document.getElementById("weekSelectHebel").value = cur;
+}
+
+function loadWeekIntoForm(){
+  const i = Number(document.getElementById("weekSelect").value);
+  const e = weekEntry(i);
+  document.getElementById("inCalls").value = e.calls || "";
+  document.getElementById("inTermineGebucht").value = e.termineGebucht || "";
+  document.getElementById("inTermineShowup").value = e.termineShowup || "";
+  document.getElementById("inCloses").value = e.closes || "";
+  document.getElementById("inUmsatz").value = e.umsatz || "";
+  renderPreview(i);
+}
+
+function renderPreview(i){
+  const e = weekEntry(i);
+  document.getElementById("previewWeekLabel").textContent = weekLabel(i);
+  const rows = [
+    ["Calls", e.calls, WEEKLY_TARGET.calls, v=>num(v,0)],
+    ["Termine gebucht", e.termineGebucht, WEEKLY_TARGET.termineGebucht, v=>num(v,0)],
+    ["Termine (Show-up)", e.termineShowup, WEEKLY_TARGET.termineShowup, v=>num(v,0)],
+    ["Closes", e.closes, WEEKLY_TARGET.closes, v=>num(v,0)],
+    ["Umsatz", e.umsatz, WEEKLY_TARGET.umsatz, v=>euro(v)],
+  ];
+  document.getElementById("previewBody").innerHTML = rows.map(([label,ist,soll,f])=>{
+    const pct = soll>0 ? (ist/soll)*100 : 0;
+    return `<div class="row-metric">
+      <div class="top"><span class="name">${label}</span><span class="vals">${f(ist)} / ${f(soll)} (${num(pct,0)}%)</span></div>
+      <div class="bar-track"><div class="bar-fill ${barClass(pct)}" style="width:${Math.min(100,pct)}%"></div></div>
+    </div>`;
+  }).join("");
+}
+
+function loadWeekIntoHebelForm(){
+  const i = Number(document.getElementById("weekSelectHebel").value);
+  const e = weekEntry(i);
+  document.getElementById("hebelCallBreakdowns").value = e.hebel.callBreakdowns || "";
+  document.getElementById("hebelColdCall").value = e.hebel.coldCall || "";
+  document.getElementById("hebelCoachings").value = e.hebel.coachings || "";
+  document.getElementById("hebelOffer").value = e.hebel.offer || "";
+  document.getElementById("hebelZielgruppe").value = e.hebel.zielgruppe || "";
+  renderHebelPreview(i);
+}
+
+function renderHebelPreview(i){
+  const e = weekEntry(i);
+  document.getElementById("hebelPreview").innerHTML = LEVERS.map(([key,label])=>{
+    const ist = Number(e.hebel[key])||0;
+    const pct = (ist/1)*100;
+    return `<div class="row-metric">
+      <div class="top"><span class="name">${label}</span><span class="vals">${num(ist,2)} / 1 Std. (${num(pct,0)}%)</span></div>
+      <div class="bar-track"><div class="bar-fill ${barClass(pct)}" style="width:${Math.min(100,pct)}%"></div></div>
+    </div>`;
+  }).join("");
+}
+
+function renderHistory(){
+  const rows = [];
+  const curIdx = findCurrentWeekIndex();
+  for(let i=0;i<N_WEEKS;i++){
+    const e = weekEntry(i);
+    const hebelSum = LEVERS.reduce((s,[k])=>s+(Number(e.hebel[k])||0),0);
+    const hasAny = e.calls||e.termineGebucht||e.termineShowup||e.closes||e.umsatz||hebelSum>0;
+    rows.push(`<tr class="${i===curIdx?'current-week':''}">
+      <td>${i+1}</td>
+      <td>${fmtDate(WEEKS[i][0])}–${fmtDate(WEEKS[i][1])}</td>
+      <td>${hasAny?num(e.calls,0):"–"}</td>
+      <td>${hasAny?num(e.termineGebucht,0):"–"}</td>
+      <td>${hasAny?num(e.termineShowup,0):"–"}</td>
+      <td>${hasAny?num(e.closes,0):"–"}</td>
+      <td>${hasAny?euro(e.umsatz):"–"}</td>
+      <td>${hebelSum>0?num(hebelSum,2):"–"}</td>
+    </tr>`);
+  }
+  document.getElementById("historyBody").innerHTML = rows.join("");
+}
+
+function renderAll(){
+  renderDashboard();
+  renderHistory();
+  const i = Number(document.getElementById("weekSelect").value);
+  renderPreview(i);
+  const ih = Number(document.getElementById("weekSelectHebel").value);
+  renderHebelPreview(ih);
+}
+
+/* ---------- Events ---------- */
+document.querySelectorAll(".tab-btn").forEach(btn=>{
+  btn.addEventListener("click", ()=>{
+    document.querySelectorAll(".tab-btn").forEach(b=>b.classList.remove("active"));
+    document.querySelectorAll(".view").forEach(v=>v.classList.remove("active"));
+    btn.classList.add("active");
+    document.getElementById("view-"+btn.dataset.view).classList.add("active");
+  });
+});
+
+document.getElementById("weekSelect").addEventListener("change", loadWeekIntoForm);
+document.getElementById("weekSelectHebel").addEventListener("change", loadWeekIntoHebelForm);
+
+document.getElementById("saveWeekBtn").addEventListener("click", ()=>{
+  const i = Number(document.getElementById("weekSelect").value);
+  const existing = DATA[i] || {};
+  DATA[i] = {
+    ...existing,
+    calls: Number(document.getElementById("inCalls").value)||0,
+    termineGebucht: Number(document.getElementById("inTermineGebucht").value)||0,
+    termineShowup: Number(document.getElementById("inTermineShowup").value)||0,
+    closes: Number(document.getElementById("inCloses").value)||0,
+    umsatz: Number(document.getElementById("inUmsatz").value)||0,
+    hebel: existing.hebel || {}
+  };
+  saveData(DATA);
+  const msg = document.getElementById("saveMsg");
+  msg.style.display = "block";
+  setTimeout(()=>msg.style.display="none", 1800);
+  renderAll();
+});
+
+document.getElementById("saveHebelBtn").addEventListener("click", ()=>{
+  const i = Number(document.getElementById("weekSelectHebel").value);
+  const existing = DATA[i] || {};
+  DATA[i] = {
+    ...existing,
+    hebel: {
+      callBreakdowns: Number(document.getElementById("hebelCallBreakdowns").value)||0,
+      coldCall: Number(document.getElementById("hebelColdCall").value)||0,
+      coachings: Number(document.getElementById("hebelCoachings").value)||0,
+      offer: Number(document.getElementById("hebelOffer").value)||0,
+      zielgruppe: Number(document.getElementById("hebelZielgruppe").value)||0,
+    }
+  };
+  saveData(DATA);
+  const msg = document.getElementById("saveHebelMsg");
+  msg.style.display = "block";
+  setTimeout(()=>msg.style.display="none", 1800);
+  renderAll();
+});
+
+/* ---------- Init ---------- */
+populateWeekSelects();
+loadWeekIntoForm();
+loadWeekIntoHebelForm();
+renderAll();
+</script>
+</body>
+</html>
