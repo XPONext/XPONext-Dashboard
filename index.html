@@ -188,33 +188,32 @@
   <div class="container">
     <div class="card">
       <div class="field" style="max-width:340px;">
-        <label>Woche auswählen</label>
-        <select id="weekSelect"></select>
+        <label>Tag auswählen</label>
+        <input type="date" id="entryDate">
       </div>
+      <div class="pct" id="entryWeekInfo"></div>
     </div>
 
     <div class="card">
-      <h2>Team-Zahlen <small>Termine & Umsatz — gemeinsam, macht ihr ja zusammen. Trag ein, was seit dem letzten Mal dazugekommen ist, es wird zum Wochen-Stand addiert.</small></h2>
+      <h2>Team-Zahlen <small>Termine, Closes & Umsatz — gemeinsam. Zeigt den Stand für den gewählten Tag, jederzeit korrigierbar.</small></h2>
       <div class="form-grid">
-        <div class="field"><label>Termine gebucht <small id="curTermineGebucht" style="color:var(--text-muted);font-weight:400;"></small></label><input type="number" id="inTermineGebucht" step="1" placeholder="heute dazu"></div>
-        <div class="field"><label>Termine (Show-up) <small id="curTermineShowup" style="color:var(--text-muted);font-weight:400;"></small></label><input type="number" id="inTermineShowup" step="1" placeholder="heute dazu"></div>
-        <div class="field"><label>Umsatz (€) <small id="curUmsatz" style="color:var(--text-muted);font-weight:400;"></small></label><input type="number" id="inUmsatz" step="10" placeholder="heute dazu"></div>
+        <div class="field"><label>Termine gebucht</label><input type="number" id="inTermineGebucht" min="0" step="1"></div>
+        <div class="field"><label>Termine (Show-up)</label><input type="number" id="inTermineShowup" min="0" step="1"></div>
+        <div class="field"><label>Closes</label><input type="number" id="inCloses" min="0" step="1"></div>
+        <div class="field"><label>Umsatz (€)</label><input type="number" id="inUmsatz" min="0" step="10"></div>
       </div>
-      <button class="btn" id="saveTeamBtn">Hinzufügen</button>
+      <button class="btn" id="saveTeamBtn">Tag speichern</button>
       <div class="save-msg" id="saveTeamMsg">Gespeichert ✓</div>
     </div>
 
     <div class="card">
-      <h2>Deine Zahlen <small>Calls & Closes — pro Person, weil jeder seine eigenen macht.</small></h2>
+      <h2>Deine Zahlen <small>Calls — pro Person, weil jeder seine eigenen macht.</small></h2>
       <div class="field" style="max-width:340px;">
         <label>Wer trägt ein?</label>
         <select id="personSelect"><option value="tim">Tim</option><option value="simon">Simon</option></select>
       </div>
-      <div class="form-grid">
-        <div class="field"><label>Calls <small id="curCalls" style="color:var(--text-muted);font-weight:400;"></small></label><input type="number" id="inCalls" step="1" placeholder="heute dazu"></div>
-        <div class="field"><label>Closes <small id="curCloses" style="color:var(--text-muted);font-weight:400;"></small></label><input type="number" id="inCloses" step="1" placeholder="heute dazu"></div>
-      </div>
-      <button class="btn" id="saveWeekBtn">Hinzufügen</button>
+      <div class="field" style="max-width:200px;"><label>Calls</label><input type="number" id="inCalls" min="0" step="1"></div>
+      <button class="btn" id="saveWeekBtn">Tag speichern</button>
       <div class="save-msg" id="saveMsg">Gespeichert ✓</div>
     </div>
 
@@ -229,25 +228,25 @@
 <section class="view" id="view-hebel">
   <div class="container">
     <div class="card">
-      <h2>Hebel-Stunden eintragen <small>Ziel: 7 Std./Woche pro Person — trag ein, was seit dem letzten Mal dazugekommen ist.</small></h2>
+      <h2>Hebel-Stunden eintragen <small>Ziel: 7 Std./Woche pro Person — Stand für den gewählten Tag, jederzeit korrigierbar.</small></h2>
       <div class="form-grid" style="max-width:600px;">
         <div class="field">
           <label>Wer trägt ein?</label>
           <select id="personSelectHebel"><option value="tim">Tim</option><option value="simon">Simon</option></select>
         </div>
         <div class="field">
-          <label>Woche auswählen</label>
-          <select id="weekSelectHebel"></select>
+          <label>Tag auswählen</label>
+          <input type="date" id="entryDateHebel">
         </div>
       </div>
       <div class="lever-grid">
-        <div class="lever"><div class="name">Call-Breakdowns <small id="curHebelCallBreakdowns" style="color:var(--text-muted);font-weight:400;display:block;"></small></div><input type="number" id="hebelCallBreakdowns" step="0.25" placeholder="dazu"></div>
-        <div class="lever"><div class="name">Cold-Call-Breakdowns <small id="curHebelColdCall" style="color:var(--text-muted);font-weight:400;display:block;"></small></div><input type="number" id="hebelColdCall" step="0.25" placeholder="dazu"></div>
-        <div class="lever"><div class="name">Coachings <small id="curHebelCoachings" style="color:var(--text-muted);font-weight:400;display:block;"></small></div><input type="number" id="hebelCoachings" step="0.25" placeholder="dazu"></div>
-        <div class="lever"><div class="name">Offer-Verbesserung <small id="curHebelOffer" style="color:var(--text-muted);font-weight:400;display:block;"></small></div><input type="number" id="hebelOffer" step="0.25" placeholder="dazu"></div>
-        <div class="lever"><div class="name">Zielgruppenverständnis <small id="curHebelZielgruppe" style="color:var(--text-muted);font-weight:400;display:block;"></small></div><input type="number" id="hebelZielgruppe" step="0.25" placeholder="dazu"></div>
+        <div class="lever"><div class="name">Call-Breakdowns</div><input type="number" id="hebelCallBreakdowns" min="0" step="0.25"></div>
+        <div class="lever"><div class="name">Cold-Call-Breakdowns</div><input type="number" id="hebelColdCall" min="0" step="0.25"></div>
+        <div class="lever"><div class="name">Coachings</div><input type="number" id="hebelCoachings" min="0" step="0.25"></div>
+        <div class="lever"><div class="name">Offer-Verbesserung</div><input type="number" id="hebelOffer" min="0" step="0.25"></div>
+        <div class="lever"><div class="name">Zielgruppenverständnis</div><input type="number" id="hebelZielgruppe" min="0" step="0.25"></div>
       </div>
-      <button class="btn" id="saveHebelBtn">Hinzufügen</button>
+      <button class="btn" id="saveHebelBtn">Tag speichern</button>
       <div class="save-msg" id="saveHebelMsg">Gespeichert ✓</div>
     </div>
     <div class="card">
@@ -261,22 +260,22 @@
 <section class="view" id="view-verlauf">
   <div class="container">
     <div class="card">
-      <h2>Team-Zahlen <small>Termine & Umsatz — gemeinsam</small></h2>
+      <h2>Team-Zahlen <small>Termine, Closes & Umsatz — gemeinsam</small></h2>
       <div style="overflow-x:auto;">
       <table>
         <thead>
-          <tr><th>Woche</th><th>Zeitraum</th><th>Termine geb.</th><th>Termine Show-up</th><th>Umsatz</th></tr>
+          <tr><th>Woche</th><th>Zeitraum</th><th>Termine geb.</th><th>Termine Show-up</th><th>Closes</th><th>Umsatz</th></tr>
         </thead>
         <tbody id="historyTeamBody"></tbody>
       </table>
       </div>
     </div>
     <div class="card">
-      <h2>Personen-Zahlen <small>Calls, Closes & Hebel-Stunden — pro Person</small></h2>
+      <h2>Personen-Zahlen <small>Calls & Hebel-Stunden — pro Person</small></h2>
       <div style="overflow-x:auto;">
       <table>
         <thead>
-          <tr><th>Woche</th><th>Zeitraum</th><th>Person</th><th>Calls</th><th>Closes</th><th>Hebel-Std.</th></tr>
+          <tr><th>Woche</th><th>Zeitraum</th><th>Person</th><th>Calls</th><th>Hebel-Std.</th></tr>
         </thead>
         <tbody id="historyBody"></tbody>
       </table>
@@ -343,7 +342,7 @@ async function ensureAuthorized(){
       }
     }
     db = buildClient(secret);
-    const { error } = await db.from("weekly_team_kpis").upsert({ week_index: -1, termine_gebucht: 0 });
+    const { error } = await db.from("daily_team").upsert({ date: "2000-01-01", termine_gebucht: 0 });
     if(!error){
       localStorage.setItem(SECRET_STORAGE_KEY, secret);
       return;
@@ -353,68 +352,100 @@ async function ensureAuthorized(){
   }
 }
 
-async function fetchAllWeeks(){
+function weekIndexForDate(dateStr){
+  for(let i=0;i<N_WEEKS;i++){
+    if(dateStr>=WEEKS[i][0] && dateStr<=WEEKS[i][1]) return i;
+  }
+  return -1;
+}
+
+async function fetchAllData(){
   const [personalRes, teamRes] = await Promise.all([
-    db.from("weekly_kpis").select("*"),
-    db.from("weekly_team_kpis").select("*")
+    db.from("daily_personal").select("*"),
+    db.from("daily_team").select("*")
   ]);
-  const obj = {};
+  const dp = {};
   if(personalRes.error){ console.error(personalRes.error); alert("Daten konnten nicht geladen werden: "+personalRes.error.message); }
   else{
     personalRes.data.forEach(row=>{
-      if(row.week_index < 0) return; // interne Test-Zeile ignorieren
-      if(!obj[row.week_index]) obj[row.week_index] = {};
-      obj[row.week_index][row.person] = {
-        calls: Number(row.calls)||0,
-        closes: Number(row.closes)||0,
-        hebel: row.hebel || {}
-      };
+      if(!dp[row.date]) dp[row.date] = {};
+      dp[row.date][row.person] = { calls: Number(row.calls)||0, hebel: row.hebel || {} };
     });
   }
 
-  const teamObj = {};
+  const dt = {};
   if(teamRes.error){ console.error(teamRes.error); alert("Team-Daten konnten nicht geladen werden: "+teamRes.error.message); }
   else{
     teamRes.data.forEach(row=>{
-      if(row.week_index < 0) return; // interne Test-Zeile ignorieren
-      teamObj[row.week_index] = {
+      dt[row.date] = {
         termineGebucht: Number(row.termine_gebucht)||0,
         termineShowup: Number(row.termine_showup)||0,
+        closes: Number(row.closes)||0,
         umsatz: Number(row.umsatz)||0
       };
     });
   }
-  DATA_TEAM = teamObj;
-  return obj;
+
+  DAILY_PERSONAL = dp;
+  DAILY_TEAM = dt;
+  buildWeeklyAggregates();
 }
 
-async function upsertWeek(i, person){
-  const e = personEntry(i, person);
-  const { error } = await db.from("weekly_kpis").upsert({
-    week_index: i,
-    person: person,
-    calls: e.calls,
-    closes: e.closes,
-    hebel: e.hebel,
-    updated_at: new Date().toISOString()
+function buildWeeklyAggregates(){
+  const data = {}, dataTeam = {};
+  for(let i=0;i<N_WEEKS;i++){
+    data[i] = { tim: {calls:0, hebel:{}}, simon: {calls:0, hebel:{}} };
+    dataTeam[i] = { termineGebucht:0, termineShowup:0, closes:0, umsatz:0 };
+  }
+  Object.entries(DAILY_PERSONAL).forEach(([date, persons])=>{
+    const wi = weekIndexForDate(date);
+    if(wi<0) return;
+    PERSONS.forEach(([key])=>{
+      const d = persons[key];
+      if(!d) return;
+      data[wi][key].calls += Number(d.calls)||0;
+      LEVERS.forEach(([lk])=>{
+        data[wi][key].hebel[lk] = (data[wi][key].hebel[lk]||0) + (Number(d.hebel[lk])||0);
+      });
+    });
+  });
+  Object.entries(DAILY_TEAM).forEach(([date, t])=>{
+    const wi = weekIndexForDate(date);
+    if(wi<0) return;
+    dataTeam[wi].termineGebucht += Number(t.termineGebucht)||0;
+    dataTeam[wi].termineShowup += Number(t.termineShowup)||0;
+    dataTeam[wi].closes += Number(t.closes)||0;
+    dataTeam[wi].umsatz += Number(t.umsatz)||0;
+  });
+  DATA = data;
+  DATA_TEAM = dataTeam;
+}
+
+async function upsertDailyPersonal(date, person){
+  const e = (DAILY_PERSONAL[date] && DAILY_PERSONAL[date][person]) || {calls:0, hebel:{}};
+  const { error } = await db.from("daily_personal").upsert({
+    date, person, calls: e.calls, hebel: e.hebel, updated_at: new Date().toISOString()
   });
   if(error){ console.error(error); alert("Speichern fehlgeschlagen: "+error.message); }
 }
 
-async function upsertTeamWeek(i){
-  const e = teamEntry(i);
-  const { error } = await db.from("weekly_team_kpis").upsert({
-    week_index: i,
+async function upsertDailyTeam(date){
+  const e = DAILY_TEAM[date] || {termineGebucht:0, termineShowup:0, closes:0, umsatz:0};
+  const { error } = await db.from("daily_team").upsert({
+    date,
     termine_gebucht: e.termineGebucht,
     termine_showup: e.termineShowup,
+    closes: e.closes,
     umsatz: e.umsatz,
     updated_at: new Date().toISOString()
   });
   if(error){ console.error(error); alert("Speichern fehlgeschlagen: "+error.message); }
 }
 
-let DATA = {}; // { 1: { tim: {calls, closes, hebel:{...}}, simon: {...} } }
-let DATA_TEAM = {}; // { 1: {termineGebucht, termineShowup, umsatz} }
+let DAILY_PERSONAL = {}; // { "2026-07-14": { tim: {calls, hebel:{...}}, simon: {...} } }
+let DAILY_TEAM = {}; // { "2026-07-14": {termineGebucht, termineShowup, closes, umsatz} }
+let DATA = {}; // Wochen-Aggregate, aus DAILY_PERSONAL berechnet: { 1: { tim: {calls, hebel:{...}}, simon: {...} } }
+let DATA_TEAM = {}; // Wochen-Aggregate, aus DAILY_TEAM berechnet: { 1: {termineGebucht, termineShowup, closes, umsatz} }
 const PERSON_STORAGE_KEY = "xponext_kpi_person";
 
 function fmtDate(iso){
@@ -446,7 +477,6 @@ function personEntry(i, person){
   const w = (DATA[i] && DATA[i][person]) || {};
   return {
     calls: Number(w.calls)||0,
-    closes: Number(w.closes)||0,
     hebel: w.hebel || {}
   };
 }
@@ -456,6 +486,7 @@ function teamEntry(i){
   return {
     termineGebucht: Number(w.termineGebucht)||0,
     termineShowup: Number(w.termineShowup)||0,
+    closes: Number(w.closes)||0,
     umsatz: Number(w.umsatz)||0
   };
 }
@@ -470,7 +501,7 @@ function combinedEntry(i){
     calls: t.calls+s.calls,
     termineGebucht: team.termineGebucht,
     termineShowup: team.termineShowup,
-    closes: t.closes+s.closes,
+    closes: team.closes,
     umsatz: team.umsatz,
     hebelHours: hebelHours(t)+hebelHours(s)
   };
@@ -557,46 +588,56 @@ function renderDashboard(){
     const pe = personEntry(curIdx, key);
     const ph = hebelHours(pe);
     return `<div class="row-metric">
-      <div class="top"><span class="name">${label}</span><span class="vals">${num(pe.calls,0)} Calls · ${pe.closes} Closes · ${num(ph,1)}/${WEEKLY_TARGET.hebel} Std. Hebel</span></div>
+      <div class="top"><span class="name">${label}</span><span class="vals">${num(pe.calls,0)} Calls · ${num(ph,1)}/${WEEKLY_TARGET.hebel} Std. Hebel</span></div>
     </div>`;
   }).join("");
 }
 
-function populateWeekSelects(){
-  ["weekSelect","weekSelectHebel"].forEach(id=>{
-    const sel = document.getElementById(id);
-    sel.innerHTML = WEEKS.map((w,i)=>`<option value="${i}">${weekLabel(i)}</option>`).join("");
+const HEBEL_INPUT_IDS = {callBreakdowns:"hebelCallBreakdowns", coldCall:"hebelColdCall", coachings:"hebelCoachings", offer:"hebelOffer", zielgruppe:"hebelZielgruppe"};
+
+function todayIso(){
+  return new Date().toISOString().slice(0,10);
+}
+function clampDate(d){
+  if(d < WEEKS[0][0]) return WEEKS[0][0];
+  if(d > WEEKS[N_WEEKS-1][1]) return WEEKS[N_WEEKS-1][1];
+  return d;
+}
+
+function populateEntryControls(){
+  const minD = WEEKS[0][0], maxD = WEEKS[N_WEEKS-1][1];
+  ["entryDate","entryDateHebel"].forEach(id=>{
+    const el = document.getElementById(id);
+    el.min = minD; el.max = maxD;
   });
-  const cur = findCurrentWeekIndex();
-  document.getElementById("weekSelect").value = cur;
-  document.getElementById("weekSelectHebel").value = cur;
+  const initial = clampDate(todayIso());
+  document.getElementById("entryDate").value = initial;
+  document.getElementById("entryDateHebel").value = initial;
 
   const savedPerson = localStorage.getItem(PERSON_STORAGE_KEY) || "tim";
   document.getElementById("personSelect").value = savedPerson;
   document.getElementById("personSelectHebel").value = savedPerson;
 }
 
-function loadWeekIntoForm(){
-  const i = Number(document.getElementById("weekSelect").value);
+function loadDayIntoForm(){
+  const date = document.getElementById("entryDate").value;
   const person = document.getElementById("personSelect").value;
-  const e = personEntry(i, person);
-  document.getElementById("inCalls").value = "";
-  document.getElementById("inCloses").value = "";
-  document.getElementById("curCalls").textContent = "bisher: "+num(e.calls,0);
-  document.getElementById("curCloses").textContent = "bisher: "+num(e.closes,0);
+  const dp = (DAILY_PERSONAL[date] && DAILY_PERSONAL[date][person]) || {calls:0};
+  document.getElementById("inCalls").value = dp.calls || 0;
 
-  const team = teamEntry(i);
-  document.getElementById("inTermineGebucht").value = "";
-  document.getElementById("inTermineShowup").value = "";
-  document.getElementById("inUmsatz").value = "";
-  document.getElementById("curTermineGebucht").textContent = "bisher: "+num(team.termineGebucht,0);
-  document.getElementById("curTermineShowup").textContent = "bisher: "+num(team.termineShowup,0);
-  document.getElementById("curUmsatz").textContent = "bisher: "+euro(team.umsatz);
+  const dt = DAILY_TEAM[date] || {termineGebucht:0, termineShowup:0, closes:0, umsatz:0};
+  document.getElementById("inTermineGebucht").value = dt.termineGebucht || 0;
+  document.getElementById("inTermineShowup").value = dt.termineShowup || 0;
+  document.getElementById("inCloses").value = dt.closes || 0;
+  document.getElementById("inUmsatz").value = dt.umsatz || 0;
 
-  renderPreview(i);
+  const wi = weekIndexForDate(date);
+  document.getElementById("entryWeekInfo").textContent = wi>=0 ? ("gehört zu "+weekLabel(wi)) : "";
+  renderPreview(wi);
 }
 
 function renderPreview(i){
+  if(i<0) { document.getElementById("previewBody").innerHTML = ""; document.getElementById("previewWeekLabel").textContent = ""; return; }
   const e = combinedEntry(i);
   document.getElementById("previewWeekLabel").textContent = weekLabel(i);
   const rows = [
@@ -615,20 +656,19 @@ function renderPreview(i){
   }).join("");
 }
 
-function loadWeekIntoHebelForm(){
-  const i = Number(document.getElementById("weekSelectHebel").value);
+function loadDayIntoHebelForm(){
+  const date = document.getElementById("entryDateHebel").value;
   const person = document.getElementById("personSelectHebel").value;
-  const e = personEntry(i, person);
-  const ids = {callBreakdowns:"hebelCallBreakdowns", coldCall:"hebelColdCall", coachings:"hebelCoachings", offer:"hebelOffer", zielgruppe:"hebelZielgruppe"};
-  const curIds = {callBreakdowns:"curHebelCallBreakdowns", coldCall:"curHebelColdCall", coachings:"curHebelCoachings", offer:"curHebelOffer", zielgruppe:"curHebelZielgruppe"};
+  const dp = (DAILY_PERSONAL[date] && DAILY_PERSONAL[date][person]) || {hebel:{}};
   LEVERS.forEach(([key])=>{
-    document.getElementById(ids[key]).value = "";
-    document.getElementById(curIds[key]).textContent = "bisher: "+num(Number(e.hebel[key])||0,2)+" Std.";
+    document.getElementById(HEBEL_INPUT_IDS[key]).value = Number((dp.hebel||{})[key])||0;
   });
-  renderHebelPreview(i, person);
+  const wi = weekIndexForDate(date);
+  renderHebelPreview(wi, person);
 }
 
 function renderHebelPreview(i, person){
+  if(i<0){ document.getElementById("hebelPreview").innerHTML = ""; return; }
   const e = personEntry(i, person);
   document.getElementById("hebelPreview").innerHTML = LEVERS.map(([key,label])=>{
     const ist = Number(e.hebel[key])||0;
@@ -646,12 +686,13 @@ function renderHistory(){
   const teamRows = [];
   for(let i=0;i<N_WEEKS;i++){
     const team = teamEntry(i);
-    const hasAny = team.termineGebucht||team.termineShowup||team.umsatz;
+    const hasAny = team.termineGebucht||team.termineShowup||team.closes||team.umsatz;
     teamRows.push(`<tr class="${i===curIdx?'current-week':''}">
       <td>${i+1}</td>
       <td>${fmtDate(WEEKS[i][0])}–${fmtDate(WEEKS[i][1])}</td>
       <td>${hasAny?num(team.termineGebucht,0):"–"}</td>
       <td>${hasAny?num(team.termineShowup,0):"–"}</td>
+      <td>${hasAny?num(team.closes,0):"–"}</td>
       <td>${hasAny?euro(team.umsatz):"–"}</td>
     </tr>`);
   }
@@ -663,7 +704,7 @@ function renderHistory(){
     PERSONS.forEach(([key,label])=>{
       const e = personEntry(i, key);
       const hebelSum = hebelHours(e);
-      const hasAny = e.calls||e.closes||hebelSum>0;
+      const hasAny = e.calls||hebelSum>0;
       if(!hasAny) return;
       anyForWeek = true;
       rows.push(`<tr class="${i===curIdx?'current-week':''}">
@@ -671,7 +712,6 @@ function renderHistory(){
         <td>${fmtDate(WEEKS[i][0])}–${fmtDate(WEEKS[i][1])}</td>
         <td>${label}</td>
         <td>${num(e.calls,0)}</td>
-        <td>${num(e.closes,0)}</td>
         <td>${num(hebelSum,2)}</td>
       </tr>`);
     });
@@ -679,7 +719,7 @@ function renderHistory(){
       rows.push(`<tr class="${i===curIdx?'current-week':''}">
         <td>${i+1}</td>
         <td>${fmtDate(WEEKS[i][0])}–${fmtDate(WEEKS[i][1])}</td>
-        <td>–</td><td>–</td><td>–</td><td>–</td>
+        <td>–</td><td>–</td><td>–</td>
       </tr>`);
     }
   }
@@ -689,11 +729,11 @@ function renderHistory(){
 function renderAll(){
   renderDashboard();
   renderHistory();
-  const i = Number(document.getElementById("weekSelect").value);
-  renderPreview(i);
-  const ih = Number(document.getElementById("weekSelectHebel").value);
+  const date = document.getElementById("entryDate").value;
+  renderPreview(weekIndexForDate(date));
+  const dateHebel = document.getElementById("entryDateHebel").value;
   const personHebel = document.getElementById("personSelectHebel").value;
-  renderHebelPreview(ih, personHebel);
+  renderHebelPreview(weekIndexForDate(dateHebel), personHebel);
 }
 
 /* ---------- Events ---------- */
@@ -703,87 +743,90 @@ document.querySelectorAll(".tab-btn").forEach(btn=>{
     document.querySelectorAll(".view").forEach(v=>v.classList.remove("active"));
     btn.classList.add("active");
     document.getElementById("view-"+btn.dataset.view).classList.add("active");
-    DATA = await fetchAllWeeks();
-    loadWeekIntoForm();
-    loadWeekIntoHebelForm();
+    await fetchAllData();
+    loadDayIntoForm();
+    loadDayIntoHebelForm();
     renderAll();
   });
 });
 
-document.getElementById("weekSelect").addEventListener("change", loadWeekIntoForm);
-document.getElementById("weekSelectHebel").addEventListener("change", loadWeekIntoHebelForm);
+document.getElementById("entryDate").addEventListener("change", ()=>{
+  document.getElementById("entryDateHebel").value = document.getElementById("entryDate").value;
+  loadDayIntoForm();
+});
+document.getElementById("entryDateHebel").addEventListener("change", ()=>{
+  document.getElementById("entryDate").value = document.getElementById("entryDateHebel").value;
+  loadDayIntoHebelForm();
+});
 document.getElementById("personSelect").addEventListener("change", ()=>{
   localStorage.setItem(PERSON_STORAGE_KEY, document.getElementById("personSelect").value);
   document.getElementById("personSelectHebel").value = document.getElementById("personSelect").value;
-  loadWeekIntoForm();
+  loadDayIntoForm();
 });
 document.getElementById("personSelectHebel").addEventListener("change", ()=>{
   localStorage.setItem(PERSON_STORAGE_KEY, document.getElementById("personSelectHebel").value);
   document.getElementById("personSelect").value = document.getElementById("personSelectHebel").value;
-  loadWeekIntoHebelForm();
+  loadDayIntoHebelForm();
 });
 
 document.getElementById("saveWeekBtn").addEventListener("click", async ()=>{
-  const i = Number(document.getElementById("weekSelect").value);
+  const date = document.getElementById("entryDate").value;
   const person = document.getElementById("personSelect").value;
-  const existing = personEntry(i, person);
-  if(!DATA[i]) DATA[i] = {};
-  DATA[i][person] = {
-    ...existing,
-    calls: existing.calls + (Number(document.getElementById("inCalls").value)||0),
-    closes: existing.closes + (Number(document.getElementById("inCloses").value)||0)
+  const existingHebel = (DAILY_PERSONAL[date] && DAILY_PERSONAL[date][person] && DAILY_PERSONAL[date][person].hebel) || {};
+  if(!DAILY_PERSONAL[date]) DAILY_PERSONAL[date] = {};
+  DAILY_PERSONAL[date][person] = {
+    calls: Number(document.getElementById("inCalls").value)||0,
+    hebel: existingHebel
   };
-  await upsertWeek(i, person);
+  await upsertDailyPersonal(date, person);
+  buildWeeklyAggregates();
   const msg = document.getElementById("saveMsg");
   msg.style.display = "block";
   setTimeout(()=>msg.style.display="none", 1800);
-  loadWeekIntoForm();
   renderAll();
 });
 
 document.getElementById("saveTeamBtn").addEventListener("click", async ()=>{
-  const i = Number(document.getElementById("weekSelect").value);
-  const existing = teamEntry(i);
-  DATA_TEAM[i] = {
-    termineGebucht: existing.termineGebucht + (Number(document.getElementById("inTermineGebucht").value)||0),
-    termineShowup: existing.termineShowup + (Number(document.getElementById("inTermineShowup").value)||0),
-    umsatz: existing.umsatz + (Number(document.getElementById("inUmsatz").value)||0)
+  const date = document.getElementById("entryDate").value;
+  DAILY_TEAM[date] = {
+    termineGebucht: Number(document.getElementById("inTermineGebucht").value)||0,
+    termineShowup: Number(document.getElementById("inTermineShowup").value)||0,
+    closes: Number(document.getElementById("inCloses").value)||0,
+    umsatz: Number(document.getElementById("inUmsatz").value)||0
   };
-  await upsertTeamWeek(i);
+  await upsertDailyTeam(date);
+  buildWeeklyAggregates();
   const msg = document.getElementById("saveTeamMsg");
   msg.style.display = "block";
   setTimeout(()=>msg.style.display="none", 1800);
-  loadWeekIntoForm();
   renderAll();
 });
 
 document.getElementById("saveHebelBtn").addEventListener("click", async ()=>{
-  const i = Number(document.getElementById("weekSelectHebel").value);
+  const date = document.getElementById("entryDateHebel").value;
   const person = document.getElementById("personSelectHebel").value;
-  const existing = personEntry(i, person);
-  const inputIds = {callBreakdowns:"hebelCallBreakdowns", coldCall:"hebelColdCall", coachings:"hebelCoachings", offer:"hebelOffer", zielgruppe:"hebelZielgruppe"};
-  if(!DATA[i]) DATA[i] = {};
+  const existingCalls = (DAILY_PERSONAL[date] && DAILY_PERSONAL[date][person] && DAILY_PERSONAL[date][person].calls) || 0;
   const newHebel = {};
   LEVERS.forEach(([key])=>{
-    const delta = Number(document.getElementById(inputIds[key]).value)||0;
-    newHebel[key] = (Number(existing.hebel[key])||0) + delta;
+    newHebel[key] = Number(document.getElementById(HEBEL_INPUT_IDS[key]).value)||0;
   });
-  DATA[i][person] = { ...existing, hebel: newHebel };
-  await upsertWeek(i, person);
+  if(!DAILY_PERSONAL[date]) DAILY_PERSONAL[date] = {};
+  DAILY_PERSONAL[date][person] = { calls: existingCalls, hebel: newHebel };
+  await upsertDailyPersonal(date, person);
+  buildWeeklyAggregates();
   const msg = document.getElementById("saveHebelMsg");
   msg.style.display = "block";
   setTimeout(()=>msg.style.display="none", 1800);
-  loadWeekIntoHebelForm();
   renderAll();
 });
 
 /* ---------- Init ---------- */
 async function init(){
   await ensureAuthorized();
-  DATA = await fetchAllWeeks();
-  populateWeekSelects();
-  loadWeekIntoForm();
-  loadWeekIntoHebelForm();
+  populateEntryControls();
+  await fetchAllData();
+  loadDayIntoForm();
+  loadDayIntoHebelForm();
   renderAll();
 }
 init();
