@@ -165,14 +165,19 @@
     </div>
 
     <div class="card">
-      <h2>Hebel-Stunden gesamt <small>Ziel: 5 Std./Woche · 125 Std. gesamt über 25 Wochen</small></h2>
+      <h2>Hebel-Stunden gesamt <small id="hebelZielLabel">Ziel: 7 Std./Woche pro Person</small></h2>
       <div class="bar-track"><div class="bar-fill ok" id="barHebelTotal" style="width:0%"></div></div>
-      <div class="pct" id="pctHebelTotal" style="margin-top:0.4rem;">0 / 125 Std.</div>
+      <div class="pct" id="pctHebelTotal" style="margin-top:0.4rem;">0 / 0 Std.</div>
       <div class="streak">
         <div class="item"><div class="n" id="streakWeeksLogged">0</div><div class="l">Wochen erfasst</div></div>
         <div class="item"><div class="n" id="streakOnTarget">0</div><div class="l">Wochen ≥100% Umsatz</div></div>
         <div class="item"><div class="n" id="streakBestWeek">—</div><div class="l">Beste Woche (Umsatz)</div></div>
       </div>
+    </div>
+
+    <div class="card">
+      <h2>Aufteilung diese Woche <small>Tim vs. Simon</small></h2>
+      <div id="dashPersonSplit"></div>
     </div>
 
   </div>
@@ -183,9 +188,15 @@
   <div class="container">
     <div class="card">
       <h2>Wochenzahlen eintragen</h2>
-      <div class="field" style="max-width:340px;">
-        <label>Woche auswählen</label>
-        <select id="weekSelect"></select>
+      <div class="form-grid" style="max-width:600px;">
+        <div class="field">
+          <label>Wer trägt ein?</label>
+          <select id="personSelect"><option value="tim">Tim</option><option value="simon">Simon</option></select>
+        </div>
+        <div class="field">
+          <label>Woche auswählen</label>
+          <select id="weekSelect"></select>
+        </div>
       </div>
       <div class="form-grid">
         <div class="field"><label>Calls</label><input type="number" id="inCalls" min="0" step="1"></div>
@@ -209,10 +220,16 @@
 <section class="view" id="view-hebel">
   <div class="container">
     <div class="card">
-      <h2>Hebel-Stunden eintragen <small>Ziel: je 1 Std./Woche pro Hebel, 5 Std./Woche gesamt</small></h2>
-      <div class="field" style="max-width:340px;">
-        <label>Woche auswählen</label>
-        <select id="weekSelectHebel"></select>
+      <h2>Hebel-Stunden eintragen <small>Ziel: 7 Std./Woche pro Person</small></h2>
+      <div class="form-grid" style="max-width:600px;">
+        <div class="field">
+          <label>Wer trägt ein?</label>
+          <select id="personSelectHebel"><option value="tim">Tim</option><option value="simon">Simon</option></select>
+        </div>
+        <div class="field">
+          <label>Woche auswählen</label>
+          <select id="weekSelectHebel"></select>
+        </div>
       </div>
       <div class="lever-grid">
         <div class="lever"><div class="name">Call-Breakdowns</div><input type="number" id="hebelCallBreakdowns" min="0" step="0.25"></div>
@@ -239,7 +256,7 @@
       <div style="overflow-x:auto;">
       <table>
         <thead>
-          <tr><th>Woche</th><th>Zeitraum</th><th>Calls</th><th>Termine geb.</th><th>Termine Show-up</th><th>Closes</th><th>Umsatz</th><th>Hebel-Std.</th></tr>
+          <tr><th>Woche</th><th>Zeitraum</th><th>Person</th><th>Calls</th><th>Termine geb.</th><th>Termine Show-up</th><th>Closes</th><th>Umsatz</th><th>Hebel-Std.</th></tr>
         </thead>
         <tbody id="historyBody"></tbody>
       </table>
@@ -272,7 +289,7 @@ const WEEKLY_TARGET = {
   termineShowup: TOTAL.termineShowup / N_WEEKS,
   closes: TOTAL.closes / N_WEEKS,
   umsatz: TOTAL.umsatz / N_WEEKS,
-  hebel: 5
+  hebel: 7 // Std./Woche pro Person
 };
 const LEVERS = [
   ["callBreakdowns","Call-Breakdowns"],
@@ -281,7 +298,8 @@ const LEVERS = [
   ["offer","Offer-Verbesserung"],
   ["zielgruppe","Zielgruppenverständnis"]
 ];
-const TOTAL_HEBEL = WEEKLY_TARGET.hebel * N_WEEKS; // 125
+const PERSONS = [["tim","Tim"],["simon","Simon"]];
+const TOTAL_HEBEL = WEEKLY_TARGET.hebel * PERSONS.length * N_WEEKS; // 350 (7 Std. x 2 Personen x 25 Wochen)
 
 const SUPABASE_URL = "https://powtvdmtphudlnsffmtk.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBvd3R2ZG10cGh1ZGxuc2ZmbXRrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQwNTAzNTgsImV4cCI6MjA5OTYyNjM1OH0.WHE73m7pXpD3MnzPQQn0FJ0HTGx_bq0cVBL6G3DkYuo";
@@ -305,7 +323,7 @@ async function ensureAuthorized(){
       }
     }
     db = buildClient(secret);
-    const { error } = await db.from("weekly_kpis").upsert({ week_index: -1, calls: 0 });
+    const { error } = await db.from("weekly_kpis").upsert({ week_index: -1, person: "tim", calls: 0 });
     if(!error){
       localStorage.setItem(SECRET_STORAGE_KEY, secret);
       return;
@@ -320,7 +338,9 @@ async function fetchAllWeeks(){
   const obj = {};
   if(error){ console.error(error); alert("Daten konnten nicht geladen werden: "+error.message); return obj; }
   data.forEach(row=>{
-    obj[row.week_index] = {
+    if(row.week_index < 0) return; // interne Test-Zeile ignorieren
+    if(!obj[row.week_index]) obj[row.week_index] = {};
+    obj[row.week_index][row.person] = {
       calls: Number(row.calls)||0,
       termineGebucht: Number(row.termine_gebucht)||0,
       termineShowup: Number(row.termine_showup)||0,
@@ -332,10 +352,11 @@ async function fetchAllWeeks(){
   return obj;
 }
 
-async function upsertWeek(i){
-  const e = weekEntry(i);
+async function upsertWeek(i, person){
+  const e = personEntry(i, person);
   const { error } = await db.from("weekly_kpis").upsert({
     week_index: i,
+    person: person,
     calls: e.calls,
     termine_gebucht: e.termineGebucht,
     termine_showup: e.termineShowup,
@@ -347,7 +368,8 @@ async function upsertWeek(i){
   if(error){ console.error(error); alert("Speichern fehlgeschlagen: "+error.message); }
 }
 
-let DATA = {}; // { 1: {calls, termineGebucht, termineShowup, closes, umsatz, hebel:{...}} }
+let DATA = {}; // { 1: { tim: {calls, termineGebucht, termineShowup, closes, umsatz, hebel:{...}}, simon: {...} } }
+const PERSON_STORAGE_KEY = "xponext_kpi_person";
 
 function fmtDate(iso){
   const d = new Date(iso+"T00:00:00");
@@ -374,8 +396,8 @@ function findCurrentWeekIndex(){
   return WEEKS.length-1;
 }
 
-function weekEntry(i){
-  const w = DATA[i] || {};
+function personEntry(i, person){
+  const w = (DATA[i] && DATA[i][person]) || {};
   return {
     calls: Number(w.calls)||0,
     termineGebucht: Number(w.termineGebucht)||0,
@@ -386,18 +408,33 @@ function weekEntry(i){
   };
 }
 
+function hebelHours(entry){
+  return LEVERS.reduce((s,[k])=>s+(Number(entry.hebel[k])||0),0);
+}
+
+function combinedEntry(i){
+  const t = personEntry(i,"tim"), s = personEntry(i,"simon");
+  return {
+    calls: t.calls+s.calls,
+    termineGebucht: t.termineGebucht+s.termineGebucht,
+    termineShowup: t.termineShowup+s.termineShowup,
+    closes: t.closes+s.closes,
+    umsatz: t.umsatz+s.umsatz,
+    hebelHours: hebelHours(t)+hebelHours(s)
+  };
+}
+
 function cumulative(){
   const c = {calls:0,termineGebucht:0,termineShowup:0,closes:0,umsatz:0,hebel:0};
   let weeksLogged = 0, onTarget = 0, bestWeek = null, bestUmsatz = -1;
   for(let i=0;i<N_WEEKS;i++){
-    if(!DATA[i]) continue;
-    const e = weekEntry(i);
-    const hasAny = e.calls||e.termineGebucht||e.termineShowup||e.closes||e.umsatz||Object.values(e.hebel).some(v=>Number(v)>0);
+    const e = combinedEntry(i);
+    const hasAny = e.calls||e.termineGebucht||e.termineShowup||e.closes||e.umsatz||e.hebelHours>0;
     if(!hasAny) continue;
     weeksLogged++;
     c.calls += e.calls; c.termineGebucht += e.termineGebucht; c.termineShowup += e.termineShowup;
     c.closes += e.closes; c.umsatz += e.umsatz;
-    c.hebel += LEVERS.reduce((s,[k])=>s+(Number(e.hebel[k])||0),0);
+    c.hebel += e.hebelHours;
     if(e.umsatz >= WEEKLY_TARGET.umsatz) onTarget++;
     if(e.umsatz > bestUmsatz){ bestUmsatz = e.umsatz; bestWeek = i; }
   }
@@ -446,7 +483,7 @@ function renderDashboard(){
 
   const curIdx = findCurrentWeekIndex();
   document.getElementById("dashWeekLabel").textContent = weekLabel(curIdx);
-  const e = weekEntry(curIdx);
+  const e = combinedEntry(curIdx);
   const rows = [
     ["Calls", e.calls, WEEKLY_TARGET.calls],
     ["Termine gebucht", e.termineGebucht, WEEKLY_TARGET.termineGebucht],
@@ -463,6 +500,14 @@ function renderDashboard(){
       <div class="bar-track"><div class="bar-fill ${barClass(pct)}" style="width:${Math.min(100,pct)}%"></div></div>
     </div>`;
   }).join("");
+
+  document.getElementById("dashPersonSplit").innerHTML = PERSONS.map(([key,label])=>{
+    const pe = personEntry(curIdx, key);
+    const ph = hebelHours(pe);
+    return `<div class="row-metric">
+      <div class="top"><span class="name">${label}</span><span class="vals">${num(pe.calls,0)} Calls · ${num(pe.termineGebucht,0)} Termine · ${pe.closes} Closes · ${euro(pe.umsatz)} · ${num(ph,1)}/${WEEKLY_TARGET.hebel} Std. Hebel</span></div>
+    </div>`;
+  }).join("");
 }
 
 function populateWeekSelects(){
@@ -473,21 +518,26 @@ function populateWeekSelects(){
   const cur = findCurrentWeekIndex();
   document.getElementById("weekSelect").value = cur;
   document.getElementById("weekSelectHebel").value = cur;
+
+  const savedPerson = localStorage.getItem(PERSON_STORAGE_KEY) || "tim";
+  document.getElementById("personSelect").value = savedPerson;
+  document.getElementById("personSelectHebel").value = savedPerson;
 }
 
 function loadWeekIntoForm(){
   const i = Number(document.getElementById("weekSelect").value);
-  const e = weekEntry(i);
+  const person = document.getElementById("personSelect").value;
+  const e = personEntry(i, person);
   document.getElementById("inCalls").value = e.calls || "";
   document.getElementById("inTermineGebucht").value = e.termineGebucht || "";
   document.getElementById("inTermineShowup").value = e.termineShowup || "";
   document.getElementById("inCloses").value = e.closes || "";
   document.getElementById("inUmsatz").value = e.umsatz || "";
-  renderPreview(i);
+  renderPreview(i, person);
 }
 
-function renderPreview(i){
-  const e = weekEntry(i);
+function renderPreview(i, person){
+  const e = personEntry(i, person);
   document.getElementById("previewWeekLabel").textContent = weekLabel(i);
   const rows = [
     ["Calls", e.calls, WEEKLY_TARGET.calls, v=>num(v,0)],
@@ -507,17 +557,18 @@ function renderPreview(i){
 
 function loadWeekIntoHebelForm(){
   const i = Number(document.getElementById("weekSelectHebel").value);
-  const e = weekEntry(i);
+  const person = document.getElementById("personSelectHebel").value;
+  const e = personEntry(i, person);
   document.getElementById("hebelCallBreakdowns").value = e.hebel.callBreakdowns || "";
   document.getElementById("hebelColdCall").value = e.hebel.coldCall || "";
   document.getElementById("hebelCoachings").value = e.hebel.coachings || "";
   document.getElementById("hebelOffer").value = e.hebel.offer || "";
   document.getElementById("hebelZielgruppe").value = e.hebel.zielgruppe || "";
-  renderHebelPreview(i);
+  renderHebelPreview(i, person);
 }
 
-function renderHebelPreview(i){
-  const e = weekEntry(i);
+function renderHebelPreview(i, person){
+  const e = personEntry(i, person);
   document.getElementById("hebelPreview").innerHTML = LEVERS.map(([key,label])=>{
     const ist = Number(e.hebel[key])||0;
     const pct = (ist/1)*100;
@@ -532,19 +583,32 @@ function renderHistory(){
   const rows = [];
   const curIdx = findCurrentWeekIndex();
   for(let i=0;i<N_WEEKS;i++){
-    const e = weekEntry(i);
-    const hebelSum = LEVERS.reduce((s,[k])=>s+(Number(e.hebel[k])||0),0);
-    const hasAny = e.calls||e.termineGebucht||e.termineShowup||e.closes||e.umsatz||hebelSum>0;
-    rows.push(`<tr class="${i===curIdx?'current-week':''}">
-      <td>${i+1}</td>
-      <td>${fmtDate(WEEKS[i][0])}–${fmtDate(WEEKS[i][1])}</td>
-      <td>${hasAny?num(e.calls,0):"–"}</td>
-      <td>${hasAny?num(e.termineGebucht,0):"–"}</td>
-      <td>${hasAny?num(e.termineShowup,0):"–"}</td>
-      <td>${hasAny?num(e.closes,0):"–"}</td>
-      <td>${hasAny?euro(e.umsatz):"–"}</td>
-      <td>${hebelSum>0?num(hebelSum,2):"–"}</td>
-    </tr>`);
+    let anyForWeek = false;
+    PERSONS.forEach(([key,label])=>{
+      const e = personEntry(i, key);
+      const hebelSum = hebelHours(e);
+      const hasAny = e.calls||e.termineGebucht||e.termineShowup||e.closes||e.umsatz||hebelSum>0;
+      if(!hasAny) return;
+      anyForWeek = true;
+      rows.push(`<tr class="${i===curIdx?'current-week':''}">
+        <td>${i+1}</td>
+        <td>${fmtDate(WEEKS[i][0])}–${fmtDate(WEEKS[i][1])}</td>
+        <td>${label}</td>
+        <td>${num(e.calls,0)}</td>
+        <td>${num(e.termineGebucht,0)}</td>
+        <td>${num(e.termineShowup,0)}</td>
+        <td>${num(e.closes,0)}</td>
+        <td>${euro(e.umsatz)}</td>
+        <td>${num(hebelSum,2)}</td>
+      </tr>`);
+    });
+    if(!anyForWeek){
+      rows.push(`<tr class="${i===curIdx?'current-week':''}">
+        <td>${i+1}</td>
+        <td>${fmtDate(WEEKS[i][0])}–${fmtDate(WEEKS[i][1])}</td>
+        <td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td><td>–</td>
+      </tr>`);
+    }
   }
   document.getElementById("historyBody").innerHTML = rows.join("");
 }
@@ -553,9 +617,11 @@ function renderAll(){
   renderDashboard();
   renderHistory();
   const i = Number(document.getElementById("weekSelect").value);
-  renderPreview(i);
+  const person = document.getElementById("personSelect").value;
+  renderPreview(i, person);
   const ih = Number(document.getElementById("weekSelectHebel").value);
-  renderHebelPreview(ih);
+  const personHebel = document.getElementById("personSelectHebel").value;
+  renderHebelPreview(ih, personHebel);
 }
 
 /* ---------- Events ---------- */
@@ -574,11 +640,23 @@ document.querySelectorAll(".tab-btn").forEach(btn=>{
 
 document.getElementById("weekSelect").addEventListener("change", loadWeekIntoForm);
 document.getElementById("weekSelectHebel").addEventListener("change", loadWeekIntoHebelForm);
+document.getElementById("personSelect").addEventListener("change", ()=>{
+  localStorage.setItem(PERSON_STORAGE_KEY, document.getElementById("personSelect").value);
+  document.getElementById("personSelectHebel").value = document.getElementById("personSelect").value;
+  loadWeekIntoForm();
+});
+document.getElementById("personSelectHebel").addEventListener("change", ()=>{
+  localStorage.setItem(PERSON_STORAGE_KEY, document.getElementById("personSelectHebel").value);
+  document.getElementById("personSelect").value = document.getElementById("personSelectHebel").value;
+  loadWeekIntoHebelForm();
+});
 
 document.getElementById("saveWeekBtn").addEventListener("click", async ()=>{
   const i = Number(document.getElementById("weekSelect").value);
-  const existing = DATA[i] || {};
-  DATA[i] = {
+  const person = document.getElementById("personSelect").value;
+  const existing = (DATA[i] && DATA[i][person]) || {};
+  if(!DATA[i]) DATA[i] = {};
+  DATA[i][person] = {
     ...existing,
     calls: Number(document.getElementById("inCalls").value)||0,
     termineGebucht: Number(document.getElementById("inTermineGebucht").value)||0,
@@ -587,7 +665,7 @@ document.getElementById("saveWeekBtn").addEventListener("click", async ()=>{
     umsatz: Number(document.getElementById("inUmsatz").value)||0,
     hebel: existing.hebel || {}
   };
-  await upsertWeek(i);
+  await upsertWeek(i, person);
   const msg = document.getElementById("saveMsg");
   msg.style.display = "block";
   setTimeout(()=>msg.style.display="none", 1800);
@@ -596,8 +674,10 @@ document.getElementById("saveWeekBtn").addEventListener("click", async ()=>{
 
 document.getElementById("saveHebelBtn").addEventListener("click", async ()=>{
   const i = Number(document.getElementById("weekSelectHebel").value);
-  const existing = DATA[i] || {};
-  DATA[i] = {
+  const person = document.getElementById("personSelectHebel").value;
+  const existing = (DATA[i] && DATA[i][person]) || {};
+  if(!DATA[i]) DATA[i] = {};
+  DATA[i][person] = {
     ...existing,
     hebel: {
       callBreakdowns: Number(document.getElementById("hebelCallBreakdowns").value)||0,
@@ -607,7 +687,7 @@ document.getElementById("saveHebelBtn").addEventListener("click", async ()=>{
       zielgruppe: Number(document.getElementById("hebelZielgruppe").value)||0,
     }
   };
-  await upsertWeek(i);
+  await upsertWeek(i, person);
   const msg = document.getElementById("saveHebelMsg");
   msg.style.display = "block";
   setTimeout(()=>msg.style.display="none", 1800);
