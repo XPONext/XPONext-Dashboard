@@ -171,13 +171,17 @@
       <div class="streak">
         <div class="item"><div class="n" id="streakWeeksLogged">0</div><div class="l">Wochen erfasst</div></div>
         <div class="item"><div class="n" id="streakOnTarget">0</div><div class="l">Wochen ≥100% Umsatz</div></div>
-        <div class="item"><div class="n" id="streakBestWeek">—</div><div class="l">Beste Woche (Umsatz)</div></div>
       </div>
     </div>
 
     <div class="card">
       <h2>Aufteilung diese Woche <small>Tim vs. Simon</small></h2>
       <div id="dashPersonSplit"></div>
+    </div>
+
+    <div class="card">
+      <h2>Bestenliste <small>Top-Woche pro Kategorie</small></h2>
+      <div id="dashLeaderboard"></div>
     </div>
 
   </div>
@@ -195,14 +199,17 @@
     </div>
 
     <div class="card">
-      <h2>Team-Zahlen <small>Termine, Closes & Umsatz — gemeinsam. Zeigt den Stand für den gewählten Tag, jederzeit korrigierbar.</small></h2>
+      <h2>Team-Zahlen <small>Termine & Closes — gemeinsam. Zeigt den Stand für den gewählten Tag, jederzeit korrigierbar.</small></h2>
       <div class="form-grid">
         <div class="field"><label>Termine gebucht</label><input type="number" id="inTermineGebucht" min="0" step="1"></div>
         <div class="field"><label>Termine (Show-up)</label><input type="number" id="inTermineShowup" min="0" step="1"></div>
-        <div class="field"><label>Closes</label><input type="number" id="inCloses" min="0" step="1"></div>
-        <div class="field"><label>Umsatz (€)</label><input type="number" id="inUmsatz" min="0" step="10"></div>
       </div>
-      <button class="btn" id="saveTeamBtn">Tag speichern</button>
+      <div class="field">
+        <label>Closes heute <small style="color:var(--text-muted);font-weight:400;">jeweils mit Auftragswert — Umsatz ergibt sich automatisch als Summe</small></label>
+        <div id="closesList"></div>
+        <button type="button" class="btn-outline" id="addCloseBtn" style="margin-top:0.3rem;">+ Close hinzufügen</button>
+      </div>
+      <button class="btn" id="saveTeamBtn" style="margin-top:1rem;">Tag speichern</button>
       <div class="save-msg" id="saveTeamMsg">Gespeichert ✓</div>
     </div>
 
@@ -380,8 +387,7 @@ async function fetchAllData(){
       dt[row.date] = {
         termineGebucht: Number(row.termine_gebucht)||0,
         termineShowup: Number(row.termine_showup)||0,
-        closes: Number(row.closes)||0,
-        umsatz: Number(row.umsatz)||0
+        closes: Array.isArray(row.closes) ? row.closes.map(Number) : []
       };
     });
   }
@@ -395,7 +401,7 @@ function buildWeeklyAggregates(){
   const data = {}, dataTeam = {};
   for(let i=0;i<N_WEEKS;i++){
     data[i] = { tim: {calls:0, hebel:{}}, simon: {calls:0, hebel:{}} };
-    dataTeam[i] = { termineGebucht:0, termineShowup:0, closes:0, umsatz:0 };
+    dataTeam[i] = { termineGebucht:0, termineShowup:0, closesCount:0, closesSum:0 };
   }
   Object.entries(DAILY_PERSONAL).forEach(([date, persons])=>{
     const wi = weekIndexForDate(date);
@@ -414,8 +420,9 @@ function buildWeeklyAggregates(){
     if(wi<0) return;
     dataTeam[wi].termineGebucht += Number(t.termineGebucht)||0;
     dataTeam[wi].termineShowup += Number(t.termineShowup)||0;
-    dataTeam[wi].closes += Number(t.closes)||0;
-    dataTeam[wi].umsatz += Number(t.umsatz)||0;
+    const closes = t.closes || [];
+    dataTeam[wi].closesCount += closes.length;
+    dataTeam[wi].closesSum += closes.reduce((s,v)=>s+(Number(v)||0),0);
   });
   DATA = data;
   DATA_TEAM = dataTeam;
@@ -430,13 +437,12 @@ async function upsertDailyPersonal(date, person){
 }
 
 async function upsertDailyTeam(date){
-  const e = DAILY_TEAM[date] || {termineGebucht:0, termineShowup:0, closes:0, umsatz:0};
+  const e = DAILY_TEAM[date] || {termineGebucht:0, termineShowup:0, closes:[]};
   const { error } = await db.from("daily_team").upsert({
     date,
     termine_gebucht: e.termineGebucht,
     termine_showup: e.termineShowup,
     closes: e.closes,
-    umsatz: e.umsatz,
     updated_at: new Date().toISOString()
   });
   if(error){ console.error(error); alert("Speichern fehlgeschlagen: "+error.message); }
@@ -486,8 +492,8 @@ function teamEntry(i){
   return {
     termineGebucht: Number(w.termineGebucht)||0,
     termineShowup: Number(w.termineShowup)||0,
-    closes: Number(w.closes)||0,
-    umsatz: Number(w.umsatz)||0
+    closes: Number(w.closesCount)||0,
+    umsatz: Number(w.closesSum)||0
   };
 }
 
@@ -562,7 +568,6 @@ function renderDashboard(){
 
   document.getElementById("streakWeeksLogged").textContent = weeksLogged;
   document.getElementById("streakOnTarget").textContent = onTarget;
-  document.getElementById("streakBestWeek").textContent = bestWeek!==null && bestUmsatz>0 ? ("KW "+(bestWeek+1)+" · "+euro(bestUmsatz)) : "—";
 
   const curIdx = findCurrentWeekIndex();
   document.getElementById("dashWeekLabel").textContent = weekLabel(curIdx);
@@ -589,6 +594,35 @@ function renderDashboard(){
     const ph = hebelHours(pe);
     return `<div class="row-metric">
       <div class="top"><span class="name">${label}</span><span class="vals">${num(pe.calls,0)} Calls · ${num(ph,1)}/${WEEKLY_TARGET.hebel} Std. Hebel</span></div>
+    </div>`;
+  }).join("");
+
+  renderLeaderboard();
+}
+
+function bestWeekByMetric(getValue){
+  let bestIdx = null, bestVal = -Infinity;
+  for(let i=0;i<N_WEEKS;i++){
+    const v = getValue(i);
+    if(v>bestVal){ bestVal = v; bestIdx = i; }
+  }
+  return { idx: bestIdx, val: bestVal };
+}
+
+function renderLeaderboard(){
+  const metrics = [
+    ["Calls", i=>combinedEntry(i).calls, v=>num(v,0)],
+    ["Termine gebucht", i=>combinedEntry(i).termineGebucht, v=>num(v,0)],
+    ["Termine Show-up", i=>combinedEntry(i).termineShowup, v=>num(v,0)],
+    ["Closes", i=>combinedEntry(i).closes, v=>num(v,0)],
+    ["Umsatz", i=>combinedEntry(i).umsatz, v=>euro(v)],
+    ["Hebel-Stunden", i=>combinedEntry(i).hebelHours, v=>num(v,1)+" Std."],
+  ];
+  document.getElementById("dashLeaderboard").innerHTML = metrics.map(([label,getVal,fmt])=>{
+    const {idx,val} = bestWeekByMetric(getVal);
+    const display = (idx===null || val<=0) ? "—" : (weekLabel(idx)+" · "+fmt(val));
+    return `<div class="row-metric">
+      <div class="top"><span class="name">${label}</span><span class="vals">${display}</span></div>
     </div>`;
   }).join("");
 }
@@ -619,17 +653,49 @@ function populateEntryControls(){
   document.getElementById("personSelectHebel").value = savedPerson;
 }
 
+let currentClosesDraft = [];
+
+function renderClosesList(){
+  const container = document.getElementById("closesList");
+  if(currentClosesDraft.length===0){
+    container.innerHTML = `<div class="pct">Noch keine Closes für diesen Tag.</div>`;
+    return;
+  }
+  container.innerHTML = currentClosesDraft.map((val, idx)=>`
+    <div style="display:flex;gap:0.5rem;margin-bottom:0.5rem;align-items:center;">
+      <input type="number" min="0" step="10" class="close-amount" data-idx="${idx}" value="${val}" style="flex:1;" placeholder="Auftragswert €">
+      <button type="button" class="btn-outline remove-close" data-idx="${idx}" style="padding:0.5rem 0.8rem;">✕</button>
+    </div>
+  `).join("");
+}
+
+document.getElementById("addCloseBtn").addEventListener("click", ()=>{
+  currentClosesDraft.push(0);
+  renderClosesList();
+});
+document.getElementById("closesList").addEventListener("click", (ev)=>{
+  if(ev.target.classList.contains("remove-close")){
+    currentClosesDraft.splice(Number(ev.target.dataset.idx), 1);
+    renderClosesList();
+  }
+});
+document.getElementById("closesList").addEventListener("input", (ev)=>{
+  if(ev.target.classList.contains("close-amount")){
+    currentClosesDraft[Number(ev.target.dataset.idx)] = Number(ev.target.value)||0;
+  }
+});
+
 function loadDayIntoForm(){
   const date = document.getElementById("entryDate").value;
   const person = document.getElementById("personSelect").value;
   const dp = (DAILY_PERSONAL[date] && DAILY_PERSONAL[date][person]) || {calls:0};
   document.getElementById("inCalls").value = dp.calls || 0;
 
-  const dt = DAILY_TEAM[date] || {termineGebucht:0, termineShowup:0, closes:0, umsatz:0};
+  const dt = DAILY_TEAM[date] || {termineGebucht:0, termineShowup:0, closes:[]};
   document.getElementById("inTermineGebucht").value = dt.termineGebucht || 0;
   document.getElementById("inTermineShowup").value = dt.termineShowup || 0;
-  document.getElementById("inCloses").value = dt.closes || 0;
-  document.getElementById("inUmsatz").value = dt.umsatz || 0;
+  currentClosesDraft = [...(dt.closes || [])];
+  renderClosesList();
 
   const wi = weekIndexForDate(date);
   document.getElementById("entryWeekInfo").textContent = wi>=0 ? ("gehört zu "+weekLabel(wi)) : "";
@@ -791,8 +857,7 @@ document.getElementById("saveTeamBtn").addEventListener("click", async ()=>{
   DAILY_TEAM[date] = {
     termineGebucht: Number(document.getElementById("inTermineGebucht").value)||0,
     termineShowup: Number(document.getElementById("inTermineShowup").value)||0,
-    closes: Number(document.getElementById("inCloses").value)||0,
-    umsatz: Number(document.getElementById("inUmsatz").value)||0
+    closes: currentClosesDraft.filter(v=>v>0)
   };
   await upsertDailyTeam(date);
   buildWeeklyAggregates();
