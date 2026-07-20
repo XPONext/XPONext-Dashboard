@@ -111,6 +111,7 @@
     <button class="tab-btn" data-view="eingabe">Wochen-Eingabe</button>
     <button class="tab-btn" data-view="hebel">Hebel</button>
     <button class="tab-btn" data-view="verlauf">Verlauf</button>
+    <button class="tab-btn" data-view="zeittracking">Zeittracking</button>
   </div>
 </nav>
 
@@ -291,6 +292,51 @@
   </div>
 </section>
 
+<!-- ZEITTRACKING -->
+<section class="view" id="view-zeittracking">
+  <div class="container">
+    <div class="card">
+      <h2>Heute</h2>
+      <div class="grid4">
+        <div class="stat"><div class="lbl">Std. gearbeitet</div><div class="num" id="ztTodayHours">0</div></div>
+        <div class="stat"><div class="lbl">Tim</div><div class="num" id="ztTodayTim">0</div></div>
+        <div class="stat"><div class="lbl">Simon</div><div class="num" id="ztTodaySimon">0</div></div>
+        <div class="stat"><div class="lbl">Pause</div><div class="num" id="ztTodayPause">0</div></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Diese Woche</h2>
+      <div class="grid4">
+        <div class="stat"><div class="lbl">Std. gearbeitet</div><div class="num" id="ztWeekHours">0</div></div>
+        <div class="stat"><div class="lbl">Tim</div><div class="num" id="ztWeekTim">0</div></div>
+        <div class="stat"><div class="lbl">Simon</div><div class="num" id="ztWeekSimon">0</div></div>
+        <div class="stat"><div class="lbl">Highscore Tag</div><div class="num" id="ztHighscoreDay" style="font-size:1rem;">—</div></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Nach State <small>diese Woche</small></h2>
+      <div id="ztByState"></div>
+    </div>
+
+    <div class="card">
+      <h2>Nach Zuordnung <small>diese Woche</small></h2>
+      <div id="ztByZuordnung"></div>
+    </div>
+
+    <div class="card">
+      <h2>Nach Aktivität <small>diese Woche</small></h2>
+      <div id="ztByAktivitaet"></div>
+    </div>
+
+    <div class="card">
+      <h2>4 Unternehmer-Ds <small>diese Woche vs. Zielwerte (Doing 80% · Deciding 2% · Delegating 8% · Designing 10%)</small></h2>
+      <div id="ztByD"></div>
+    </div>
+  </div>
+</section>
+
 <footer>XPONext · Umsatzziel-Tracker 2026 · Daten werden lokal in deinem Browser gespeichert.</footer>
 
 <script>
@@ -367,10 +413,13 @@ function weekIndexForDate(dateStr){
 }
 
 async function fetchAllData(){
-  const [personalRes, teamRes] = await Promise.all([
+  const [personalRes, teamRes, timeRes] = await Promise.all([
     db.from("daily_personal").select("*"),
-    db.from("daily_team").select("*")
+    db.from("daily_team").select("*"),
+    db.from("time_entries").select("*")
   ]);
+  if(timeRes.error){ console.error(timeRes.error); TIME_ENTRIES = []; }
+  else{ TIME_ENTRIES = timeRes.data; }
   const dp = {};
   if(personalRes.error){ console.error(personalRes.error); alert("Daten konnten nicht geladen werden: "+personalRes.error.message); }
   else{
@@ -452,6 +501,7 @@ let DAILY_PERSONAL = {}; // { "2026-07-14": { tim: {calls, hebel:{...}}, simon: 
 let DAILY_TEAM = {}; // { "2026-07-14": {termineGebucht, termineShowup, closes, umsatz} }
 let DATA = {}; // Wochen-Aggregate, aus DAILY_PERSONAL berechnet: { 1: { tim: {calls, hebel:{...}}, simon: {...} } }
 let DATA_TEAM = {}; // Wochen-Aggregate, aus DAILY_TEAM berechnet: { 1: {termineGebucht, termineShowup, closes, umsatz} }
+let TIME_ENTRIES = []; // Rohe Zeittracking-Einträge aus der Supabase-Tabelle "time_entries"
 const PERSON_STORAGE_KEY = "xponext_kpi_person";
 
 function fmtDate(iso){
@@ -534,6 +584,93 @@ function barClass(pct){
   if(pct>=100) return "ok";
   if(pct>=60) return "warn";
   return "low";
+}
+
+/* ---------- Zeittracking ---------- */
+function localDateStr(tsIso){
+  const d = new Date(tsIso);
+  return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
+}
+
+function filterTimeEntries({dateFrom, dateTo, person}){
+  return TIME_ENTRIES.filter(e=>{
+    const d = localDateStr(e.ts);
+    if(dateFrom && d<dateFrom) return false;
+    if(dateTo && d>dateTo) return false;
+    if(person && e.person!==person) return false;
+    return true;
+  });
+}
+
+function sumMinutes(entries, excludePause){
+  return entries.filter(e=>!excludePause || e.state!=="Pause").reduce((s,e)=>s+(Number(e.duration_minutes)||0),0);
+}
+
+function renderTimeBreakdown(entries, field, containerId){
+  const workEntries = entries.filter(e=>e.state!=="Pause" && e[field]);
+  const totals = {};
+  let grandTotal = 0;
+  workEntries.forEach(e=>{
+    totals[e[field]] = (totals[e[field]]||0) + (Number(e.duration_minutes)||0);
+    grandTotal += Number(e.duration_minutes)||0;
+  });
+  const rows = Object.entries(totals).sort((a,b)=>b[1]-a[1]);
+  document.getElementById(containerId).innerHTML = rows.length ? rows.map(([key,minutes])=>{
+    const pct = grandTotal>0 ? (minutes/grandTotal)*100 : 0;
+    return `<div class="row-metric">
+      <div class="top"><span class="name">${key}</span><span class="vals">${num(minutes/60,1)} Std. (${num(pct,0)}%)</span></div>
+      <div class="bar-track"><div class="bar-fill ok" style="width:${pct}%"></div></div>
+    </div>`;
+  }).join("") : `<div class="pct">Noch keine Daten diese Woche.</div>`;
+}
+
+function renderZeittracking(){
+  const todayStr = localDateStr(new Date().toISOString());
+  const curIdx = findCurrentWeekIndex();
+  const weekFrom = WEEKS[curIdx][0], weekTo = WEEKS[curIdx][1];
+
+  const todayAll = filterTimeEntries({dateFrom: todayStr, dateTo: todayStr});
+  document.getElementById("ztTodayHours").textContent = num(sumMinutes(todayAll, true)/60, 1);
+  document.getElementById("ztTodayTim").textContent = num(sumMinutes(todayAll.filter(e=>e.person==="tim"), true)/60, 1);
+  document.getElementById("ztTodaySimon").textContent = num(sumMinutes(todayAll.filter(e=>e.person==="simon"), true)/60, 1);
+  document.getElementById("ztTodayPause").textContent = num(sumMinutes(todayAll.filter(e=>e.state==="Pause"), false)/60, 1);
+
+  const weekAll = filterTimeEntries({dateFrom: weekFrom, dateTo: weekTo});
+  document.getElementById("ztWeekHours").textContent = num(sumMinutes(weekAll, true)/60, 1);
+  document.getElementById("ztWeekTim").textContent = num(sumMinutes(weekAll.filter(e=>e.person==="tim"), true)/60, 1);
+  document.getElementById("ztWeekSimon").textContent = num(sumMinutes(weekAll.filter(e=>e.person==="simon"), true)/60, 1);
+
+  const byDay = {};
+  TIME_ENTRIES.filter(e=>e.state!=="Pause").forEach(e=>{
+    const d = localDateStr(e.ts);
+    byDay[d] = (byDay[d]||0) + (Number(e.duration_minutes)||0);
+  });
+  let bestDay = null, bestDayMinutes = -1;
+  Object.entries(byDay).forEach(([d,m])=>{ if(m>bestDayMinutes){ bestDayMinutes=m; bestDay=d; } });
+  document.getElementById("ztHighscoreDay").textContent = bestDay ? (fmtDate(bestDay)+" · "+num(bestDayMinutes/60,1)+" Std.") : "—";
+
+  renderTimeBreakdown(weekAll, "state", "ztByState");
+  renderTimeBreakdown(weekAll, "zuordnung", "ztByZuordnung");
+  renderTimeBreakdown(weekAll, "aktivitaet", "ztByAktivitaet");
+
+  const D_TARGETS = {Doing:80, Deciding:2, Delegating:8, Designing:10};
+  const dEntries = weekAll.filter(e=>e.state!=="Pause" && e.d_kategorie);
+  const dTotals = {};
+  let dGrand = 0;
+  dEntries.forEach(e=>{
+    dTotals[e.d_kategorie] = (dTotals[e.d_kategorie]||0) + (Number(e.duration_minutes)||0);
+    dGrand += Number(e.duration_minutes)||0;
+  });
+  document.getElementById("ztByD").innerHTML = Object.keys(D_TARGETS).map(key=>{
+    const minutes = dTotals[key]||0;
+    const pct = dGrand>0 ? (minutes/dGrand)*100 : 0;
+    const target = D_TARGETS[key];
+    const onTarget = Math.abs(pct-target) <= Math.max(5, target*0.4);
+    return `<div class="row-metric">
+      <div class="top"><span class="name">${key}</span><span class="vals">${num(pct,0)}% (Ziel: ${target}%) · ${num(minutes/60,1)} Std.</span></div>
+      <div class="bar-track"><div class="bar-fill ${onTarget?'ok':'warn'}" style="width:${Math.min(100,pct)}%"></div></div>
+    </div>`;
+  }).join("");
 }
 
 /* ---------- Rendering ---------- */
@@ -800,6 +937,7 @@ function renderAll(){
   const dateHebel = document.getElementById("entryDateHebel").value;
   const personHebel = document.getElementById("personSelectHebel").value;
   renderHebelPreview(weekIndexForDate(dateHebel), personHebel);
+  renderZeittracking();
 }
 
 /* ---------- Events ---------- */
