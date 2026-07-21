@@ -18,17 +18,30 @@
     --ease:cubic-bezier(.2,.7,.2,1);
   }
   *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
-  body{font-family:'Inter',-apple-system,sans-serif;background:var(--bg-subtle);color:var(--text-primary);-webkit-font-smoothing:antialiased;padding-bottom:4rem;letter-spacing:-0.006em;}
+  body{font-family:'Inter',-apple-system,sans-serif;background:var(--bg-subtle);color:var(--text-primary);-webkit-font-smoothing:antialiased;letter-spacing:-0.006em;}
   a{color:inherit;}
-  .container{max-width:1100px;margin:0 auto;padding:0 5%;}
+  .container{max-width:900px;margin:0 auto;padding:0 5%;}
 
-  nav{display:flex;align-items:center;justify-content:space-between;padding:1.05rem 5%;border-bottom:1px solid var(--border);background:rgba(255,255,255,0.85);backdrop-filter:blur(8px);position:sticky;top:0;z-index:100;box-shadow:0 1px 0 rgba(13,13,13,0.02);}
-  .logo{font-size:1.2rem;font-weight:800;color:var(--text-primary);letter-spacing:-0.01em;}
+  .app{display:flex;align-items:stretch;min-height:100vh;}
+
+  .sidebar{width:248px;flex-shrink:0;background:#fff;border-right:1px solid var(--border);padding:1.6rem 1.1rem;position:sticky;top:0;height:100vh;overflow-y:auto;}
+  .logo{font-size:1.2rem;font-weight:800;color:var(--text-primary);letter-spacing:-0.01em;padding:0 0.4rem;margin-bottom:2rem;}
   .logo span{color:var(--accent);}
-  .tabs{display:flex;gap:0.3rem;}
-  .tab-btn{background:none;border:none;padding:0.6rem 1.05rem;border-radius:8px;font-family:'Inter',sans-serif;font-weight:600;font-size:0.88rem;color:var(--text-body);cursor:pointer;transition:background .15s var(--ease), color .15s var(--ease);}
-  .tab-btn.active{background:var(--accent-light);color:var(--accent-dark);}
+  .tabs{display:flex;flex-direction:column;gap:0.15rem;}
+  .tab-btn{background:none;border:none;border-left:3px solid transparent;padding:0.65rem 0.8rem;border-radius:0 8px 8px 0;font-family:'Inter',sans-serif;font-weight:600;font-size:0.88rem;color:var(--text-body);cursor:pointer;text-align:left;transition:background .15s var(--ease), color .15s var(--ease), border-color .15s var(--ease);}
+  .tab-btn.active{background:var(--accent-light);color:var(--accent-dark);border-left-color:var(--accent);}
   .tab-btn:hover:not(.active){background:var(--bg-subtle);color:var(--text-primary);}
+
+  .main{flex:1;min-width:0;padding-bottom:4rem;}
+
+  @media(max-width:800px){
+    .app{flex-direction:column;}
+    .sidebar{width:100%;height:auto;position:static;border-right:none;border-bottom:1px solid var(--border);padding:0.9rem 5%;}
+    .logo{margin-bottom:0.8rem;}
+    .tabs{flex-direction:row;overflow-x:auto;gap:0.3rem;}
+    .tab-btn{border-left:none;border-radius:8px;white-space:nowrap;}
+    .tab-btn.active{border-left-color:transparent;}
+  }
 
   .hero{padding:3rem 5% 1.6rem;}
   .hero h1{font-size:clamp(1.75rem,3.4vw,2.4rem);font-weight:900;color:var(--text-primary);margin-bottom:0.45rem;letter-spacing:-0.015em;}
@@ -52,7 +65,9 @@
   .hero-progress .meta{margin-top:0.7rem;font-size:0.83rem;color:#8A94A3;}
 
   .grid4{display:grid;grid-template-columns:repeat(4,1fr);gap:1rem;}
-  @media(max-width:800px){.grid4{grid-template-columns:repeat(2,1fr);}}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:1.3rem;align-items:start;}
+  .grid2 .card{margin-bottom:0;}
+  @media(max-width:800px){.grid4{grid-template-columns:repeat(2,1fr);} .grid2{grid-template-columns:1fr;}}
   .stat{background:#fff;border:1px solid var(--border);border-radius:13px;padding:1.15rem 1.25rem;box-shadow:var(--shadow-sm);}
   .stat .lbl{font-size:0.72rem;color:var(--text-muted);font-weight:700;text-transform:uppercase;letter-spacing:0.055em;margin-bottom:0.4rem;}
   .stat .num{font-size:1.55rem;font-weight:800;color:var(--text-primary);margin-bottom:0.55rem;letter-spacing:-0.015em;}
@@ -111,16 +126,18 @@
 </head>
 <body>
 
-<nav>
+<div class="app">
+<aside class="sidebar">
   <div class="logo">XPO<span>Next</span></div>
-  <div class="tabs">
+  <nav class="tabs">
     <button class="tab-btn active" data-view="dashboard">Dashboard</button>
     <button class="tab-btn" data-view="eingabe">Wochen-Eingabe</button>
     <button class="tab-btn" data-view="hebel">Hebel</button>
     <button class="tab-btn" data-view="verlauf">Verlauf</button>
     <button class="tab-btn" data-view="zeittracking">Zeittracking</button>
-  </div>
-</nav>
+  </nav>
+</aside>
+<main class="main">
 
 <div class="hero">
   <h1>Fahrplan zum <span>Umsatzziel 2026</span></h1>
@@ -167,29 +184,33 @@
       </div>
     </div>
 
-    <div class="card" style="margin-top:1.4rem;">
-      <h2>Diese Woche <small id="dashWeekLabel">—</small></h2>
-      <div id="dashCurrentWeekBody"></div>
-    </div>
+    <div class="grid2" style="margin-top:1.4rem;">
+      <div class="card">
+        <h2>Diese Woche <small id="dashWeekLabel">—</small></h2>
+        <div id="dashCurrentWeekBody"></div>
+      </div>
 
-    <div class="card">
-      <h2>Hebel-Stunden gesamt <small id="hebelZielLabel">Ziel: 7 Std./Woche pro Person</small></h2>
-      <div class="bar-track"><div class="bar-fill ok" id="barHebelTotal" style="width:0%"></div></div>
-      <div class="pct" id="pctHebelTotal" style="margin-top:0.4rem;">0 / 0 Std.</div>
-      <div class="streak">
-        <div class="item"><div class="n" id="streakWeeksLogged">0</div><div class="l">Wochen erfasst</div></div>
-        <div class="item"><div class="n" id="streakOnTarget">0</div><div class="l">Wochen ≥100% Umsatz</div></div>
+      <div class="card">
+        <h2>Aufteilung diese Woche <small>Tim vs. Simon</small></h2>
+        <div id="dashPersonSplit"></div>
       </div>
     </div>
 
-    <div class="card">
-      <h2>Aufteilung diese Woche <small>Tim vs. Simon</small></h2>
-      <div id="dashPersonSplit"></div>
-    </div>
+    <div class="grid2" style="margin-top:1.3rem;">
+      <div class="card">
+        <h2>Hebel-Stunden gesamt <small id="hebelZielLabel">Ziel: 7 Std./Woche pro Person</small></h2>
+        <div class="bar-track"><div class="bar-fill ok" id="barHebelTotal" style="width:0%"></div></div>
+        <div class="pct" id="pctHebelTotal" style="margin-top:0.4rem;">0 / 0 Std.</div>
+        <div class="streak">
+          <div class="item"><div class="n" id="streakWeeksLogged">0</div><div class="l">Wochen erfasst</div></div>
+          <div class="item"><div class="n" id="streakOnTarget">0</div><div class="l">Wochen ≥100% Umsatz</div></div>
+        </div>
+      </div>
 
-    <div class="card">
-      <h2>Bestenliste <small>Top-Woche pro Kategorie</small></h2>
-      <div id="dashLeaderboard"></div>
+      <div class="card">
+        <h2>Bestenliste <small>Top-Woche pro Kategorie</small></h2>
+        <div id="dashLeaderboard"></div>
+      </div>
     </div>
 
   </div>
@@ -322,29 +343,37 @@
       </div>
     </div>
 
-    <div class="card">
-      <h2>Nach State <small>diese Woche</small></h2>
-      <div id="ztByState"></div>
+    <div class="grid2">
+      <div class="card">
+        <h2>Nach State <small>diese Woche</small></h2>
+        <div id="ztByState"></div>
+      </div>
+
+      <div class="card">
+        <h2>Nach Zuordnung <small>diese Woche</small></h2>
+        <div id="ztByZuordnung"></div>
+      </div>
     </div>
 
-    <div class="card">
-      <h2>Nach Zuordnung <small>diese Woche</small></h2>
-      <div id="ztByZuordnung"></div>
-    </div>
+    <div class="grid2" style="margin-top:1.3rem;">
+      <div class="card">
+        <h2>Nach Aktivität <small>diese Woche</small></h2>
+        <div id="ztByAktivitaet"></div>
+      </div>
 
-    <div class="card">
-      <h2>Nach Aktivität <small>diese Woche</small></h2>
-      <div id="ztByAktivitaet"></div>
-    </div>
-
-    <div class="card">
-      <h2>4 Unternehmer-Ds <small>diese Woche vs. Zielwerte (Doing 80% · Deciding 2% · Delegating 8% · Designing 10%)</small></h2>
-      <div id="ztByD"></div>
+      <div class="card">
+        <h2>4 Unternehmer-Ds <small>vs. Zielwerte: Doing 80% · Deciding 2% · Delegating 8% · Designing 10%</small></h2>
+        <div id="ztByD"></div>
+      </div>
     </div>
   </div>
 </section>
 
 <footer>XPONext · Umsatzziel-Tracker 2026 · Daten werden lokal in deinem Browser gespeichert.</footer>
+
+</main>
+</div>
+
 
 <script>
 /* ---------- Wochen-Definition (14.07.2026 – 31.12.2026, 25 Kalenderwochen) ---------- */
