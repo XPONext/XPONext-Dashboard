@@ -142,8 +142,8 @@
 
     <div class="grid4">
       <div class="stat">
-        <div class="lbl">Calls</div>
-        <div class="num" id="statCalls">0 <small>/ 8.333</small></div>
+        <div class="lbl">Lead-Gen (Std.)</div>
+        <div class="num" id="statCalls">0 <small>/ 600</small></div>
         <div class="bar-track"><div class="bar-fill ok" id="barCalls" style="width:0%"></div></div>
         <div class="pct" id="pctCalls">0% vom Gesamtziel</div>
       </div>
@@ -222,12 +222,12 @@
     </div>
 
     <div class="card">
-      <h2>Deine Zahlen <small>Calls — pro Person, weil jeder seine eigenen macht.</small></h2>
+      <h2>Deine Zahlen <small>Lead-Gen-Stunden — pro Person, Ziel 4 Std./Tag an 3 Tagen/Woche.</small></h2>
       <div class="field" style="max-width:340px;">
         <label>Wer trägt ein?</label>
         <select id="personSelect"><option value="tim">Tim</option><option value="simon">Simon</option></select>
       </div>
-      <div class="field" style="max-width:200px;"><label>Calls</label><input type="number" id="inCalls" min="0" step="1"></div>
+      <div class="field" style="max-width:200px;"><label>Lead-Gen-Stunden</label><input type="number" id="inLeadGen" min="0" step="0.5"></div>
       <button class="btn" id="saveWeekBtn">Tag speichern</button>
       <div class="save-msg" id="saveMsg">Gespeichert ✓</div>
     </div>
@@ -290,7 +290,7 @@
       <div class="table-wrap">
       <table>
         <thead>
-          <tr><th>Woche</th><th>Zeitraum</th><th>Person</th><th>Calls</th><th>Hebel-Std.</th></tr>
+          <tr><th>Woche</th><th>Zeitraum</th><th>Person</th><th>Lead-Gen (Std.)</th><th>Hebel-Std.</th></tr>
         </thead>
         <tbody id="historyBody"></tbody>
       </table>
@@ -361,9 +361,10 @@ const WEEKS = [
 ];
 const N_WEEKS = WEEKS.length;
 
-const TOTAL = { calls: 8333, termineGebucht: 167, termineShowup: 100, closes: 10, umsatz: 20000 };
+const LEAD_GEN_PER_PERSON = 12; // Std./Woche pro Person (4 Std./Tag x 3 Tage)
+const TOTAL = { leadGen: LEAD_GEN_PER_PERSON * 2 * 25, termineGebucht: 167, termineShowup: 100, closes: 10, umsatz: 20000 };
 const WEEKLY_TARGET = {
-  calls: TOTAL.calls / N_WEEKS,
+  leadGen: LEAD_GEN_PER_PERSON * 2, // kombiniert für beide Personen
   termineGebucht: TOTAL.termineGebucht / N_WEEKS,
   termineShowup: TOTAL.termineShowup / N_WEEKS,
   closes: TOTAL.closes / N_WEEKS,
@@ -432,7 +433,7 @@ async function fetchAllData(){
   else{
     personalRes.data.forEach(row=>{
       if(!dp[row.date]) dp[row.date] = {};
-      dp[row.date][row.person] = { calls: Number(row.calls)||0, hebel: row.hebel || {} };
+      dp[row.date][row.person] = { leadGenHours: Number(row.lead_gen_hours)||0, hebel: row.hebel || {} };
     });
   }
 
@@ -456,7 +457,7 @@ async function fetchAllData(){
 function buildWeeklyAggregates(){
   const data = {}, dataTeam = {};
   for(let i=0;i<N_WEEKS;i++){
-    data[i] = { tim: {calls:0, hebel:{}}, simon: {calls:0, hebel:{}} };
+    data[i] = { tim: {leadGenHours:0, hebel:{}}, simon: {leadGenHours:0, hebel:{}} };
     dataTeam[i] = { termineGebucht:0, termineShowup:0, closesCount:0, closesSum:0 };
   }
   Object.entries(DAILY_PERSONAL).forEach(([date, persons])=>{
@@ -465,7 +466,7 @@ function buildWeeklyAggregates(){
     PERSONS.forEach(([key])=>{
       const d = persons[key];
       if(!d) return;
-      data[wi][key].calls += Number(d.calls)||0;
+      data[wi][key].leadGenHours += Number(d.leadGenHours)||0;
       LEVERS.forEach(([lk])=>{
         data[wi][key].hebel[lk] = (data[wi][key].hebel[lk]||0) + (Number(d.hebel[lk])||0);
       });
@@ -485,9 +486,9 @@ function buildWeeklyAggregates(){
 }
 
 async function upsertDailyPersonal(date, person){
-  const e = (DAILY_PERSONAL[date] && DAILY_PERSONAL[date][person]) || {calls:0, hebel:{}};
+  const e = (DAILY_PERSONAL[date] && DAILY_PERSONAL[date][person]) || {leadGenHours:0, hebel:{}};
   const { error } = await db.from("daily_personal").upsert({
-    date, person, calls: e.calls, hebel: e.hebel, updated_at: new Date().toISOString()
+    date, person, lead_gen_hours: e.leadGenHours, hebel: e.hebel, updated_at: new Date().toISOString()
   });
   if(error){ console.error(error); alert("Speichern fehlgeschlagen: "+error.message); }
 }
@@ -539,7 +540,7 @@ function findCurrentWeekIndex(){
 function personEntry(i, person){
   const w = (DATA[i] && DATA[i][person]) || {};
   return {
-    calls: Number(w.calls)||0,
+    leadGenHours: Number(w.leadGenHours)||0,
     hebel: w.hebel || {}
   };
 }
@@ -561,7 +562,7 @@ function hebelHours(entry){
 function combinedEntry(i){
   const t = personEntry(i,"tim"), s = personEntry(i,"simon"), team = teamEntry(i);
   return {
-    calls: t.calls+s.calls,
+    leadGenHours: t.leadGenHours+s.leadGenHours,
     termineGebucht: team.termineGebucht,
     termineShowup: team.termineShowup,
     closes: team.closes,
@@ -571,14 +572,14 @@ function combinedEntry(i){
 }
 
 function cumulative(){
-  const c = {calls:0,termineGebucht:0,termineShowup:0,closes:0,umsatz:0,hebel:0};
+  const c = {leadGenHours:0,termineGebucht:0,termineShowup:0,closes:0,umsatz:0,hebel:0};
   let weeksLogged = 0, onTarget = 0, bestWeek = null, bestUmsatz = -1;
   for(let i=0;i<N_WEEKS;i++){
     const e = combinedEntry(i);
-    const hasAny = e.calls||e.termineGebucht||e.termineShowup||e.closes||e.umsatz||e.hebelHours>0;
+    const hasAny = e.leadGenHours||e.termineGebucht||e.termineShowup||e.closes||e.umsatz||e.hebelHours>0;
     if(!hasAny) continue;
     weeksLogged++;
-    c.calls += e.calls; c.termineGebucht += e.termineGebucht; c.termineShowup += e.termineShowup;
+    c.leadGenHours += e.leadGenHours; c.termineGebucht += e.termineGebucht; c.termineShowup += e.termineShowup;
     c.closes += e.closes; c.umsatz += e.umsatz;
     c.hebel += e.hebelHours;
     if(e.umsatz >= WEEKLY_TARGET.umsatz) onTarget++;
@@ -690,14 +691,14 @@ function renderDashboard(){
   document.getElementById("dashUmsatzMeta").textContent = num(umsatzPct,1)+"% des Jahresziels erreicht · noch "+euro(Math.max(0,TOTAL.umsatz-c.umsatz))+" bis €20.000";
 
   const metrics = [
-    ["Calls","statCalls","barCalls","pctCalls",c.calls,TOTAL.calls,0],
+    ["Lead-Gen (Std.)","statCalls","barCalls","pctCalls",c.leadGenHours,TOTAL.leadGen,1],
     ["Termine gebucht","statTermineGebucht","barTermineGebucht","pctTermineGebucht",c.termineGebucht,TOTAL.termineGebucht,0],
     ["Termine (Show-up)","statTermineShowup","barTermineShowup","pctTermineShowup",c.termineShowup,TOTAL.termineShowup,0],
     ["Closes","statCloses","barCloses","pctCloses",c.closes,TOTAL.closes,0],
   ];
-  metrics.forEach(([label, numId, barId, pctId, ist, soll])=>{
+  metrics.forEach(([label, numId, barId, pctId, ist, soll, digits])=>{
     const pct = soll>0 ? (ist/soll)*100 : 0;
-    document.getElementById(numId).innerHTML = num(ist,0)+" <small>/ "+num(soll,0)+"</small>";
+    document.getElementById(numId).innerHTML = num(ist,digits)+" <small>/ "+num(soll,digits)+"</small>";
     const bar = document.getElementById(barId);
     bar.style.width = Math.min(100,pct)+"%";
     bar.className = "bar-fill "+barClass(pct);
@@ -717,7 +718,7 @@ function renderDashboard(){
   document.getElementById("dashWeekLabel").textContent = weekLabel(curIdx);
   const e = combinedEntry(curIdx);
   const rows = [
-    ["Calls", e.calls, WEEKLY_TARGET.calls],
+    ["Lead-Gen (Std.)", e.leadGenHours, WEEKLY_TARGET.leadGen],
     ["Termine gebucht", e.termineGebucht, WEEKLY_TARGET.termineGebucht],
     ["Termine (Show-up)", e.termineShowup, WEEKLY_TARGET.termineShowup],
     ["Closes", e.closes, WEEKLY_TARGET.closes],
@@ -725,7 +726,7 @@ function renderDashboard(){
   ];
   document.getElementById("dashCurrentWeekBody").innerHTML = rows.map(([label,ist,soll])=>{
     const pct = soll>0 ? (ist/soll)*100 : 0;
-    const displayIst = label==="Umsatz" ? euro(ist) : num(ist,0);
+    const displayIst = label==="Umsatz" ? euro(ist) : num(ist,label==="Lead-Gen (Std.)"?1:0);
     const displaySoll = label==="Umsatz" ? euro(soll) : num(soll,1);
     return `<div class="row-metric">
       <div class="top"><span class="name">${label}</span><span class="vals">${displayIst} / ${displaySoll}</span></div>
@@ -737,7 +738,7 @@ function renderDashboard(){
     const pe = personEntry(curIdx, key);
     const ph = hebelHours(pe);
     return `<div class="row-metric">
-      <div class="top"><span class="name">${label}</span><span class="vals">${num(pe.calls,0)} Calls · ${num(ph,1)}/${WEEKLY_TARGET.hebel} Std. Hebel</span></div>
+      <div class="top"><span class="name">${label}</span><span class="vals">${num(pe.leadGenHours,1)} Std. Lead-Gen (Ziel ${LEAD_GEN_PER_PERSON}) · ${num(ph,1)}/${WEEKLY_TARGET.hebel} Std. Hebel</span></div>
     </div>`;
   }).join("");
 
@@ -755,7 +756,7 @@ function bestWeekByMetric(getValue){
 
 function renderLeaderboard(){
   const metrics = [
-    ["Calls", i=>combinedEntry(i).calls, v=>num(v,0)],
+    ["Lead-Gen (Std.)", i=>combinedEntry(i).leadGenHours, v=>num(v,1)+" Std."],
     ["Termine gebucht", i=>combinedEntry(i).termineGebucht, v=>num(v,0)],
     ["Termine Show-up", i=>combinedEntry(i).termineShowup, v=>num(v,0)],
     ["Closes", i=>combinedEntry(i).closes, v=>num(v,0)],
@@ -832,8 +833,8 @@ document.getElementById("closesList").addEventListener("input", (ev)=>{
 function loadDayIntoForm(){
   const date = document.getElementById("entryDate").value;
   const person = document.getElementById("personSelect").value;
-  const dp = (DAILY_PERSONAL[date] && DAILY_PERSONAL[date][person]) || {calls:0};
-  document.getElementById("inCalls").value = dp.calls || 0;
+  const dp = (DAILY_PERSONAL[date] && DAILY_PERSONAL[date][person]) || {leadGenHours:0};
+  document.getElementById("inLeadGen").value = dp.leadGenHours || 0;
 
   const dt = DAILY_TEAM[date] || {termineGebucht:0, termineShowup:0, closes:[]};
   document.getElementById("inTermineGebucht").value = dt.termineGebucht || 0;
@@ -851,7 +852,7 @@ function renderPreview(i){
   const e = combinedEntry(i);
   document.getElementById("previewWeekLabel").textContent = weekLabel(i);
   const rows = [
-    ["Calls", e.calls, WEEKLY_TARGET.calls, v=>num(v,0)],
+    ["Lead-Gen (Std.)", e.leadGenHours, WEEKLY_TARGET.leadGen, v=>num(v,1)],
     ["Termine gebucht", e.termineGebucht, WEEKLY_TARGET.termineGebucht, v=>num(v,0)],
     ["Termine (Show-up)", e.termineShowup, WEEKLY_TARGET.termineShowup, v=>num(v,0)],
     ["Closes", e.closes, WEEKLY_TARGET.closes, v=>num(v,0)],
@@ -914,14 +915,14 @@ function renderHistory(){
     PERSONS.forEach(([key,label])=>{
       const e = personEntry(i, key);
       const hebelSum = hebelHours(e);
-      const hasAny = e.calls||hebelSum>0;
+      const hasAny = e.leadGenHours||hebelSum>0;
       if(!hasAny) return;
       anyForWeek = true;
       rows.push(`<tr class="${i===curIdx?'current-week':''}">
         <td>${i+1}</td>
         <td>${fmtDate(WEEKS[i][0])}–${fmtDate(WEEKS[i][1])}</td>
         <td>${label}</td>
-        <td>${num(e.calls,0)}</td>
+        <td>${num(e.leadGenHours,1)}</td>
         <td>${num(hebelSum,2)}</td>
       </tr>`);
     });
@@ -986,7 +987,7 @@ document.getElementById("saveWeekBtn").addEventListener("click", async ()=>{
   const existingHebel = (DAILY_PERSONAL[date] && DAILY_PERSONAL[date][person] && DAILY_PERSONAL[date][person].hebel) || {};
   if(!DAILY_PERSONAL[date]) DAILY_PERSONAL[date] = {};
   DAILY_PERSONAL[date][person] = {
-    calls: Number(document.getElementById("inCalls").value)||0,
+    leadGenHours: Number(document.getElementById("inLeadGen").value)||0,
     hebel: existingHebel
   };
   await upsertDailyPersonal(date, person);
@@ -1015,13 +1016,13 @@ document.getElementById("saveTeamBtn").addEventListener("click", async ()=>{
 document.getElementById("saveHebelBtn").addEventListener("click", async ()=>{
   const date = document.getElementById("entryDateHebel").value;
   const person = document.getElementById("personSelectHebel").value;
-  const existingCalls = (DAILY_PERSONAL[date] && DAILY_PERSONAL[date][person] && DAILY_PERSONAL[date][person].calls) || 0;
+  const existingLeadGen = (DAILY_PERSONAL[date] && DAILY_PERSONAL[date][person] && DAILY_PERSONAL[date][person].leadGenHours) || 0;
   const newHebel = {};
   LEVERS.forEach(([key])=>{
     newHebel[key] = Number(document.getElementById(HEBEL_INPUT_IDS[key]).value)||0;
   });
   if(!DAILY_PERSONAL[date]) DAILY_PERSONAL[date] = {};
-  DAILY_PERSONAL[date][person] = { calls: existingCalls, hebel: newHebel };
+  DAILY_PERSONAL[date][person] = { leadGenHours: existingLeadGen, hebel: newHebel };
   await upsertDailyPersonal(date, person);
   buildWeeklyAggregates();
   const msg = document.getElementById("saveHebelMsg");
