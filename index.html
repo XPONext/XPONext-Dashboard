@@ -355,16 +355,9 @@
       </div>
     </div>
 
-    <div class="grid2" style="margin-top:1.3rem;">
-      <div class="card">
-        <h2>Nach Aktivität <small>diese Woche</small></h2>
-        <div id="ztByAktivitaet"></div>
-      </div>
-
-      <div class="card">
-        <h2>4 Unternehmer-Ds <small>vs. Zielwerte: Doing 80% · Deciding 2% · Delegating 8% · Designing 10%</small></h2>
-        <div id="ztByD"></div>
-      </div>
+    <div class="card" style="margin-top:1.3rem;">
+      <h2>Nach Aktivität <small>diese Woche</small></h2>
+      <div id="ztByAktivitaet"></div>
     </div>
   </div>
 </section>
@@ -689,25 +682,6 @@ function renderZeittracking(){
   renderTimeBreakdown(weekAll, "state", "ztByState");
   renderTimeBreakdown(weekAll, "zuordnung", "ztByZuordnung");
   renderTimeBreakdown(weekAll, "aktivitaet", "ztByAktivitaet");
-
-  const D_TARGETS = {Doing:80, Deciding:2, Delegating:8, Designing:10};
-  const dEntries = weekAll.filter(e=>e.state!=="Pause" && e.d_kategorie);
-  const dTotals = {};
-  let dGrand = 0;
-  dEntries.forEach(e=>{
-    dTotals[e.d_kategorie] = (dTotals[e.d_kategorie]||0) + (Number(e.duration_minutes)||0);
-    dGrand += Number(e.duration_minutes)||0;
-  });
-  document.getElementById("ztByD").innerHTML = Object.keys(D_TARGETS).map(key=>{
-    const minutes = dTotals[key]||0;
-    const pct = dGrand>0 ? (minutes/dGrand)*100 : 0;
-    const target = D_TARGETS[key];
-    const onTarget = Math.abs(pct-target) <= Math.max(5, target*0.4);
-    return `<div class="row-metric">
-      <div class="top"><span class="name">${key}</span><span class="vals">${num(pct,0)}% (Ziel: ${target}%) · ${num(minutes/60,1)} Std.</span></div>
-      <div class="bar-track"><div class="bar-fill ${onTarget?'ok':'warn'}" style="width:${Math.min(100,pct)}%"></div></div>
-    </div>`;
-  }).join("");
 }
 
 /* ---------- Rendering ---------- */
