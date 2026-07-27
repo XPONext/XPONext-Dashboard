@@ -121,6 +121,19 @@
   .streak .item .n{font-size:1.65rem;font-weight:900;color:var(--accent);letter-spacing:-0.01em;}
   .streak .item .l{font-size:0.73rem;color:var(--text-muted);font-weight:600;text-transform:uppercase;letter-spacing:0.03em;}
 
+  .task-row{display:flex;align-items:center;gap:0.75rem;padding:0.7rem 0.3rem;border-bottom:1px solid var(--border);}
+  .task-row:last-child{border-bottom:none;}
+  .task-row.done .task-text{text-decoration:line-through;color:var(--text-muted);}
+  .task-check{width:19px;height:19px;accent-color:var(--accent);cursor:pointer;flex-shrink:0;}
+  .task-text{flex:1;font-size:0.92rem;color:var(--text-primary);word-break:break-word;}
+  .task-badge{font-size:0.7rem;font-weight:700;padding:0.22rem 0.6rem;border-radius:99px;white-space:nowrap;}
+  .task-badge.person{background:var(--accent-light);color:var(--accent-dark);}
+  .task-badge.prio-hoch{background:var(--red-bg);color:var(--red);}
+  .task-badge.prio-mittel{background:var(--amber-bg);color:var(--amber);}
+  .task-badge.prio-niedrig{background:var(--bg-subtle);color:var(--text-muted);border:1px solid var(--border);}
+  .task-del{background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:1.05rem;padding:0.2rem 0.4rem;flex-shrink:0;line-height:1;}
+  .task-del:hover{color:var(--red);}
+
   footer{text-align:center;color:var(--text-muted);font-size:0.78rem;padding:2.2rem 5% 0;letter-spacing:0.01em;}
 </style>
 </head>
@@ -132,6 +145,7 @@
   <nav class="tabs">
     <button class="tab-btn active" data-view="dashboard">Dashboard</button>
     <button class="tab-btn" data-view="eingabe">Wochen-Eingabe</button>
+    <button class="tab-btn" data-view="aufgaben">Aufgaben</button>
     <button class="tab-btn" data-view="hebel">Hebel</button>
     <button class="tab-btn" data-view="verlauf">Verlauf</button>
     <button class="tab-btn" data-view="zeittracking">Zeittracking</button>
@@ -256,6 +270,32 @@
     <div class="card" id="previewCard">
       <h2>Fortschritt dieser Woche <small id="previewWeekLabel"></small></h2>
       <div id="previewBody"></div>
+    </div>
+  </div>
+</section>
+
+<!-- AUFGABEN -->
+<section class="view" id="view-aufgaben">
+  <div class="container">
+    <div class="card">
+      <h2>Neue Aufgabe <small>Für diese Woche eintragen</small></h2>
+      <div class="form-grid">
+        <div class="field" style="grid-column:1/-1;"><label>Aufgabe</label><input type="text" id="inTaskText" placeholder="z.B. Angebot an XY verschicken"></div>
+        <div class="field">
+          <label>Zugewiesen an</label>
+          <select id="inTaskAssignee"><option value="tim">Tim</option><option value="simon">Simon</option><option value="beide">Beide</option></select>
+        </div>
+        <div class="field">
+          <label>Priorität</label>
+          <select id="inTaskPriority"><option value="hoch">Hoch</option><option value="mittel" selected>Mittel</option><option value="niedrig">Niedrig</option></select>
+        </div>
+      </div>
+      <button class="btn" id="addTaskBtn" style="margin-top:0.5rem;">Aufgabe hinzufügen</button>
+    </div>
+
+    <div class="card">
+      <h2>Aufgaben <small id="tasksWeekLabel">diese Woche</small></h2>
+      <div id="tasksList"></div>
     </div>
   </div>
 </section>
@@ -443,13 +483,16 @@ function weekIndexForDate(dateStr){
 }
 
 async function fetchAllData(){
-  const [personalRes, teamRes, timeRes] = await Promise.all([
+  const [personalRes, teamRes, timeRes, tasksRes] = await Promise.all([
     db.from("daily_personal").select("*"),
     db.from("daily_team").select("*"),
-    db.from("time_entries").select("*")
+    db.from("time_entries").select("*"),
+    db.from("tasks").select("*").order("created_at", { ascending: true })
   ]);
   if(timeRes.error){ console.error(timeRes.error); TIME_ENTRIES = []; }
   else{ TIME_ENTRIES = timeRes.data; }
+  if(tasksRes.error){ console.error(tasksRes.error); TASKS = []; }
+  else{ TASKS = tasksRes.data; }
   const dp = {};
   if(personalRes.error){ console.error(personalRes.error); alert("Daten konnten nicht geladen werden: "+personalRes.error.message); }
   else{
@@ -532,7 +575,13 @@ let DAILY_TEAM = {}; // { "2026-07-14": {termineGebucht, termineShowup, closes, 
 let DATA = {}; // Wochen-Aggregate, aus DAILY_PERSONAL berechnet: { 1: { tim: {calls, hebel:{...}}, simon: {...} } }
 let DATA_TEAM = {}; // Wochen-Aggregate, aus DAILY_TEAM berechnet: { 1: {termineGebucht, termineShowup, closes, umsatz} }
 let TIME_ENTRIES = []; // Rohe Zeittracking-Einträge aus der Supabase-Tabelle "time_entries"
+let TASKS = []; // Rohe Aufgaben aus der Supabase-Tabelle "tasks"
+const PRIORITY_ORDER = { hoch: 0, mittel: 1, niedrig: 2 };
 const PERSON_STORAGE_KEY = "xponext_kpi_person";
+
+function escapeHtml(s){
+  return String(s).replace(/[&<>"']/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+}
 
 function fmtDate(iso){
   const d = new Date(iso+"T00:00:00");
@@ -940,9 +989,41 @@ function renderHistory(){
   document.getElementById("historyBody").innerHTML = rows.join("");
 }
 
+/* ---------- Aufgaben ---------- */
+function renderTasks(){
+  const curIdx = findCurrentWeekIndex();
+  const weekStart = WEEKS[curIdx][0];
+  document.getElementById("tasksWeekLabel").textContent = weekLabel(curIdx);
+
+  const weekTasks = TASKS.filter(t=>t.week_start===weekStart).slice().sort((a,b)=>{
+    if(a.done !== b.done) return a.done ? 1 : -1;
+    const pa = PRIORITY_ORDER[a.priority] ?? 1, pb = PRIORITY_ORDER[b.priority] ?? 1;
+    if(pa !== pb) return pa - pb;
+    return new Date(a.created_at) - new Date(b.created_at);
+  });
+
+  const container = document.getElementById("tasksList");
+  if(!weekTasks.length){
+    container.innerHTML = `<div class="pct">Noch keine Aufgaben für diese Woche.</div>`;
+    return;
+  }
+  const personLabel = { tim:"Tim", simon:"Simon", beide:"Beide" };
+  const prioLabel = { hoch:"Hoch", mittel:"Mittel", niedrig:"Niedrig" };
+  container.innerHTML = weekTasks.map(t=>`
+    <div class="task-row ${t.done?"done":""}">
+      <input type="checkbox" class="task-check" data-id="${t.id}" ${t.done?"checked":""}>
+      <span class="task-text">${escapeHtml(t.text)}</span>
+      <span class="task-badge person">${personLabel[t.assignee]||t.assignee}</span>
+      <span class="task-badge prio-${t.priority}">${prioLabel[t.priority]||t.priority}</span>
+      <button type="button" class="task-del" data-id="${t.id}" title="Löschen">✕</button>
+    </div>
+  `).join("");
+}
+
 function renderAll(){
   renderDashboard();
   renderHistory();
+  renderTasks();
   const date = document.getElementById("entryDate").value;
   renderPreview(weekIndexForDate(date));
   const dateHebel = document.getElementById("entryDateHebel").value;
@@ -1032,6 +1113,42 @@ document.getElementById("saveHebelBtn").addEventListener("click", async ()=>{
   msg.style.display = "block";
   setTimeout(()=>msg.style.display="none", 1800);
   renderAll();
+});
+
+document.getElementById("addTaskBtn").addEventListener("click", async ()=>{
+  const textEl = document.getElementById("inTaskText");
+  const text = textEl.value.trim();
+  if(!text) return;
+  const assignee = document.getElementById("inTaskAssignee").value;
+  const priority = document.getElementById("inTaskPriority").value;
+  const curIdx = findCurrentWeekIndex();
+  const { data, error } = await db.from("tasks").insert({
+    week_start: WEEKS[curIdx][0], text, assignee, priority, done: false
+  }).select();
+  if(error){ console.error(error); alert("Aufgabe konnte nicht gespeichert werden: "+error.message); return; }
+  TASKS.push(data[0]);
+  textEl.value = "";
+  renderTasks();
+});
+
+document.getElementById("tasksList").addEventListener("click", async (ev)=>{
+  if(ev.target.classList.contains("task-check")){
+    const id = ev.target.dataset.id;
+    const task = TASKS.find(t=>String(t.id)===String(id));
+    if(!task) return;
+    task.done = ev.target.checked;
+    const { error } = await db.from("tasks").update({ done: task.done }).eq("id", id);
+    if(error){ console.error(error); alert("Speichern fehlgeschlagen: "+error.message); }
+    renderTasks();
+  }
+  if(ev.target.classList.contains("task-del")){
+    const id = ev.target.dataset.id;
+    if(!confirm("Aufgabe wirklich löschen?")) return;
+    const { error } = await db.from("tasks").delete().eq("id", id);
+    if(error){ console.error(error); alert("Löschen fehlgeschlagen: "+error.message); return; }
+    TASKS = TASKS.filter(t=>String(t.id)!==String(id));
+    renderTasks();
+  }
 });
 
 /* ---------- Init ---------- */
