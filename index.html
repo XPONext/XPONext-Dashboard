@@ -278,6 +278,13 @@
 <section class="view" id="view-aufgaben">
   <div class="container">
     <div class="card">
+      <h2>Wochenfokus <small id="goalWeekLabel">diese Woche</small></h2>
+      <div class="field" style="grid-column:1/-1;"><label>Worauf zahlen diese Woche alle Aufgaben ein?</label><input type="text" id="inGoalText" placeholder="z.B. Besser in Sales werden"></div>
+      <button class="btn" id="saveGoalBtn" style="margin-top:0.5rem;">Fokus speichern</button>
+      <div class="save-msg" id="saveGoalMsg">Gespeichert ✓</div>
+    </div>
+
+    <div class="card">
       <h2>Neue Aufgabe <small>Für diese Woche eintragen</small></h2>
       <div class="form-grid">
         <div class="field" style="grid-column:1/-1;"><label>Aufgabe</label><input type="text" id="inTaskText" placeholder="z.B. Angebot an XY verschicken"></div>
@@ -483,16 +490,19 @@ function weekIndexForDate(dateStr){
 }
 
 async function fetchAllData(){
-  const [personalRes, teamRes, timeRes, tasksRes] = await Promise.all([
+  const [personalRes, teamRes, timeRes, tasksRes, goalsRes] = await Promise.all([
     db.from("daily_personal").select("*"),
     db.from("daily_team").select("*"),
     db.from("time_entries").select("*"),
-    db.from("tasks").select("*").order("created_at", { ascending: true })
+    db.from("tasks").select("*").order("created_at", { ascending: true }),
+    db.from("weekly_goals").select("*")
   ]);
   if(timeRes.error){ console.error(timeRes.error); TIME_ENTRIES = []; }
   else{ TIME_ENTRIES = timeRes.data; }
   if(tasksRes.error){ console.error(tasksRes.error); TASKS = []; }
   else{ TASKS = tasksRes.data; }
+  if(goalsRes.error){ console.error(goalsRes.error); GOALS = []; }
+  else{ GOALS = goalsRes.data; }
   const dp = {};
   if(personalRes.error){ console.error(personalRes.error); alert("Daten konnten nicht geladen werden: "+personalRes.error.message); }
   else{
@@ -576,6 +586,7 @@ let DATA = {}; // Wochen-Aggregate, aus DAILY_PERSONAL berechnet: { 1: { tim: {c
 let DATA_TEAM = {}; // Wochen-Aggregate, aus DAILY_TEAM berechnet: { 1: {termineGebucht, termineShowup, closes, umsatz} }
 let TIME_ENTRIES = []; // Rohe Zeittracking-Einträge aus der Supabase-Tabelle "time_entries"
 let TASKS = []; // Rohe Aufgaben aus der Supabase-Tabelle "tasks"
+let GOALS = []; // Wochenfokus aus der Supabase-Tabelle "weekly_goals"
 const PRIORITY_ORDER = { hoch: 0, mittel: 1, niedrig: 2 };
 const PERSON_STORAGE_KEY = "xponext_kpi_person";
 
@@ -989,6 +1000,15 @@ function renderHistory(){
   document.getElementById("historyBody").innerHTML = rows.join("");
 }
 
+/* ---------- Wochenfokus ---------- */
+function renderGoal(){
+  const curIdx = findCurrentWeekIndex();
+  const weekStart = WEEKS[curIdx][0];
+  document.getElementById("goalWeekLabel").textContent = weekLabel(curIdx);
+  const goal = GOALS.find(g=>g.week_start===weekStart);
+  document.getElementById("inGoalText").value = goal ? goal.goal : "";
+}
+
 /* ---------- Aufgaben ---------- */
 function renderTasks(){
   const curIdx = findCurrentWeekIndex();
@@ -1023,6 +1043,7 @@ function renderTasks(){
 function renderAll(){
   renderDashboard();
   renderHistory();
+  renderGoal();
   renderTasks();
   const date = document.getElementById("entryDate").value;
   renderPreview(weekIndexForDate(date));
@@ -1113,6 +1134,20 @@ document.getElementById("saveHebelBtn").addEventListener("click", async ()=>{
   msg.style.display = "block";
   setTimeout(()=>msg.style.display="none", 1800);
   renderAll();
+});
+
+document.getElementById("saveGoalBtn").addEventListener("click", async ()=>{
+  const textEl = document.getElementById("inGoalText");
+  const goal = textEl.value.trim();
+  const curIdx = findCurrentWeekIndex();
+  const weekStart = WEEKS[curIdx][0];
+  const { data, error } = await db.from("weekly_goals").upsert({ week_start: weekStart, goal }, { onConflict: "week_start" }).select();
+  if(error){ console.error(error); alert("Wochenfokus konnte nicht gespeichert werden: "+error.message); return; }
+  const idx = GOALS.findIndex(g=>g.week_start===weekStart);
+  if(idx>=0) GOALS[idx] = data[0]; else GOALS.push(data[0]);
+  const msg = document.getElementById("saveGoalMsg");
+  msg.style.display = "block";
+  setTimeout(()=>msg.style.display="none", 1800);
 });
 
 document.getElementById("addTaskBtn").addEventListener("click", async ()=>{
