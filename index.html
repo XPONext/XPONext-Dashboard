@@ -90,7 +90,14 @@
   label{display:block;font-size:0.8rem;font-weight:600;color:var(--text-body);margin-bottom:0.35rem;}
   .field{margin-bottom:1rem;}
   .form-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:1rem;}
-  #inGoalText{font-size:1.15rem;font-weight:700;color:var(--accent-dark);border-width:2px;padding:0.8rem 1rem;}
+  /* Wochenfokus-Banner (dunkel, read-only) */
+  .focus-banner{background:var(--bg-dark);border-radius:16px;padding:1.5rem 1.7rem;box-shadow:var(--shadow-md);}
+  .focus-label{font-size:0.74rem;font-weight:700;color:#8A94A3;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:0.7rem;}
+  .focus-text{font-size:1.5rem;font-weight:800;color:#fff;letter-spacing:-0.015em;line-height:1.3;word-break:break-word;}
+  .focus-text.empty{font-size:1.05rem;font-weight:500;color:#6B7280;letter-spacing:0;}
+  .focus-stroke{width:64px;height:3px;background:var(--accent);border-radius:99px;margin-top:0.9rem;}
+  .board-actions{display:flex;gap:0.7rem;flex-wrap:wrap;margin:1.1rem 0 1.3rem;}
+  #inGoalText{font-size:1.05rem;font-weight:600;color:var(--accent-dark);}
 
   .btn{background:var(--accent);color:#fff;padding:0.72rem 1.5rem;border-radius:9px;border:none;font-weight:700;font-size:0.92rem;cursor:pointer;font-family:'Inter',sans-serif;box-shadow:0 1px 2px rgba(46,61,40,0.25);transition:transform .12s var(--ease), box-shadow .12s var(--ease), background .12s var(--ease);}
   .btn:hover{background:var(--accent-dark);transform:translateY(-1px);box-shadow:0 4px 10px rgba(46,61,40,0.28);}
@@ -309,27 +316,15 @@
 <!-- AUFGABEN -->
 <section class="view" id="view-aufgaben">
   <div class="container">
-    <div class="card">
-      <h2>Wochenfokus <small id="goalWeekLabel">diese Woche</small></h2>
-      <div class="field" style="grid-column:1/-1;"><label>Worauf zahlen diese Woche alle Aufgaben ein?</label><input type="text" id="inGoalText" placeholder="z.B. Besser in Sales werden"></div>
-      <button class="btn" id="saveGoalBtn" style="margin-top:0.5rem;">Fokus speichern</button>
-      <div class="save-msg" id="saveGoalMsg">Gespeichert ✓</div>
+    <div class="focus-banner">
+      <div class="focus-label">Wochenfokus · <span id="goalWeekLabel">diese Woche</span></div>
+      <div class="focus-text empty" id="goalDisplay">Noch kein Fokus für diese Woche gesetzt</div>
+      <div class="focus-stroke"></div>
     </div>
 
-    <div class="card">
-      <h2>Neue Aufgabe <small>Für diese Woche eintragen</small></h2>
-      <div class="form-grid">
-        <div class="field" style="grid-column:1/-1;"><label>Aufgabe</label><input type="text" id="inTaskText" placeholder="z.B. Angebot an XY verschicken"></div>
-        <div class="field">
-          <label>Zugewiesen an</label>
-          <select id="inTaskAssignee"><option value="tim">Tim</option><option value="simon">Simon</option><option value="beide">Beide</option></select>
-        </div>
-        <div class="field">
-          <label>Priorität</label>
-          <select id="inTaskPriority"><option value="hoch">Hoch</option><option value="mittel" selected>Mittel</option><option value="niedrig">Niedrig</option></select>
-        </div>
-      </div>
-      <button class="btn" id="addTaskBtn" style="margin-top:0.5rem;">Aufgabe hinzufügen</button>
+    <div class="board-actions">
+      <button class="btn-outline" id="editGoalBtn">Wochenfokus ändern</button>
+      <button class="btn" id="openAddTaskBtn">+ Aufgabe hinzufügen</button>
     </div>
 
     <div class="card">
@@ -488,6 +483,50 @@
       <button type="button" class="btn" id="modalSave">Speichern</button>
       <button type="button" class="btn-outline" id="modalPushWeek">→ Nächste Woche</button>
       <button type="button" class="modal-del" id="modalDelete">Löschen</button>
+    </div>
+  </div>
+</div>
+
+<!-- WOCHENFOKUS-MODAL -->
+<div class="modal-overlay" id="goalModal">
+  <div class="modal">
+    <div class="modal-head">
+      <h3>Wochenfokus ändern</h3>
+      <button type="button" class="modal-close" id="goalModalClose" title="Schließen">✕</button>
+    </div>
+    <div class="field" style="margin-bottom:0;">
+      <label>Worauf zahlen diese Woche alle Aufgaben ein?</label>
+      <input type="text" id="inGoalText" placeholder="z.B. Besser in Sales werden">
+    </div>
+    <div class="modal-actions">
+      <button type="button" class="btn" id="goalModalSave">Speichern</button>
+    </div>
+  </div>
+</div>
+
+<!-- NEUE-AUFGABE-MODAL -->
+<div class="modal-overlay" id="addTaskModal">
+  <div class="modal">
+    <div class="modal-head">
+      <h3>Neue Aufgabe</h3>
+      <button type="button" class="modal-close" id="addTaskModalClose" title="Schließen">✕</button>
+    </div>
+    <div class="field">
+      <label>Aufgabe</label>
+      <input type="text" id="inTaskText" placeholder="z.B. Angebot an XY verschicken">
+    </div>
+    <div class="form-grid">
+      <div class="field" style="margin-bottom:0;">
+        <label>Zugewiesen an</label>
+        <select id="inTaskAssignee"><option value="tim">Tim</option><option value="simon">Simon</option><option value="beide">Beide</option></select>
+      </div>
+      <div class="field" style="margin-bottom:0;">
+        <label>Priorität</label>
+        <select id="inTaskPriority"><option value="hoch">Hoch</option><option value="mittel" selected>Mittel</option><option value="niedrig">Niedrig</option></select>
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button type="button" class="btn" id="addTaskBtn">Aufgabe hinzufügen</button>
     </div>
   </div>
 </div>
@@ -1097,7 +1136,14 @@ function renderGoal(){
   const weekStart = WEEKS[boardWeekIdx][0];
   document.getElementById("goalWeekLabel").textContent = weekLabel(boardWeekIdx);
   const goal = GOALS.find(g=>g.week_start===weekStart);
-  document.getElementById("inGoalText").value = goal ? goal.goal : "";
+  const disp = document.getElementById("goalDisplay");
+  if(goal && goal.goal && goal.goal.trim()){
+    disp.textContent = goal.goal;
+    disp.classList.remove("empty");
+  } else {
+    disp.textContent = "Noch kein Fokus für diese Woche gesetzt";
+    disp.classList.add("empty");
+  }
 }
 
 /* ---------- Aufgaben-Board ---------- */
@@ -1235,23 +1281,49 @@ document.getElementById("saveHebelBtn").addEventListener("click", async ()=>{
   renderAll();
 });
 
-document.getElementById("saveGoalBtn").addEventListener("click", async ()=>{
-  const textEl = document.getElementById("inGoalText");
-  const goal = textEl.value.trim();
+/* ---------- Wochenfokus-Modal ---------- */
+function openGoalModal(){
+  const weekStart = WEEKS[boardWeekIdx][0];
+  const goal = GOALS.find(g=>g.week_start===weekStart);
+  document.getElementById("inGoalText").value = goal ? goal.goal : "";
+  document.getElementById("goalModal").classList.add("open");
+  setTimeout(()=>document.getElementById("inGoalText").focus(), 0);
+}
+function closeGoalModal(){ document.getElementById("goalModal").classList.remove("open"); }
+
+document.getElementById("editGoalBtn").addEventListener("click", openGoalModal);
+document.getElementById("goalModalClose").addEventListener("click", closeGoalModal);
+document.getElementById("goalModal").addEventListener("click", (ev)=>{ if(ev.target.id==="goalModal") closeGoalModal(); });
+
+document.getElementById("goalModalSave").addEventListener("click", async ()=>{
+  const goal = document.getElementById("inGoalText").value.trim();
   const weekStart = WEEKS[boardWeekIdx][0];
   const { data, error } = await db.from("weekly_goals").upsert({ week_start: weekStart, goal }, { onConflict: "week_start" }).select();
   if(error){ console.error(error); alert("Wochenfokus konnte nicht gespeichert werden: "+error.message); return; }
   const idx = GOALS.findIndex(g=>g.week_start===weekStart);
   if(idx>=0) GOALS[idx] = data[0]; else GOALS.push(data[0]);
-  const msg = document.getElementById("saveGoalMsg");
-  msg.style.display = "block";
-  setTimeout(()=>msg.style.display="none", 1800);
+  closeGoalModal();
+  renderGoal();
 });
+
+/* ---------- Neue-Aufgabe-Modal ---------- */
+function openAddTaskModal(){
+  document.getElementById("inTaskText").value = "";
+  document.getElementById("inTaskAssignee").value = "tim";
+  document.getElementById("inTaskPriority").value = "mittel";
+  document.getElementById("addTaskModal").classList.add("open");
+  setTimeout(()=>document.getElementById("inTaskText").focus(), 0);
+}
+function closeAddTaskModal(){ document.getElementById("addTaskModal").classList.remove("open"); }
+
+document.getElementById("openAddTaskBtn").addEventListener("click", openAddTaskModal);
+document.getElementById("addTaskModalClose").addEventListener("click", closeAddTaskModal);
+document.getElementById("addTaskModal").addEventListener("click", (ev)=>{ if(ev.target.id==="addTaskModal") closeAddTaskModal(); });
 
 document.getElementById("addTaskBtn").addEventListener("click", async ()=>{
   const textEl = document.getElementById("inTaskText");
   const text = textEl.value.trim();
-  if(!text) return;
+  if(!text){ alert("Bitte eine Aufgabe eingeben."); return; }
   const assignee = document.getElementById("inTaskAssignee").value;
   const priority = document.getElementById("inTaskPriority").value;
   const { data, error } = await db.from("tasks").insert({
@@ -1259,7 +1331,7 @@ document.getElementById("addTaskBtn").addEventListener("click", async ()=>{
   }).select();
   if(error){ console.error(error); alert("Aufgabe konnte nicht gespeichert werden: "+error.message); return; }
   TASKS.push(data[0]);
-  textEl.value = "";
+  closeAddTaskModal();
   renderTasks();
 });
 
@@ -1300,7 +1372,9 @@ document.getElementById("taskModal").addEventListener("click", (ev)=>{
   if(ev.target.id === "taskModal") closeTaskModal();
 });
 document.addEventListener("keydown", (ev)=>{
-  if(ev.key === "Escape" && document.getElementById("taskModal").classList.contains("open")) closeTaskModal();
+  if(ev.key !== "Escape") return;
+  ["taskModal","goalModal","addTaskModal"].forEach(id=>document.getElementById(id).classList.remove("open"));
+  modalTaskId = null;
 });
 
 document.getElementById("modalSave").addEventListener("click", async ()=>{
