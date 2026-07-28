@@ -1,0 +1,3 @@
+#!/bin/bash
+nohup "$HOME/.xpo-time-tracker/start_loop.sh" >/dev/null 2>&1 &
+disown
