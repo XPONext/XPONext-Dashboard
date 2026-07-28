@@ -122,18 +122,49 @@
   .streak .item .n{font-size:1.65rem;font-weight:900;color:var(--accent);letter-spacing:-0.01em;}
   .streak .item .l{font-size:0.73rem;color:var(--text-muted);font-weight:600;text-transform:uppercase;letter-spacing:0.03em;}
 
-  .task-row{display:flex;align-items:center;gap:0.75rem;padding:0.7rem 0.3rem;border-bottom:1px solid var(--border);}
-  .task-row:last-child{border-bottom:none;}
-  .task-row.done .task-text{text-decoration:line-through;color:var(--text-muted);}
-  .task-check{width:19px;height:19px;accent-color:var(--accent);cursor:pointer;flex-shrink:0;}
-  .task-text{flex:1;font-size:0.92rem;color:var(--text-primary);word-break:break-word;}
-  .task-badge{font-size:0.7rem;font-weight:700;padding:0.22rem 0.6rem;border-radius:99px;white-space:nowrap;}
+  /* Aufgaben-Board (Kanban) */
+  #view-aufgaben .container{max-width:1120px;}
+  .board-head{display:flex;align-items:center;justify-content:space-between;gap:1rem;margin-bottom:1.2rem;flex-wrap:wrap;}
+  .board-head h2{margin-bottom:0;}
+  .week-nav{display:flex;align-items:center;gap:0.55rem;font-size:0.85rem;font-weight:700;color:var(--text-body);}
+  .wk-btn{background:#fff;border:1.5px solid var(--border);border-radius:8px;width:30px;height:30px;font-size:1.15rem;line-height:1;color:var(--text-body);cursor:pointer;font-family:'Inter',sans-serif;transition:border-color .12s var(--ease), background .12s var(--ease);}
+  .wk-btn:hover:not(:disabled){border-color:var(--accent);background:var(--bg-subtle);}
+  .wk-btn:disabled{opacity:0.35;cursor:not-allowed;}
+
+  .kanban{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:0.75rem;}
+  @media(max-width:900px){
+    .kanban{display:flex;overflow-x:auto;padding-bottom:0.6rem;scroll-snap-type:x proximity;}
+    .kanban .kanban-col{flex:0 0 76%;scroll-snap-align:start;}
+  }
+  .kanban-col{background:var(--bg-subtle);border:1px solid var(--border);border-radius:12px;padding:0.7rem 0.6rem;display:flex;flex-direction:column;min-height:130px;}
+  .kanban-col-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:0.75rem;padding:0 0.15rem;}
+  .kanban-col-title{font-size:0.71rem;font-weight:800;color:var(--text-primary);text-transform:uppercase;letter-spacing:0.04em;}
+  .kanban-count{font-size:0.68rem;font-weight:800;color:var(--accent-dark);background:var(--accent-light);border-radius:99px;padding:0.09rem 0.45rem;min-width:20px;text-align:center;}
+  .kanban-cards{display:flex;flex-direction:column;gap:0.55rem;flex:1;}
+  .kanban-card{background:#fff;border:1px solid var(--border);border-radius:10px;padding:0.65rem 0.7rem;cursor:pointer;box-shadow:var(--shadow-sm);transition:border-color .12s var(--ease), transform .12s var(--ease);}
+  .kanban-card:hover{border-color:var(--accent);transform:translateY(-1px);}
+  .kanban-card-text{font-size:0.86rem;color:var(--text-primary);line-height:1.4;word-break:break-word;margin-bottom:0.5rem;}
+  .kanban-card.is-done .kanban-card-text{text-decoration:line-through;color:var(--text-muted);}
+  .kanban-card-badges{display:flex;gap:0.35rem;flex-wrap:wrap;}
+  .kanban-empty{font-size:0.75rem;color:var(--text-muted);text-align:center;padding:0.55rem 0;opacity:0.7;}
+
+  .task-badge{font-size:0.66rem;font-weight:700;padding:0.18rem 0.52rem;border-radius:99px;white-space:nowrap;}
   .task-badge.person{background:var(--accent-light);color:var(--accent-dark);}
   .task-badge.prio-hoch{background:var(--red-bg);color:var(--red);}
   .task-badge.prio-mittel{background:var(--amber-bg);color:var(--amber);}
-  .task-badge.prio-niedrig{background:var(--bg-subtle);color:var(--text-muted);border:1px solid var(--border);}
-  .task-del{background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:1.05rem;padding:0.2rem 0.4rem;flex-shrink:0;line-height:1;}
-  .task-del:hover{color:var(--red);}
+  .task-badge.prio-niedrig{background:#fff;color:var(--text-muted);border:1px solid var(--border);}
+
+  /* Aufgaben-Modal */
+  .modal-overlay{position:fixed;inset:0;background:rgba(13,13,13,0.45);display:none;align-items:center;justify-content:center;z-index:1000;padding:1rem;}
+  .modal-overlay.open{display:flex;}
+  .modal{background:#fff;border:1px solid var(--border);border-radius:14px;padding:1.6rem;max-width:460px;width:100%;box-shadow:var(--shadow-md);}
+  .modal-head{display:flex;align-items:flex-start;justify-content:space-between;gap:1rem;margin-bottom:1.1rem;}
+  .modal-head h3{font-size:0.72rem;font-weight:800;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.05em;}
+  .modal-close{background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:1.2rem;line-height:1;padding:0.1rem 0.3rem;}
+  .modal-close:hover{color:var(--text-primary);}
+  .modal-actions{display:flex;align-items:center;gap:0.7rem;margin-top:1.3rem;flex-wrap:wrap;}
+  .modal-del{background:none;border:none;color:var(--red);cursor:pointer;font-weight:700;font-size:0.85rem;margin-left:auto;padding:0.4rem;font-family:'Inter',sans-serif;}
+  .modal-del:hover{text-decoration:underline;}
 
   footer{text-align:center;color:var(--text-muted);font-size:0.78rem;padding:2.2rem 5% 0;letter-spacing:0.01em;}
 </style>
@@ -302,8 +333,15 @@
     </div>
 
     <div class="card">
-      <h2>Aufgaben <small id="tasksWeekLabel">diese Woche</small></h2>
-      <div id="tasksList"></div>
+      <div class="board-head">
+        <h2>Aufgaben-Board <small>Karte anklicken, um Status zu ändern</small></h2>
+        <div class="week-nav">
+          <button type="button" class="wk-btn" id="taskPrevWeek" title="Vorherige Woche">‹</button>
+          <span id="tasksWeekLabel">diese Woche</span>
+          <button type="button" class="wk-btn" id="taskNextWeek" title="Nächste Woche">›</button>
+        </div>
+      </div>
+      <div class="kanban" id="kanbanBoard"></div>
     </div>
   </div>
 </section>
@@ -415,6 +453,44 @@
 </main>
 </div>
 
+<!-- AUFGABEN-MODAL -->
+<div class="modal-overlay" id="taskModal">
+  <div class="modal">
+    <div class="modal-head">
+      <h3>Aufgabe bearbeiten</h3>
+      <button type="button" class="modal-close" id="modalClose" title="Schließen">✕</button>
+    </div>
+    <div class="field">
+      <label>Aufgabe</label>
+      <input type="text" id="modalTaskText">
+    </div>
+    <div class="field">
+      <label>Status</label>
+      <select id="modalStatus">
+        <option value="backlog">Backlog</option>
+        <option value="auswahl">Zur Auswahl</option>
+        <option value="inarbeit">In Arbeit</option>
+        <option value="review">In Review</option>
+        <option value="done">Done</option>
+      </select>
+    </div>
+    <div class="form-grid">
+      <div class="field" style="margin-bottom:0;">
+        <label>Zugewiesen an</label>
+        <select id="modalAssignee"><option value="tim">Tim</option><option value="simon">Simon</option><option value="beide">Beide</option></select>
+      </div>
+      <div class="field" style="margin-bottom:0;">
+        <label>Priorität</label>
+        <select id="modalPriority"><option value="hoch">Hoch</option><option value="mittel">Mittel</option><option value="niedrig">Niedrig</option></select>
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button type="button" class="btn" id="modalSave">Speichern</button>
+      <button type="button" class="btn-outline" id="modalPushWeek">→ Nächste Woche</button>
+      <button type="button" class="modal-del" id="modalDelete">Löschen</button>
+    </div>
+  </div>
+</div>
 
 <script>
 /* ---------- Wochen-Definition (14.07.2026 – 31.12.2026, 25 Kalenderwochen) ---------- */
@@ -589,6 +665,21 @@ let TIME_ENTRIES = []; // Rohe Zeittracking-Einträge aus der Supabase-Tabelle "
 let TASKS = []; // Rohe Aufgaben aus der Supabase-Tabelle "tasks"
 let GOALS = []; // Wochenfokus aus der Supabase-Tabelle "weekly_goals"
 const PRIORITY_ORDER = { hoch: 0, mittel: 1, niedrig: 2 };
+
+// Kanban-Spalten: [status-key, Anzeigename]
+const STATUS_COLUMNS = [
+  ["backlog","Backlog"],
+  ["auswahl","Zur Auswahl"],
+  ["inarbeit","In Arbeit"],
+  ["review","In Review"],
+  ["done","Done"]
+];
+let boardWeekIdx = 0; // aktuell im Aufgaben-Board angezeigte Woche (Index in WEEKS)
+// Status robust bestimmen — auch für Alt-Aufgaben ohne status-Feld
+function normStatus(t){
+  if(t.status && STATUS_COLUMNS.some(c=>c[0]===t.status)) return t.status;
+  return t.done ? "done" : "backlog";
+}
 const PERSON_STORAGE_KEY = "xponext_kpi_person";
 
 function escapeHtml(s){
@@ -1003,42 +1094,49 @@ function renderHistory(){
 
 /* ---------- Wochenfokus ---------- */
 function renderGoal(){
-  const curIdx = findCurrentWeekIndex();
-  const weekStart = WEEKS[curIdx][0];
-  document.getElementById("goalWeekLabel").textContent = weekLabel(curIdx);
+  const weekStart = WEEKS[boardWeekIdx][0];
+  document.getElementById("goalWeekLabel").textContent = weekLabel(boardWeekIdx);
   const goal = GOALS.find(g=>g.week_start===weekStart);
   document.getElementById("inGoalText").value = goal ? goal.goal : "";
 }
 
-/* ---------- Aufgaben ---------- */
+/* ---------- Aufgaben-Board ---------- */
+const PERSON_LABEL = { tim:"Tim", simon:"Simon", beide:"Beide" };
+const PRIO_LABEL = { hoch:"Hoch", mittel:"Mittel", niedrig:"Niedrig" };
+
 function renderTasks(){
-  const curIdx = findCurrentWeekIndex();
-  const weekStart = WEEKS[curIdx][0];
-  document.getElementById("tasksWeekLabel").textContent = weekLabel(curIdx);
+  const weekStart = WEEKS[boardWeekIdx][0];
+  document.getElementById("tasksWeekLabel").textContent = weekLabel(boardWeekIdx);
+  document.getElementById("taskPrevWeek").disabled = boardWeekIdx <= 0;
+  document.getElementById("taskNextWeek").disabled = boardWeekIdx >= N_WEEKS - 1;
 
-  const weekTasks = TASKS.filter(t=>t.week_start===weekStart).slice().sort((a,b)=>{
-    if(a.done !== b.done) return a.done ? 1 : -1;
-    const pa = PRIORITY_ORDER[a.priority] ?? 1, pb = PRIORITY_ORDER[b.priority] ?? 1;
-    if(pa !== pb) return pa - pb;
-    return new Date(a.created_at) - new Date(b.created_at);
-  });
-
-  const container = document.getElementById("tasksList");
-  if(!weekTasks.length){
-    container.innerHTML = `<div class="pct">Noch keine Aufgaben für diese Woche.</div>`;
-    return;
-  }
-  const personLabel = { tim:"Tim", simon:"Simon", beide:"Beide" };
-  const prioLabel = { hoch:"Hoch", mittel:"Mittel", niedrig:"Niedrig" };
-  container.innerHTML = weekTasks.map(t=>`
-    <div class="task-row ${t.done?"done":""}">
-      <input type="checkbox" class="task-check" data-id="${t.id}" ${t.done?"checked":""}>
-      <span class="task-text">${escapeHtml(t.text)}</span>
-      <span class="task-badge person">${personLabel[t.assignee]||t.assignee}</span>
-      <span class="task-badge prio-${t.priority}">${prioLabel[t.priority]||t.priority}</span>
-      <button type="button" class="task-del" data-id="${t.id}" title="Löschen">✕</button>
-    </div>
-  `).join("");
+  const weekTasks = TASKS.filter(t=>t.week_start===weekStart);
+  const board = document.getElementById("kanbanBoard");
+  board.innerHTML = STATUS_COLUMNS.map(([key,label])=>{
+    const colTasks = weekTasks.filter(t=>normStatus(t)===key).slice().sort((a,b)=>{
+      const pa = PRIORITY_ORDER[a.priority] ?? 1, pb = PRIORITY_ORDER[b.priority] ?? 1;
+      if(pa !== pb) return pa - pb;
+      return new Date(a.created_at) - new Date(b.created_at);
+    });
+    const cards = colTasks.length
+      ? colTasks.map(t=>`
+        <div class="kanban-card ${key==="done"?"is-done":""}" data-id="${t.id}">
+          <div class="kanban-card-text">${escapeHtml(t.text)}</div>
+          <div class="kanban-card-badges">
+            <span class="task-badge person">${PERSON_LABEL[t.assignee]||t.assignee}</span>
+            <span class="task-badge prio-${t.priority}">${PRIO_LABEL[t.priority]||t.priority}</span>
+          </div>
+        </div>`).join("")
+      : `<div class="kanban-empty">–</div>`;
+    return `
+      <div class="kanban-col">
+        <div class="kanban-col-head">
+          <span class="kanban-col-title">${label}</span>
+          <span class="kanban-count">${colTasks.length}</span>
+        </div>
+        <div class="kanban-cards">${cards}</div>
+      </div>`;
+  }).join("");
 }
 
 function renderAll(){
@@ -1140,8 +1238,7 @@ document.getElementById("saveHebelBtn").addEventListener("click", async ()=>{
 document.getElementById("saveGoalBtn").addEventListener("click", async ()=>{
   const textEl = document.getElementById("inGoalText");
   const goal = textEl.value.trim();
-  const curIdx = findCurrentWeekIndex();
-  const weekStart = WEEKS[curIdx][0];
+  const weekStart = WEEKS[boardWeekIdx][0];
   const { data, error } = await db.from("weekly_goals").upsert({ week_start: weekStart, goal }, { onConflict: "week_start" }).select();
   if(error){ console.error(error); alert("Wochenfokus konnte nicht gespeichert werden: "+error.message); return; }
   const idx = GOALS.findIndex(g=>g.week_start===weekStart);
@@ -1157,9 +1254,8 @@ document.getElementById("addTaskBtn").addEventListener("click", async ()=>{
   if(!text) return;
   const assignee = document.getElementById("inTaskAssignee").value;
   const priority = document.getElementById("inTaskPriority").value;
-  const curIdx = findCurrentWeekIndex();
   const { data, error } = await db.from("tasks").insert({
-    week_start: WEEKS[curIdx][0], text, assignee, priority, done: false
+    week_start: WEEKS[boardWeekIdx][0], text, assignee, priority, done: false
   }).select();
   if(error){ console.error(error); alert("Aufgabe konnte nicht gespeichert werden: "+error.message); return; }
   TASKS.push(data[0]);
@@ -1167,30 +1263,91 @@ document.getElementById("addTaskBtn").addEventListener("click", async ()=>{
   renderTasks();
 });
 
-document.getElementById("tasksList").addEventListener("click", async (ev)=>{
-  if(ev.target.classList.contains("task-check")){
-    const id = ev.target.dataset.id;
-    const task = TASKS.find(t=>String(t.id)===String(id));
-    if(!task) return;
-    task.done = ev.target.checked;
-    const { error } = await db.from("tasks").update({ done: task.done }).eq("id", id);
-    if(error){ console.error(error); alert("Speichern fehlgeschlagen: "+error.message); }
-    renderTasks();
-  }
-  if(ev.target.classList.contains("task-del")){
-    const id = ev.target.dataset.id;
-    if(!confirm("Aufgabe wirklich löschen?")) return;
-    const { error } = await db.from("tasks").delete().eq("id", id);
-    if(error){ console.error(error); alert("Löschen fehlgeschlagen: "+error.message); return; }
-    TASKS = TASKS.filter(t=>String(t.id)!==String(id));
-    renderTasks();
-  }
+/* ---------- Board: Wochen-Navigation ---------- */
+document.getElementById("taskPrevWeek").addEventListener("click", ()=>{
+  if(boardWeekIdx > 0){ boardWeekIdx--; renderGoal(); renderTasks(); }
+});
+document.getElementById("taskNextWeek").addEventListener("click", ()=>{
+  if(boardWeekIdx < N_WEEKS - 1){ boardWeekIdx++; renderGoal(); renderTasks(); }
+});
+
+/* ---------- Board: Karte anklicken -> Modal ---------- */
+let modalTaskId = null;
+function openTaskModal(id){
+  const t = TASKS.find(x=>String(x.id)===String(id));
+  if(!t) return;
+  modalTaskId = t.id;
+  document.getElementById("modalTaskText").value = t.text;
+  document.getElementById("modalStatus").value = normStatus(t);
+  document.getElementById("modalAssignee").value = t.assignee;
+  document.getElementById("modalPriority").value = t.priority;
+  // "Nächste Woche" nur anbieten, wenn es eine nächste Woche gibt
+  document.getElementById("modalPushWeek").style.display = (boardWeekIdx < N_WEEKS - 1) ? "inline-flex" : "none";
+  document.getElementById("taskModal").classList.add("open");
+}
+function closeTaskModal(){
+  document.getElementById("taskModal").classList.remove("open");
+  modalTaskId = null;
+}
+
+document.getElementById("kanbanBoard").addEventListener("click", (ev)=>{
+  const card = ev.target.closest(".kanban-card");
+  if(card) openTaskModal(card.dataset.id);
+});
+
+document.getElementById("modalClose").addEventListener("click", closeTaskModal);
+document.getElementById("taskModal").addEventListener("click", (ev)=>{
+  if(ev.target.id === "taskModal") closeTaskModal();
+});
+document.addEventListener("keydown", (ev)=>{
+  if(ev.key === "Escape" && document.getElementById("taskModal").classList.contains("open")) closeTaskModal();
+});
+
+document.getElementById("modalSave").addEventListener("click", async ()=>{
+  if(modalTaskId == null) return;
+  const t = TASKS.find(x=>String(x.id)===String(modalTaskId));
+  if(!t) return;
+  const text = document.getElementById("modalTaskText").value.trim();
+  if(!text){ alert("Der Aufgabentext darf nicht leer sein."); return; }
+  const status = document.getElementById("modalStatus").value;
+  const assignee = document.getElementById("modalAssignee").value;
+  const priority = document.getElementById("modalPriority").value;
+  const done = status === "done";
+  const { error } = await db.from("tasks").update({ text, status, assignee, priority, done }).eq("id", t.id);
+  if(error){ console.error(error); alert("Speichern fehlgeschlagen: "+error.message); return; }
+  Object.assign(t, { text, status, assignee, priority, done });
+  closeTaskModal();
+  renderTasks();
+});
+
+document.getElementById("modalPushWeek").addEventListener("click", async ()=>{
+  if(modalTaskId == null || boardWeekIdx >= N_WEEKS - 1) return;
+  const t = TASKS.find(x=>String(x.id)===String(modalTaskId));
+  if(!t) return;
+  const nextWeekStart = WEEKS[boardWeekIdx + 1][0];
+  const { error } = await db.from("tasks").update({ week_start: nextWeekStart }).eq("id", t.id);
+  if(error){ console.error(error); alert("Verschieben fehlgeschlagen: "+error.message); return; }
+  t.week_start = nextWeekStart;
+  closeTaskModal();
+  renderTasks();
+});
+
+document.getElementById("modalDelete").addEventListener("click", async ()=>{
+  if(modalTaskId == null) return;
+  if(!confirm("Aufgabe wirklich löschen?")) return;
+  const id = modalTaskId;
+  const { error } = await db.from("tasks").delete().eq("id", id);
+  if(error){ console.error(error); alert("Löschen fehlgeschlagen: "+error.message); return; }
+  TASKS = TASKS.filter(t=>String(t.id)!==String(id));
+  closeTaskModal();
+  renderTasks();
 });
 
 /* ---------- Init ---------- */
 async function init(){
   await ensureAuthorized();
   populateEntryControls();
+  boardWeekIdx = findCurrentWeekIndex();
   await fetchAllData();
   loadDayIntoForm();
   loadDayIntoHebelForm();
