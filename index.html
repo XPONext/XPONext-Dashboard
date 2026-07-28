@@ -83,13 +83,14 @@
   .badge.warn{background:var(--amber-bg);color:var(--amber);}
   .badge.low{background:var(--red-bg);color:var(--red);}
 
-  select, input[type=number], input[type=date]{
+  select, input[type=number], input[type=date], input[type=text]{
     font-family:'Inter',sans-serif;border:1.5px solid var(--border);border-radius:8px;padding:0.55rem 0.7rem;font-size:0.93rem;color:var(--text-primary);width:100%;background:#fff;transition:border-color .15s var(--ease), box-shadow .15s var(--ease);
   }
   select:focus,input:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-light);}
   label{display:block;font-size:0.8rem;font-weight:600;color:var(--text-body);margin-bottom:0.35rem;}
   .field{margin-bottom:1rem;}
   .form-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:1rem;}
+  #inGoalText{font-size:1.15rem;font-weight:700;color:var(--accent-dark);border-width:2px;padding:0.8rem 1rem;}
 
   .btn{background:var(--accent);color:#fff;padding:0.72rem 1.5rem;border-radius:9px;border:none;font-weight:700;font-size:0.92rem;cursor:pointer;font-family:'Inter',sans-serif;box-shadow:0 1px 2px rgba(46,61,40,0.25);transition:transform .12s var(--ease), box-shadow .12s var(--ease), background .12s var(--ease);}
   .btn:hover{background:var(--accent-dark);transform:translateY(-1px);box-shadow:0 4px 10px rgba(46,61,40,0.28);}
