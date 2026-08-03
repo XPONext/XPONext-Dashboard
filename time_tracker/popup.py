@@ -1,12 +1,13 @@
 #!/usr/bin/env python3
 """
 Zeittracking-Popup via osascript (native macOS Dialoge).
-Wird alle 30 Minuten vom LaunchAgent aufgerufen.
+Wird alle 30 Minuten vom Loop aufgerufen, den der LaunchAgent beim Anmelden startet.
 
 Der komplette Ablauf läuft in EINEM osascript-Aufruf (kein Python-Zwischenschritt
 zwischen den Dialogen), damit es sich beim Durchklicken flüssig anfühlt:
 
-  1. Startdialog: "Pause" (überspringt alles) oder "Jetzt eintragen"
+  1. Startdialog: "Feierabend" (beendet den Loop für heute), "Pause"
+     (überspringt alles) oder "Jetzt eintragen"
   2. State (Deepwork, Kommunikation, ... oder Sonstiges) — reine Auswahl, kein Freitext
   3. Zuordnung (Kunde / XPO / Neukunden / Sonstiges) — Liste kommt live aus Supabase
      (Tabelle "zuordnung_optionen"), damit neue Kunden sofort auswählbar sind, ohne
@@ -96,7 +97,8 @@ def run_flow():
     script = f'''
         tell application "System Events"
             activate
-            set startBtn to button returned of (display dialog "Was machst du gerade?" buttons {{"Pause", "Jetzt eintragen"}} default button "Jetzt eintragen" with title "XPO Zeittracker")
+            set startBtn to button returned of (display dialog "Was machst du gerade?" buttons {{"Feierabend", "Pause", "Jetzt eintragen"}} default button "Jetzt eintragen" with title "XPO Zeittracker")
+            if startBtn is "Feierabend" then return "STOP"
             if startBtn is "Pause" then return "PAUSE"
 
             {_choose_step("stateVal", STATES, "Was war dein State?", step_no=1, total=3)}
@@ -222,6 +224,13 @@ def main():
         result = run_flow()
         if result is None or result == "CANCELLED":
             return  # abgebrochen — nichts speichern
+
+        if result == "STOP":
+            # Feierabend: Loop nach diesem Durchlauf beenden (start_loop.sh liest
+            # die Datei). Beim nächsten Anmelden startet der LaunchAgent neu.
+            (ROOT / ".tmp").mkdir(exist_ok=True)
+            (ROOT / ".tmp" / "stop.flag").touch()
+            return
 
         if result == "PAUSE":
             post_entry("Pause", None, None)

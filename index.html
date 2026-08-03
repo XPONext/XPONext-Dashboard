@@ -404,7 +404,7 @@
 <!-- ZEITTRACKING -->
 <section class="view" id="view-zeittracking">
   <div class="container">
-    <div class="card">
+    <div class="card" id="ztTodayCard">
       <h2>Heute</h2>
       <div class="grid4">
         <div class="stat"><div class="lbl">Std. gearbeitet</div><div class="num" id="ztTodayHours">0</div></div>
@@ -415,29 +415,36 @@
     </div>
 
     <div class="card">
-      <h2>Diese Woche</h2>
+      <div class="board-head">
+        <h2 id="ztWeekHeading">Diese Woche</h2>
+        <div class="week-nav">
+          <button type="button" class="wk-btn" id="ztPrevWeek" title="Vorherige Woche">‹</button>
+          <span id="ztWeekLabel">diese Woche</span>
+          <button type="button" class="wk-btn" id="ztNextWeek" title="Nächste Woche">›</button>
+        </div>
+      </div>
       <div class="grid4">
         <div class="stat"><div class="lbl">Std. gearbeitet</div><div class="num" id="ztWeekHours">0</div></div>
         <div class="stat"><div class="lbl">Tim</div><div class="num" id="ztWeekTim">0</div></div>
         <div class="stat"><div class="lbl">Simon</div><div class="num" id="ztWeekSimon">0</div></div>
-        <div class="stat"><div class="lbl">Highscore Tag</div><div class="num" id="ztHighscoreDay" style="font-size:1rem;">—</div></div>
+        <div class="stat"><div class="lbl">Bester Tag <small style="font-weight:400;">gesamt</small></div><div class="num" id="ztHighscoreDay" style="font-size:1rem;">—</div></div>
       </div>
     </div>
 
     <div class="grid2">
       <div class="card">
-        <h2>Nach State <small>diese Woche</small></h2>
+        <h2>Nach State <small class="zt-week-sub">diese Woche</small></h2>
         <div id="ztByState"></div>
       </div>
 
       <div class="card">
-        <h2>Nach Zuordnung <small>diese Woche</small></h2>
+        <h2>Nach Zuordnung <small class="zt-week-sub">diese Woche</small></h2>
         <div id="ztByZuordnung"></div>
       </div>
     </div>
 
     <div class="card" style="margin-top:1.3rem;">
-      <h2>Nach Aktivität <small>diese Woche</small></h2>
+      <h2>Nach Aktivität <small class="zt-week-sub">diese Woche</small></h2>
       <div id="ztByAktivitaet"></div>
     </div>
   </div>
@@ -714,6 +721,7 @@ const STATUS_COLUMNS = [
   ["done","Done"]
 ];
 let boardWeekIdx = 0; // aktuell im Aufgaben-Board angezeigte Woche (Index in WEEKS)
+let ztWeekIdx = null; // aktuell im Zeittracking angezeigte Woche; null = noch nicht gesetzt, startet auf der laufenden
 // Status robust bestimmen — auch für Alt-Aufgaben ohne status-Feld
 function normStatus(t){
   if(t.status && STATUS_COLUMNS.some(c=>c[0]===t.status)) return t.status;
@@ -842,13 +850,25 @@ function renderTimeBreakdown(entries, field, containerId){
       <div class="top"><span class="name">${key}</span><span class="vals">${num(minutes/60,1)} Std. (${num(pct,0)}%)</span></div>
       <div class="bar-track"><div class="bar-fill ok" style="width:${pct}%"></div></div>
     </div>`;
-  }).join("") : `<div class="pct">Noch keine Daten diese Woche.</div>`;
+  }).join("") : `<div class="pct">Keine Daten in dieser Woche.</div>`;
 }
 
 function renderZeittracking(){
   const todayStr = localDateStr(new Date().toISOString());
   const curIdx = findCurrentWeekIndex();
-  const weekFrom = WEEKS[curIdx][0], weekTo = WEEKS[curIdx][1];
+  if(ztWeekIdx === null) ztWeekIdx = curIdx;
+  const isCurrentWeek = ztWeekIdx === curIdx;
+  const weekFrom = WEEKS[ztWeekIdx][0], weekTo = WEEKS[ztWeekIdx][1];
+
+  // Die "Heute"-Karte ergibt nur Sinn, solange man auf der laufenden Woche steht.
+  document.getElementById("ztTodayCard").style.display = isCurrentWeek ? "" : "none";
+  document.getElementById("ztWeekHeading").textContent = isCurrentWeek ? "Diese Woche" : "Ausgewählte Woche";
+  document.getElementById("ztWeekLabel").textContent = weekLabel(ztWeekIdx);
+  document.getElementById("ztPrevWeek").disabled = ztWeekIdx <= 0;
+  document.getElementById("ztNextWeek").disabled = ztWeekIdx >= N_WEEKS - 1;
+  document.querySelectorAll(".zt-week-sub").forEach(el=>{
+    el.textContent = isCurrentWeek ? "diese Woche" : weekLabel(ztWeekIdx);
+  });
 
   const todayAll = filterTimeEntries({dateFrom: todayStr, dateTo: todayStr});
   document.getElementById("ztTodayHours").textContent = num(sumMinutes(todayAll, true)/60, 1);
@@ -1341,6 +1361,14 @@ document.getElementById("taskPrevWeek").addEventListener("click", ()=>{
 });
 document.getElementById("taskNextWeek").addEventListener("click", ()=>{
   if(boardWeekIdx < N_WEEKS - 1){ boardWeekIdx++; renderGoal(); renderTasks(); }
+});
+
+/* ---------- Zeittracking: Wochen-Navigation ---------- */
+document.getElementById("ztPrevWeek").addEventListener("click", ()=>{
+  if(ztWeekIdx > 0){ ztWeekIdx--; renderZeittracking(); }
+});
+document.getElementById("ztNextWeek").addEventListener("click", ()=>{
+  if(ztWeekIdx < N_WEEKS - 1){ ztWeekIdx++; renderZeittracking(); }
 });
 
 /* ---------- Board: Karte anklicken -> Modal ---------- */
