@@ -161,6 +161,17 @@
   .task-badge.prio-mittel{background:var(--amber-bg);color:var(--amber);}
   .task-badge.prio-niedrig{background:#fff;color:var(--text-muted);border:1px solid var(--border);}
 
+  /* Commitments */
+  .commit-row{display:flex;align-items:center;gap:0.7rem;padding:0.65rem 0;border-bottom:1px solid var(--border);}
+  .commit-row:last-child{border-bottom:none;}
+  .commit-row input[type=checkbox]{width:17px;height:17px;flex:0 0 auto;accent-color:var(--accent);cursor:pointer;margin:0;}
+  .commit-text{flex:1;font-size:0.9rem;color:var(--text-primary);line-height:1.4;word-break:break-word;}
+  .commit-row.is-done .commit-text{text-decoration:line-through;color:var(--text-muted);}
+  .commit-del{background:none;border:none;color:var(--text-muted);font-size:1rem;line-height:1;cursor:pointer;padding:0.2rem 0.3rem;border-radius:6px;opacity:0;transition:opacity .12s var(--ease), color .12s var(--ease);}
+  .commit-row:hover .commit-del{opacity:1;}
+  .commit-del:hover{color:var(--red);}
+  .commit-empty{font-size:0.85rem;color:var(--text-muted);padding:0.4rem 0;}
+
   /* Aufgaben-Modal */
   .modal-overlay{position:fixed;inset:0;background:rgba(13,13,13,0.45);display:none;align-items:center;justify-content:center;z-index:1000;padding:1rem;}
   .modal-overlay.open{display:flex;}
@@ -280,6 +291,22 @@
       <div class="pct" id="entryWeekInfo"></div>
     </div>
 
+    <div class="focus-banner">
+      <div class="focus-label">Wochenfokus · <span id="goalWeekLabel">diese Woche</span></div>
+      <div class="focus-text empty" id="goalDisplay">Noch kein Fokus für diese Woche gesetzt</div>
+      <div class="focus-stroke"></div>
+    </div>
+
+    <div class="board-actions">
+      <button class="btn-outline" id="editGoalBtn">Wochenfokus ändern</button>
+      <button class="btn" id="openAddCommitmentBtn">+ Commitment hinzufügen</button>
+    </div>
+
+    <div class="card">
+      <h2>Commitments <small id="commitmentsWeekLabel">worauf ihr euch diese Woche festlegt</small></h2>
+      <div id="commitmentsList"></div>
+    </div>
+
     <div class="card">
       <h2>Team-Zahlen <small>Termine & Closes — gemeinsam. Zeigt den Stand für den gewählten Tag, jederzeit korrigierbar.</small></h2>
       <div class="form-grid">
@@ -316,14 +343,7 @@
 <!-- AUFGABEN -->
 <section class="view" id="view-aufgaben">
   <div class="container">
-    <div class="focus-banner">
-      <div class="focus-label">Wochenfokus · <span id="goalWeekLabel">diese Woche</span></div>
-      <div class="focus-text empty" id="goalDisplay">Noch kein Fokus für diese Woche gesetzt</div>
-      <div class="focus-stroke"></div>
-    </div>
-
     <div class="board-actions">
-      <button class="btn-outline" id="editGoalBtn">Wochenfokus ändern</button>
       <button class="btn" id="openAddTaskBtn">+ Aufgabe hinzufügen</button>
     </div>
 
@@ -511,6 +531,27 @@
   </div>
 </div>
 
+<!-- NEUES-COMMITMENT-MODAL -->
+<div class="modal-overlay" id="addCommitmentModal">
+  <div class="modal">
+    <div class="modal-head">
+      <h3>Neues Commitment</h3>
+      <button type="button" class="modal-close" id="addCommitmentModalClose" title="Schließen">✕</button>
+    </div>
+    <div class="field">
+      <label>Worauf legst du dich diese Woche fest?</label>
+      <input type="text" id="inCommitmentText" placeholder="z.B. 12 Std. Lead-Gen">
+    </div>
+    <div class="field" style="margin-bottom:0;">
+      <label>Zugewiesen an</label>
+      <select id="inCommitmentAssignee"><option value="tim">Tim</option><option value="simon">Simon</option><option value="beide">Beide</option></select>
+    </div>
+    <div class="modal-actions">
+      <button type="button" class="btn" id="addCommitmentBtn">Commitment hinzufügen</button>
+    </div>
+  </div>
+</div>
+
 <!-- NEUE-AUFGABE-MODAL -->
 <div class="modal-overlay" id="addTaskModal">
   <div class="modal">
@@ -613,12 +654,13 @@ function weekIndexForDate(dateStr){
 }
 
 async function fetchAllData(){
-  const [personalRes, teamRes, timeRes, tasksRes, goalsRes] = await Promise.all([
+  const [personalRes, teamRes, timeRes, tasksRes, goalsRes, commitRes] = await Promise.all([
     db.from("daily_personal").select("*"),
     db.from("daily_team").select("*"),
     db.from("time_entries").select("*"),
     db.from("tasks").select("*").order("created_at", { ascending: true }),
-    db.from("weekly_goals").select("*")
+    db.from("weekly_goals").select("*"),
+    db.from("weekly_commitments").select("*").order("created_at", { ascending: true })
   ]);
   if(timeRes.error){ console.error(timeRes.error); TIME_ENTRIES = []; }
   else{ TIME_ENTRIES = timeRes.data; }
@@ -626,6 +668,8 @@ async function fetchAllData(){
   else{ TASKS = tasksRes.data; }
   if(goalsRes.error){ console.error(goalsRes.error); GOALS = []; }
   else{ GOALS = goalsRes.data; }
+  if(commitRes.error){ console.error(commitRes.error); COMMITMENTS = []; }
+  else{ COMMITMENTS = commitRes.data; }
   const dp = {};
   if(personalRes.error){ console.error(personalRes.error); alert("Daten konnten nicht geladen werden: "+personalRes.error.message); }
   else{
@@ -710,6 +754,7 @@ let DATA_TEAM = {}; // Wochen-Aggregate, aus DAILY_TEAM berechnet: { 1: {termine
 let TIME_ENTRIES = []; // Rohe Zeittracking-Einträge aus der Supabase-Tabelle "time_entries"
 let TASKS = []; // Rohe Aufgaben aus der Supabase-Tabelle "tasks"
 let GOALS = []; // Wochenfokus aus der Supabase-Tabelle "weekly_goals"
+let COMMITMENTS = []; // Wochen-Commitments aus der Supabase-Tabelle "weekly_commitments"
 const PRIORITY_ORDER = { hoch: 0, mittel: 1, niedrig: 2 };
 
 // Kanban-Spalten: [status-key, Anzeigename]
@@ -1059,6 +1104,9 @@ function loadDayIntoForm(){
   const wi = weekIndexForDate(date);
   document.getElementById("entryWeekInfo").textContent = wi>=0 ? ("gehört zu "+weekLabel(wi)) : "";
   renderPreview(wi);
+  // Fokus und Commitments hängen an der Woche des gewählten Tages und müssen mitziehen.
+  renderGoal();
+  renderCommitments();
 }
 
 function renderPreview(i){
@@ -1151,10 +1199,18 @@ function renderHistory(){
   document.getElementById("historyBody").innerHTML = rows.join("");
 }
 
-/* ---------- Wochenfokus ---------- */
+/* ---------- Wochenfokus & Commitments ----------
+   Beides hängt an der Woche des im Eingabe-Tab gewählten Tages — wer dort einen
+   anderen Tag wählt, sieht Fokus und Commitments der zugehörigen Woche. */
+function entryWeekIdx(){
+  const wi = weekIndexForDate(document.getElementById("entryDate").value);
+  return wi >= 0 ? wi : findCurrentWeekIndex();
+}
+
 function renderGoal(){
-  const weekStart = WEEKS[boardWeekIdx][0];
-  document.getElementById("goalWeekLabel").textContent = weekLabel(boardWeekIdx);
+  const wi = entryWeekIdx();
+  const weekStart = WEEKS[wi][0];
+  document.getElementById("goalWeekLabel").textContent = weekLabel(wi);
   const goal = GOALS.find(g=>g.week_start===weekStart);
   const disp = document.getElementById("goalDisplay");
   if(goal && goal.goal && goal.goal.trim()){
@@ -1164,6 +1220,26 @@ function renderGoal(){
     disp.textContent = "Noch kein Fokus für diese Woche gesetzt";
     disp.classList.add("empty");
   }
+}
+
+function renderCommitments(){
+  const wi = entryWeekIdx();
+  const weekStart = WEEKS[wi][0];
+  document.getElementById("commitmentsWeekLabel").textContent = "worauf ihr euch in "+weekLabel(wi)+" festlegt";
+
+  const rows = COMMITMENTS.filter(c=>c.week_start===weekStart);
+  const list = document.getElementById("commitmentsList");
+  if(!rows.length){
+    list.innerHTML = `<div class="commit-empty">Noch keine Commitments für diese Woche.</div>`;
+    return;
+  }
+  list.innerHTML = rows.map(c=>`
+    <div class="commit-row ${c.done?"is-done":""}" data-id="${c.id}">
+      <input type="checkbox" ${c.done?"checked":""} data-act="toggle" data-id="${c.id}">
+      <span class="commit-text">${escapeHtml(c.text)}</span>
+      <span class="task-badge person">${PERSON_LABEL[c.assignee]||c.assignee}</span>
+      <button type="button" class="commit-del" data-act="del" data-id="${c.id}" title="Commitment löschen">✕</button>
+    </div>`).join("");
 }
 
 /* ---------- Aufgaben-Board ---------- */
@@ -1209,6 +1285,7 @@ function renderAll(){
   renderDashboard();
   renderHistory();
   renderGoal();
+  renderCommitments();
   renderTasks();
   const date = document.getElementById("entryDate").value;
   renderPreview(weekIndexForDate(date));
@@ -1303,7 +1380,7 @@ document.getElementById("saveHebelBtn").addEventListener("click", async ()=>{
 
 /* ---------- Wochenfokus-Modal ---------- */
 function openGoalModal(){
-  const weekStart = WEEKS[boardWeekIdx][0];
+  const weekStart = WEEKS[entryWeekIdx()][0];
   const goal = GOALS.find(g=>g.week_start===weekStart);
   document.getElementById("inGoalText").value = goal ? goal.goal : "";
   document.getElementById("goalModal").classList.add("open");
@@ -1317,13 +1394,62 @@ document.getElementById("goalModal").addEventListener("click", (ev)=>{ if(ev.tar
 
 document.getElementById("goalModalSave").addEventListener("click", async ()=>{
   const goal = document.getElementById("inGoalText").value.trim();
-  const weekStart = WEEKS[boardWeekIdx][0];
+  const weekStart = WEEKS[entryWeekIdx()][0];
   const { data, error } = await db.from("weekly_goals").upsert({ week_start: weekStart, goal }, { onConflict: "week_start" }).select();
   if(error){ console.error(error); alert("Wochenfokus konnte nicht gespeichert werden: "+error.message); return; }
   const idx = GOALS.findIndex(g=>g.week_start===weekStart);
   if(idx>=0) GOALS[idx] = data[0]; else GOALS.push(data[0]);
   closeGoalModal();
   renderGoal();
+});
+
+/* ---------- Commitments ---------- */
+function openAddCommitmentModal(){
+  document.getElementById("inCommitmentText").value = "";
+  document.getElementById("inCommitmentAssignee").value = "tim";
+  document.getElementById("addCommitmentModal").classList.add("open");
+  setTimeout(()=>document.getElementById("inCommitmentText").focus(), 0);
+}
+function closeAddCommitmentModal(){ document.getElementById("addCommitmentModal").classList.remove("open"); }
+
+document.getElementById("openAddCommitmentBtn").addEventListener("click", openAddCommitmentModal);
+document.getElementById("addCommitmentModalClose").addEventListener("click", closeAddCommitmentModal);
+document.getElementById("addCommitmentModal").addEventListener("click", (ev)=>{ if(ev.target.id==="addCommitmentModal") closeAddCommitmentModal(); });
+document.getElementById("inCommitmentText").addEventListener("keydown", (ev)=>{ if(ev.key==="Enter") document.getElementById("addCommitmentBtn").click(); });
+
+document.getElementById("addCommitmentBtn").addEventListener("click", async ()=>{
+  const text = document.getElementById("inCommitmentText").value.trim();
+  if(!text){ alert("Bitte ein Commitment eingeben."); return; }
+  const assignee = document.getElementById("inCommitmentAssignee").value;
+  const { data, error } = await db.from("weekly_commitments").insert({
+    week_start: WEEKS[entryWeekIdx()][0], text, assignee, done: false
+  }).select();
+  if(error){ console.error(error); alert("Commitment konnte nicht gespeichert werden: "+error.message); return; }
+  COMMITMENTS.push(data[0]);
+  closeAddCommitmentModal();
+  renderCommitments();
+});
+
+document.getElementById("commitmentsList").addEventListener("click", async (ev)=>{
+  const el = ev.target.closest("[data-act]");
+  if(!el) return;
+  const id = el.dataset.id;
+  const c = COMMITMENTS.find(x=>String(x.id)===String(id));
+  if(!c) return;
+
+  if(el.dataset.act === "toggle"){
+    const done = el.checked;
+    const { error } = await db.from("weekly_commitments").update({ done }).eq("id", c.id);
+    if(error){ console.error(error); alert("Konnte nicht gespeichert werden: "+error.message); el.checked = !done; return; }
+    c.done = done;
+    renderCommitments();
+  } else if(el.dataset.act === "del"){
+    if(!confirm("Commitment \""+c.text+"\" löschen?")) return;
+    const { error } = await db.from("weekly_commitments").delete().eq("id", c.id);
+    if(error){ console.error(error); alert("Konnte nicht gelöscht werden: "+error.message); return; }
+    COMMITMENTS = COMMITMENTS.filter(x=>String(x.id)!==String(id));
+    renderCommitments();
+  }
 });
 
 /* ---------- Neue-Aufgabe-Modal ---------- */
@@ -1357,10 +1483,10 @@ document.getElementById("addTaskBtn").addEventListener("click", async ()=>{
 
 /* ---------- Board: Wochen-Navigation ---------- */
 document.getElementById("taskPrevWeek").addEventListener("click", ()=>{
-  if(boardWeekIdx > 0){ boardWeekIdx--; renderGoal(); renderTasks(); }
+  if(boardWeekIdx > 0){ boardWeekIdx--; renderTasks(); }
 });
 document.getElementById("taskNextWeek").addEventListener("click", ()=>{
-  if(boardWeekIdx < N_WEEKS - 1){ boardWeekIdx++; renderGoal(); renderTasks(); }
+  if(boardWeekIdx < N_WEEKS - 1){ boardWeekIdx++; renderTasks(); }
 });
 
 /* ---------- Zeittracking: Wochen-Navigation ---------- */
