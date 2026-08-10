@@ -15,15 +15,27 @@ if [ "$1" = "--delay" ] && [ -n "$2" ]; then
   DELAY="$2"
 fi
 
-if [ -f "$PIDFILE" ] && kill -0 "$(cat "$PIDFILE")" 2>/dev/null; then
-  osascript -e 'display notification "Läuft schon." with title "XPO Zeittracker"'
-  exit 0
+# Doppelstart verhindern — aber nur, wenn hinter der gemerkten PID auch wirklich
+# noch unser Loop steckt. Wird der Rechner heruntergefahren, während der Loop
+# läuft, bleibt die PID-Datei liegen; nach dem Neustart gehört dieselbe (niedrige)
+# PID fast sicher einem fremden Systemprozess. Ein reines "kill -0" hielte den
+# Tracker dann für laufend und würde sich bei jedem Anmelden sofort beenden.
+if [ -f "$PIDFILE" ]; then
+  OLDPID="$(cat "$PIDFILE" 2>/dev/null)"
+  if [ -n "$OLDPID" ] && ps -p "$OLDPID" -o command= 2>/dev/null | grep -q "start_loop.sh"; then
+    osascript -e 'display notification "Läuft schon." with title "XPO Zeittracker"'
+    exit 0
+  fi
+  rm -f "$PIDFILE"
 fi
 
 # Reste von einem vorherigen, nicht sauber beendeten Lauf entfernen.
 rm -f "$DIR/.tmp/popup.lock"
 
 echo $$ > "$PIDFILE"
+# Egal wie der Loop endet (Feierabend, Abmelden, kill) — die PID-Datei nicht
+# als Leiche zurücklassen.
+trap 'rm -f "$PIDFILE"' EXIT
 rm -f "$DIR/.tmp/stop.flag"
 
 if [ "$DELAY" -gt 0 ]; then
