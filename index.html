@@ -13,6 +13,7 @@
     --bg:#FFFFFF; --bg-subtle:#F9FAFB; --bg-dark:#0D0D0D;
     --border:#E5E7EB;
     --amber:#B45309; --amber-bg:#FEF3C7; --red:#B91C1C; --red-bg:#FEE2E2;
+    --green:#1B7F4C; --green-bg:#E6F4EC;
     --shadow-sm:0 1px 2px rgba(13,13,13,0.045), 0 1px 1px rgba(13,13,13,0.03);
     --shadow-md:0 8px 20px -6px rgba(13,13,13,0.09), 0 2px 6px rgba(13,13,13,0.05);
     --ease:cubic-bezier(.2,.7,.2,1);
@@ -161,6 +162,47 @@
   .task-badge.prio-mittel{background:var(--amber-bg);color:var(--amber);}
   .task-badge.prio-niedrig{background:#fff;color:var(--text-muted);border:1px solid var(--border);}
 
+  /* Projekte */
+  .toggle-inline{display:inline-flex;align-items:center;gap:0.45rem;font-size:0.82rem;color:var(--text-muted);cursor:pointer;user-select:none;}
+  .toggle-inline input{width:15px;height:15px;accent-color:var(--accent);cursor:pointer;margin:0;}
+
+  .project-card{background:#fff;border:1px solid var(--border);border-radius:14px;padding:1.3rem 1.4rem;margin-bottom:1.1rem;box-shadow:var(--shadow-sm);transition:box-shadow .14s var(--ease);}
+  .project-card:hover{box-shadow:var(--shadow-md);}
+  .project-card.is-done{opacity:0.62;}
+  .project-top{display:flex;align-items:flex-start;gap:0.8rem;margin-bottom:0.2rem;}
+  .project-title{font-size:1.06rem;font-weight:800;color:var(--text-primary);letter-spacing:-0.01em;line-height:1.3;flex:1;word-break:break-word;}
+  .project-card.is-done .project-title{text-decoration:line-through;}
+  .project-desc{font-size:0.85rem;color:var(--text-muted);line-height:1.45;margin-bottom:0.75rem;word-break:break-word;}
+  .project-badges{display:flex;gap:0.35rem;flex-wrap:wrap;align-items:center;}
+  .project-edit{background:none;border:none;color:var(--text-muted);font-size:0.9rem;cursor:pointer;padding:0.15rem 0.35rem;border-radius:6px;flex:0 0 auto;}
+  .project-edit:hover{color:var(--accent);background:var(--accent-light);}
+
+  .status-badge{font-size:0.66rem;font-weight:700;padding:0.18rem 0.52rem;border-radius:99px;white-space:nowrap;text-transform:uppercase;letter-spacing:0.04em;}
+  .status-badge.st-aktiv{background:var(--accent-light);color:var(--accent-dark);}
+  .status-badge.st-pausiert{background:var(--amber-bg);color:var(--amber);}
+  .status-badge.st-fertig{background:var(--green-bg,#E6F4EC);color:var(--green,#1B7F4C);}
+  .due-badge{font-size:0.7rem;font-weight:600;color:var(--text-muted);white-space:nowrap;}
+  .due-badge.is-late{color:var(--red);}
+
+  .project-progress{display:flex;align-items:center;gap:0.7rem;margin:0.85rem 0 0.4rem;}
+  .project-progress .bar-track{flex:1;margin:0;}
+  .project-progress .ratio{font-size:0.76rem;font-weight:700;color:var(--text-muted);white-space:nowrap;}
+
+  .step-list{margin-top:0.5rem;border-top:1px solid var(--border);}
+  .step-row{display:flex;align-items:center;gap:0.65rem;padding:0.55rem 0;border-bottom:1px solid var(--border);}
+  .step-row:last-child{border-bottom:none;}
+  .step-row input[type=checkbox]{width:16px;height:16px;flex:0 0 auto;accent-color:var(--accent);cursor:pointer;margin:0;}
+  .step-text{flex:1;font-size:0.87rem;color:var(--text-primary);line-height:1.4;word-break:break-word;}
+  .step-row.is-done .step-text{text-decoration:line-through;color:var(--text-muted);}
+  .step-del{background:none;border:none;color:var(--text-muted);font-size:0.95rem;line-height:1;cursor:pointer;padding:0.2rem 0.3rem;border-radius:6px;opacity:0;transition:opacity .12s var(--ease), color .12s var(--ease);}
+  .step-row:hover .step-del{opacity:1;}
+  .step-del:hover{color:var(--red);}
+  .step-empty{font-size:0.82rem;color:var(--text-muted);padding:0.55rem 0;}
+  .step-add{margin-top:0.6rem;}
+  .projects-empty{text-align:center;padding:2.6rem 1rem;color:var(--text-muted);font-size:0.9rem;}
+  .btn-danger{color:var(--red);border-color:var(--red-bg);}
+  .btn-danger:hover{background:var(--red-bg);border-color:var(--red);}
+
   /* Commitments */
   .commit-row{display:flex;align-items:center;gap:0.7rem;padding:0.65rem 0;border-bottom:1px solid var(--border);}
   .commit-row:last-child{border-bottom:none;}
@@ -196,6 +238,7 @@
     <button class="tab-btn active" data-view="dashboard">Dashboard</button>
     <button class="tab-btn" data-view="eingabe">Wochen-Eingabe</button>
     <button class="tab-btn" data-view="aufgaben">Aufgaben</button>
+    <button class="tab-btn" data-view="projekte">Projekte</button>
     <button class="tab-btn" data-view="hebel">Hebel</button>
     <button class="tab-btn" data-view="verlauf">Verlauf</button>
     <button class="tab-btn" data-view="zeittracking">Zeittracking</button>
@@ -358,6 +401,25 @@
       </div>
       <div class="kanban" id="kanbanBoard"></div>
     </div>
+  </div>
+</section>
+
+<!-- PROJEKTE -->
+<section class="view" id="view-projekte">
+  <div class="container">
+    <div class="board-actions">
+      <button class="btn" id="openAddProjectBtn">+ Projekt anlegen</button>
+      <label class="toggle-inline"><input type="checkbox" id="showDoneProjects"> Abgeschlossene anzeigen</label>
+    </div>
+
+    <div class="grid4" style="margin-bottom:1.3rem;">
+      <div class="stat"><div class="lbl">Projekte aktiv</div><div class="num" id="projStatActive">0</div></div>
+      <div class="stat"><div class="lbl">Schritte offen</div><div class="num" id="projStatOpen">0</div></div>
+      <div class="stat"><div class="lbl">Schritte erledigt</div><div class="num" id="projStatDone">0</div></div>
+      <div class="stat"><div class="lbl">Nächste Deadline</div><div class="num" id="projStatDeadline" style="font-size:1rem;">—</div></div>
+    </div>
+
+    <div id="projectsList"></div>
   </div>
 </section>
 
@@ -531,6 +593,67 @@
   </div>
 </div>
 
+<!-- PROJEKT-MODAL (anlegen & bearbeiten) -->
+<div class="modal-overlay" id="projectModal">
+  <div class="modal">
+    <div class="modal-head">
+      <h3 id="projectModalTitle">Neues Projekt</h3>
+      <button type="button" class="modal-close" id="projectModalClose" title="Schließen">✕</button>
+    </div>
+    <div class="field">
+      <label>Projektname</label>
+      <input type="text" id="inProjectTitle" placeholder="z.B. Eigene Website neu aufbauen">
+    </div>
+    <div class="field">
+      <label>Worum geht's? <small style="color:var(--text-muted);font-weight:400;">optional</small></label>
+      <input type="text" id="inProjectDesc" placeholder="Kurz in einem Satz">
+    </div>
+    <div class="form-grid">
+      <div class="field">
+        <label>Verantwortlich</label>
+        <select id="inProjectOwner"><option value="tim">Tim</option><option value="simon">Simon</option><option value="beide">Beide</option></select>
+      </div>
+      <div class="field">
+        <label>Status</label>
+        <select id="inProjectStatus">
+          <option value="aktiv">Aktiv</option>
+          <option value="pausiert">Pausiert</option>
+          <option value="fertig">Abgeschlossen</option>
+        </select>
+      </div>
+    </div>
+    <div class="field" style="margin-bottom:0;max-width:220px;">
+      <label>Zieldatum <small style="color:var(--text-muted);font-weight:400;">optional</small></label>
+      <input type="date" id="inProjectDue">
+    </div>
+    <div class="modal-actions">
+      <button type="button" class="btn-outline btn-danger" id="projectDeleteBtn" style="margin-right:auto;">Projekt löschen</button>
+      <button type="button" class="btn" id="projectSaveBtn">Speichern</button>
+    </div>
+  </div>
+</div>
+
+<!-- PROJEKTSCHRITT-MODAL -->
+<div class="modal-overlay" id="stepModal">
+  <div class="modal">
+    <div class="modal-head">
+      <h3>Neuer Schritt</h3>
+      <button type="button" class="modal-close" id="stepModalClose" title="Schließen">✕</button>
+    </div>
+    <div class="field">
+      <label>Was ist zu tun?</label>
+      <input type="text" id="inStepText" placeholder="z.B. Struktur der Startseite festlegen">
+    </div>
+    <div class="field" style="margin-bottom:0;">
+      <label>Zugewiesen an</label>
+      <select id="inStepAssignee"><option value="tim">Tim</option><option value="simon">Simon</option><option value="beide">Beide</option></select>
+    </div>
+    <div class="modal-actions">
+      <button type="button" class="btn" id="stepSaveBtn">Schritt hinzufügen</button>
+    </div>
+  </div>
+</div>
+
 <!-- NEUES-COMMITMENT-MODAL -->
 <div class="modal-overlay" id="addCommitmentModal">
   <div class="modal">
@@ -654,14 +777,20 @@ function weekIndexForDate(dateStr){
 }
 
 async function fetchAllData(){
-  const [personalRes, teamRes, timeRes, tasksRes, goalsRes, commitRes] = await Promise.all([
+  const [personalRes, teamRes, timeRes, tasksRes, goalsRes, commitRes, projRes, stepRes] = await Promise.all([
     db.from("daily_personal").select("*"),
     db.from("daily_team").select("*"),
     db.from("time_entries").select("*"),
     db.from("tasks").select("*").order("created_at", { ascending: true }),
     db.from("weekly_goals").select("*"),
-    db.from("weekly_commitments").select("*").order("created_at", { ascending: true })
+    db.from("weekly_commitments").select("*").order("created_at", { ascending: true }),
+    db.from("projects").select("*").order("created_at", { ascending: true }),
+    db.from("project_steps").select("*").order("created_at", { ascending: true })
   ]);
+  if(projRes.error){ console.error(projRes.error); PROJECTS = []; }
+  else{ PROJECTS = projRes.data; }
+  if(stepRes.error){ console.error(stepRes.error); PROJECT_STEPS = []; }
+  else{ PROJECT_STEPS = stepRes.data; }
   if(timeRes.error){ console.error(timeRes.error); TIME_ENTRIES = []; }
   else{ TIME_ENTRIES = timeRes.data; }
   if(tasksRes.error){ console.error(tasksRes.error); TASKS = []; }
@@ -755,6 +884,8 @@ let TIME_ENTRIES = []; // Rohe Zeittracking-Einträge aus der Supabase-Tabelle "
 let TASKS = []; // Rohe Aufgaben aus der Supabase-Tabelle "tasks"
 let GOALS = []; // Wochenfokus aus der Supabase-Tabelle "weekly_goals"
 let COMMITMENTS = []; // Wochen-Commitments aus der Supabase-Tabelle "weekly_commitments"
+let PROJECTS = [];    // Langzeitprojekte aus der Supabase-Tabelle "projects"
+let PROJECT_STEPS = []; // Zugehörige Schritte aus "project_steps"
 const PRIORITY_ORDER = { hoch: 0, mittel: 1, niedrig: 2 };
 
 // Kanban-Spalten: [status-key, Anzeigename]
@@ -1242,6 +1373,83 @@ function renderCommitments(){
     </div>`).join("");
 }
 
+/* ---------- Projekte ----------
+   Langzeitprojekte hängen bewusst an keiner Woche — sie laufen quer über den
+   ganzen Zeitraum. Jedes Projekt hat beliebig viele Schritte zum Abhaken. */
+const PROJECT_STATUS_LABEL = { aktiv:"Aktiv", pausiert:"Pausiert", fertig:"Abgeschlossen" };
+
+function stepsOf(projectId){
+  return PROJECT_STEPS.filter(s=>String(s.project_id)===String(projectId));
+}
+
+function renderProjects(){
+  const showDone = document.getElementById("showDoneProjects").checked;
+
+  // Kennzahlen immer über alle Projekte rechnen, unabhängig vom Anzeigefilter.
+  const activeProjects = PROJECTS.filter(p=>p.status==="aktiv");
+  const openSteps = PROJECT_STEPS.filter(s=>!s.done && PROJECTS.some(p=>String(p.id)===String(s.project_id) && p.status!=="fertig"));
+  document.getElementById("projStatActive").textContent = activeProjects.length;
+  document.getElementById("projStatOpen").textContent = openSteps.length;
+  document.getElementById("projStatDone").textContent = PROJECT_STEPS.filter(s=>s.done).length;
+
+  const todayStr = todayIso();
+  const upcoming = PROJECTS
+    .filter(p=>p.status!=="fertig" && p.due_date)
+    .sort((a,b)=>a.due_date.localeCompare(b.due_date))[0];
+  document.getElementById("projStatDeadline").textContent = upcoming ? (fmtDate(upcoming.due_date)+" · "+upcoming.title) : "—";
+
+  const visible = PROJECTS.filter(p=>showDone || p.status!=="fertig");
+  // Offene zuerst, innerhalb dessen die mit der nächsten Deadline oben.
+  visible.sort((a,b)=>{
+    const rank = s => s==="aktiv" ? 0 : (s==="pausiert" ? 1 : 2);
+    if(rank(a.status)!==rank(b.status)) return rank(a.status)-rank(b.status);
+    if(a.due_date && b.due_date) return a.due_date.localeCompare(b.due_date);
+    if(a.due_date) return -1;
+    if(b.due_date) return 1;
+    return new Date(a.created_at) - new Date(b.created_at);
+  });
+
+  const list = document.getElementById("projectsList");
+  if(!visible.length){
+    list.innerHTML = `<div class="projects-empty">${PROJECTS.length ? "Keine offenen Projekte — setz den Haken oben, um die abgeschlossenen zu sehen." : "Noch keine Projekte angelegt."}</div>`;
+    return;
+  }
+
+  list.innerHTML = visible.map(p=>{
+    const steps = stepsOf(p.id);
+    const doneCount = steps.filter(s=>s.done).length;
+    const pct = steps.length ? (doneCount/steps.length)*100 : 0;
+    const isLate = p.due_date && p.due_date < todayStr && p.status!=="fertig";
+
+    const stepRows = steps.length ? steps.map(s=>`
+      <div class="step-row ${s.done?"is-done":""}">
+        <input type="checkbox" ${s.done?"checked":""} data-pact="step-toggle" data-id="${s.id}">
+        <span class="step-text">${escapeHtml(s.text)}</span>
+        <span class="task-badge person">${PERSON_LABEL[s.assignee]||s.assignee}</span>
+        <button type="button" class="step-del" data-pact="step-del" data-id="${s.id}" title="Schritt löschen">✕</button>
+      </div>`).join("") : `<div class="step-empty">Noch keine Schritte — leg unten den ersten an.</div>`;
+
+    return `<div class="project-card ${p.status==="fertig"?"is-done":""}">
+      <div class="project-top">
+        <div class="project-title">${escapeHtml(p.title)}</div>
+        <button type="button" class="project-edit" data-pact="proj-edit" data-id="${p.id}" title="Projekt bearbeiten">Bearbeiten</button>
+      </div>
+      ${p.description ? `<div class="project-desc">${escapeHtml(p.description)}</div>` : ""}
+      <div class="project-badges">
+        <span class="status-badge st-${p.status}">${PROJECT_STATUS_LABEL[p.status]||p.status}</span>
+        <span class="task-badge person">${PERSON_LABEL[p.owner]||p.owner}</span>
+        ${p.due_date ? `<span class="due-badge ${isLate?"is-late":""}">${isLate?"überfällig seit ":"bis "}${fmtDate(p.due_date)}</span>` : ""}
+      </div>
+      <div class="project-progress">
+        <div class="bar-track"><div class="bar-fill ${pct>=100?"ok":(pct>=50?"warn":"low")}" style="width:${pct}%"></div></div>
+        <span class="ratio">${doneCount}/${steps.length}</span>
+      </div>
+      <div class="step-list">${stepRows}</div>
+      <button type="button" class="btn-outline step-add" data-pact="step-add" data-id="${p.id}">+ Schritt</button>
+    </div>`;
+  }).join("");
+}
+
 /* ---------- Aufgaben-Board ---------- */
 const PERSON_LABEL = { tim:"Tim", simon:"Simon", beide:"Beide" };
 const PRIO_LABEL = { hoch:"Hoch", mittel:"Mittel", niedrig:"Niedrig" };
@@ -1287,6 +1495,7 @@ function renderAll(){
   renderGoal();
   renderCommitments();
   renderTasks();
+  renderProjects();
   const date = document.getElementById("entryDate").value;
   renderPreview(weekIndexForDate(date));
   const dateHebel = document.getElementById("entryDateHebel").value;
@@ -1401,6 +1610,121 @@ document.getElementById("goalModalSave").addEventListener("click", async ()=>{
   if(idx>=0) GOALS[idx] = data[0]; else GOALS.push(data[0]);
   closeGoalModal();
   renderGoal();
+});
+
+/* ---------- Projekte: Modals & Aktionen ---------- */
+let editingProjectId = null; // null = Anlegen, sonst Bearbeiten
+let stepForProjectId = null;
+
+function openProjectModal(id){
+  editingProjectId = id ?? null;
+  const p = id != null ? PROJECTS.find(x=>String(x.id)===String(id)) : null;
+  document.getElementById("projectModalTitle").textContent = p ? "Projekt bearbeiten" : "Neues Projekt";
+  document.getElementById("inProjectTitle").value = p ? p.title : "";
+  document.getElementById("inProjectDesc").value = p && p.description ? p.description : "";
+  document.getElementById("inProjectOwner").value = p ? p.owner : "beide";
+  document.getElementById("inProjectStatus").value = p ? p.status : "aktiv";
+  document.getElementById("inProjectDue").value = p && p.due_date ? p.due_date : "";
+  document.getElementById("projectDeleteBtn").style.display = p ? "inline-flex" : "none";
+  document.getElementById("projectModal").classList.add("open");
+  setTimeout(()=>document.getElementById("inProjectTitle").focus(), 0);
+}
+function closeProjectModal(){ document.getElementById("projectModal").classList.remove("open"); }
+
+document.getElementById("openAddProjectBtn").addEventListener("click", ()=>openProjectModal(null));
+document.getElementById("projectModalClose").addEventListener("click", closeProjectModal);
+document.getElementById("projectModal").addEventListener("click", (ev)=>{ if(ev.target.id==="projectModal") closeProjectModal(); });
+document.getElementById("showDoneProjects").addEventListener("change", renderProjects);
+
+document.getElementById("projectSaveBtn").addEventListener("click", async ()=>{
+  const title = document.getElementById("inProjectTitle").value.trim();
+  if(!title){ alert("Bitte einen Projektnamen eingeben."); return; }
+  const payload = {
+    title,
+    description: document.getElementById("inProjectDesc").value.trim() || null,
+    owner: document.getElementById("inProjectOwner").value,
+    status: document.getElementById("inProjectStatus").value,
+    due_date: document.getElementById("inProjectDue").value || null
+  };
+  if(editingProjectId != null){
+    const { data, error } = await db.from("projects").update(payload).eq("id", editingProjectId).select();
+    if(error){ console.error(error); alert("Projekt konnte nicht gespeichert werden: "+error.message); return; }
+    const idx = PROJECTS.findIndex(p=>String(p.id)===String(editingProjectId));
+    if(idx>=0) PROJECTS[idx] = data[0];
+  } else {
+    const { data, error } = await db.from("projects").insert(payload).select();
+    if(error){ console.error(error); alert("Projekt konnte nicht angelegt werden: "+error.message); return; }
+    PROJECTS.push(data[0]);
+  }
+  closeProjectModal();
+  renderProjects();
+});
+
+document.getElementById("projectDeleteBtn").addEventListener("click", async ()=>{
+  if(editingProjectId == null) return;
+  const p = PROJECTS.find(x=>String(x.id)===String(editingProjectId));
+  const n = stepsOf(editingProjectId).length;
+  if(!confirm(`Projekt "${p?p.title:""}" wirklich löschen?${n?`\n\nDie ${n} zugehörigen Schritte werden mitgelöscht.`:""}`)) return;
+  const { error } = await db.from("projects").delete().eq("id", editingProjectId);
+  if(error){ console.error(error); alert("Projekt konnte nicht gelöscht werden: "+error.message); return; }
+  PROJECTS = PROJECTS.filter(x=>String(x.id)!==String(editingProjectId));
+  PROJECT_STEPS = PROJECT_STEPS.filter(s=>String(s.project_id)!==String(editingProjectId));
+  closeProjectModal();
+  renderProjects();
+});
+
+function openStepModal(projectId){
+  stepForProjectId = projectId;
+  document.getElementById("inStepText").value = "";
+  document.getElementById("inStepAssignee").value = "tim";
+  document.getElementById("stepModal").classList.add("open");
+  setTimeout(()=>document.getElementById("inStepText").focus(), 0);
+}
+function closeStepModal(){ document.getElementById("stepModal").classList.remove("open"); }
+
+document.getElementById("stepModalClose").addEventListener("click", closeStepModal);
+document.getElementById("stepModal").addEventListener("click", (ev)=>{ if(ev.target.id==="stepModal") closeStepModal(); });
+document.getElementById("inStepText").addEventListener("keydown", (ev)=>{ if(ev.key==="Enter") document.getElementById("stepSaveBtn").click(); });
+
+document.getElementById("stepSaveBtn").addEventListener("click", async ()=>{
+  const text = document.getElementById("inStepText").value.trim();
+  if(!text){ alert("Bitte einen Schritt eingeben."); return; }
+  const { data, error } = await db.from("project_steps").insert({
+    project_id: stepForProjectId,
+    text,
+    assignee: document.getElementById("inStepAssignee").value,
+    done: false
+  }).select();
+  if(error){ console.error(error); alert("Schritt konnte nicht gespeichert werden: "+error.message); return; }
+  PROJECT_STEPS.push(data[0]);
+  closeStepModal();
+  renderProjects();
+});
+
+document.getElementById("projectsList").addEventListener("click", async (ev)=>{
+  const el = ev.target.closest("[data-pact]");
+  if(!el) return;
+  const act = el.dataset.pact, id = el.dataset.id;
+
+  if(act === "proj-edit"){ openProjectModal(id); return; }
+  if(act === "step-add"){ openStepModal(id); return; }
+
+  const s = PROJECT_STEPS.find(x=>String(x.id)===String(id));
+  if(!s) return;
+
+  if(act === "step-toggle"){
+    const done = el.checked;
+    const { error } = await db.from("project_steps").update({ done }).eq("id", s.id);
+    if(error){ console.error(error); alert("Konnte nicht gespeichert werden: "+error.message); el.checked = !done; return; }
+    s.done = done;
+    renderProjects();
+  } else if(act === "step-del"){
+    if(!confirm("Schritt \""+s.text+"\" löschen?")) return;
+    const { error } = await db.from("project_steps").delete().eq("id", s.id);
+    if(error){ console.error(error); alert("Konnte nicht gelöscht werden: "+error.message); return; }
+    PROJECT_STEPS = PROJECT_STEPS.filter(x=>String(x.id)!==String(id));
+    renderProjects();
+  }
 });
 
 /* ---------- Commitments ---------- */
