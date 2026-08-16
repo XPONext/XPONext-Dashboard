@@ -22,6 +22,10 @@ const FAKE = {
     {id:"k3", name:"Altkunde",   kind:"kunde",  status:"beendet", active:false, sort_order:30, note:null},
     {id:"i1", name:"XPO intern", kind:"intern", status:"aktiv", active:true,  sort_order:90, note:null}
   ],
+  revenues: [
+    {id:"r1", customer_id:"k1", kind:"retainer", title:"Betreuung", amount:3000, period_start:M+"-01", period_end:null, note:null},
+    {id:"r2", customer_id:"k2", kind:"einmalig", title:"Relaunch",  amount:800,  period_start:M+"-01", period_end:M+"-28", note:null}
+  ],
   revenue_months: [
     // Protours: Retainer 3.000 EUR im laufenden Monat
     {customer_id:"k1", revenue_id:"r1", kind:"retainer", month_start:M+"-01", amount:3000},
@@ -166,6 +170,37 @@ setTimeout(async ()=>{
     pruefeDialog("Schlechter Stundenlohn wird rot", !!document.querySelector("#kdList .lohn-badge.lohn-low"));
     pruefeDialog("Abdeckungsgrad wird genannt", /getrackten Stunden/.test(document.getElementById("kdCoverage").textContent));
     pruefeDialog("Zeitraum-Label ohne doppelten Punkt", !/\.\./.test(document.getElementById("kdZeitraumLabel").textContent));
+    pruefeDialog("Schnitt-Stundenlohn stimmt", /177/.test(document.getElementById("kdSchnitt").textContent));
+    pruefeDialog("Ampelschwellen werden genannt", /50/.test(document.getElementById("kdSchnittSub").textContent));
+    pruefeDialog("Umsatzeintraege sind aufgelistet", document.querySelectorAll('#kdRevenues [data-kd="rev-edit"]').length === 2);
+
+    // Umsatz bearbeiten — ohne diesen Weg waere ein Tippfehler beim Betrag
+    // nur noch im SQL-Editor zu beheben.
+    document.querySelector('#kdRevenues [data-kd="rev-edit"]').click();
+    await new Promise(r=>setTimeout(r, 120));
+    const revDlg = document.querySelector("dialog.dlg[open]");
+    pruefeDialog("Umsatz-Dialog oeffnet vorbelegt",
+      !!revDlg && Number(revDlg.querySelector('[name="amount"]').value) > 0);
+    pruefeDialog("Umsatz laesst sich loeschen", !!revDlg.querySelector('[data-dlg="delete"]'));
+
+    // Pflichtpruefung: einmaliger Auftrag ohne Enddatum
+    revDlg.querySelector('[name="kind"]').value = "einmalig";
+    revDlg.querySelector('[name="period_end"]').value = "";
+    revDlg.querySelector('[data-dlg="submit"]').click();
+    await new Promise(r=>setTimeout(r, 100));
+    pruefeDialog("Einmalauftrag ohne Enddatum wird abgelehnt",
+      revDlg.open && !revDlg.querySelector(".dlg-error").hidden);
+    revDlg.querySelector('[data-dlg="abbruch"]').click();
+    await new Promise(r=>setTimeout(r, 80));
+
+    // Kunde bearbeiten: der Sichtbarkeitsschalter muss da sein und darf sich
+    // beim Speichern nicht von selbst umstellen.
+    document.querySelector('#kdList [data-kd="edit"]').click();
+    await new Promise(r=>setTimeout(r, 120));
+    const kdDlg = document.querySelector("dialog.dlg[open]");
+    pruefeDialog("Kunden-Dialog hat den Popup-Schalter", !!kdDlg.querySelector('[name="active"]'));
+    kdDlg.querySelector('[data-dlg="abbruch"]').click();
+    await new Promise(r=>setTimeout(r, 80));
   }catch(e){
     window.__dialogChecks.push("Dialogpruefung abgebrochen: " + (e && e.message));
   }

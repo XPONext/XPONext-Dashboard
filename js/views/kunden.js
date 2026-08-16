@@ -25,10 +25,32 @@ import { openModal, confirmDialog } from "../ui/modal.js";
 import { onRender, renderAll, showErrorBanner } from "../ui/bus.js";
 import { emptyState } from "../ui/components.js";
 
+/* Nach dem Speichern neu laden. Bewusst NICHT innerhalb von onSubmit:
+   Schlaegt das Neuladen fehl, waere sonst der Dialog offen geblieben, obwohl
+   gespeichert wurde — der naechste Klick auf Speichern haette einen zweiten
+   Eintrag angelegt. */
+async function neuLaden(){
+  try{
+    await fetchAllData();
+  }catch(e){
+    showErrorBanner("Gespeichert, aber die Ansicht konnte nicht aktualisiert werden: " +
+                    ((e && e.message) || e) + " — bitte die Seite neu laden.");
+  }
+  renderAll();
+}
+
+const KUNDENART = [["kunde","Kunde (abrechenbar)"],["intern","Intern (nicht abrechenbar)"]];
+const KUNDENSTATUS = [["aktiv","Aktiv"],["pausiert","Pausiert"],["beendet","Beendet"]];
+
 /* Ampel für den Stundenlohn. Absichtlich Status- und keine Serienfarben —
    hier wird bewertet, nicht kategorisiert. */
 const AMPEL_ROT   = 50;
 const AMPEL_GRUEN = 100;
+
+function statusLabel(status){
+  const treffer = KUNDENSTATUS.find(([w])=>w === status);
+  return treffer ? treffer[1] : status;
+}
 
 function lohnKlasse(lohn){
   if(lohn == null) return "";
@@ -48,7 +70,7 @@ function gewaehlterZeitraum(){
     const monate = state.revenueMonths.map(r=>r.month_start)
       .concat(state.timeEntries.map(e=>monatsStart(e.ts.slice(0,10))));
     const von = monate.length ? monate.reduce((a,b)=> a < b ? a : b) : bis;
-    return { von, bis, name: "gesamt" };
+    return { von, bis, name: monate.length ? "gesamt" : "noch keine Daten" };
   }
 
   const monate = Number(wahl);
@@ -61,13 +83,10 @@ function gewaehlterZeitraum(){
 
 /* ---------- Dialoge ---------- */
 
-const KUNDENART = [["kunde","Kunde (abrechenbar)"],["intern","Intern (nicht abrechenbar)"]];
-const KUNDENSTATUS = [["aktiv","Aktiv"],["pausiert","Pausiert"],["beendet","Beendet"]];
-
 async function kundeDialog(id){
   const k = id ? kundeNach(id) : null;
 
-  await openModal({
+  const ergebnis = await openModal({
     title: k ? "Kunde bearbeiten" : "Neuer Kunde",
     submitLabel: k ? "Änderungen speichern" : "Kunde anlegen",
     fields: [
@@ -76,14 +95,14 @@ async function kundeDialog(id){
         hint:"Genau so, wie es im Zeittracker-Popup zur Auswahl stehen soll." },
       { name:"kind",   label:"Art",    type:"select", options:KUNDENART,    value:"kunde" },
       { name:"status", label:"Status", type:"select", options:KUNDENSTATUS, value:"aktiv" },
+      { name:"active", label:"Im Zeittracker-Popup zur Auswahl", type:"checkbox",
+        value:true, width:"full" },
       { name:"note", label:"Notiz", type:"textarea", width:"full",
         placeholder:"optional" }
     ],
     initial: k,
     onSubmit: async werte=>{
       await kundeSpeichern(werte, k ? k.id : null);
-      await fetchAllData();
-      renderAll();
     },
     onDelete: k ? async ()=>{
       const ok = await confirmDialog(
@@ -93,10 +112,9 @@ async function kundeDialog(id){
       );
       if(!ok) return false;
       await kundeLoeschen(k.id);
-      await fetchAllData();
-      renderAll();
     } : null
   });
+  if(ergebnis) await neuLaden();
 }
 
 function kundenOptionen(){
@@ -108,12 +126,18 @@ function kundenOptionen(){
 async function umsatzDialog(customerId, vorhandener){
   const optionen = kundenOptionen();
   if(!optionen.length){
-    showErrorBanner("Erst einen Kunden anlegen — Umsatz braucht jemanden, dem er zugeordnet wird.");
+    // Kein Fehler, sondern ein Hinweis — deshalb im Dialog und nicht als
+    // roter Seitenbanner, der bis zum Wegklicken stehen bleibt.
+    await confirmDialog(
+      "Dafür fehlt noch ein Kunde.",
+      { confirmLabel: "Kunde anlegen", danger: false,
+        detail: "Umsatz braucht jemanden, dem er zugeordnet wird." }
+    ) && await kundeDialog(null);
     return;
   }
 
   const heute = todayIso();
-  await openModal({
+  const ergebnis = await openModal({
     title: vorhandener ? "Umsatz bearbeiten" : "Umsatz erfassen",
     submitLabel: vorhandener ? "Änderungen speichern" : "Umsatz eintragen",
     fields: [
@@ -144,14 +168,10 @@ async function umsatzDialog(customerId, vorhandener){
     },
     onSubmit: async werte=>{
       await umsatzSpeichern(werte, vorhandener ? vorhandener.id : null);
-      await fetchAllData();
-      renderAll();
     },
     onDelete: vorhandener ? async ()=>{
       if(!await confirmDialog("Diesen Umsatzeintrag löschen?")) return false;
       await umsatzLoeschen(vorhandener.id);
-      await fetchAllData();
-      renderAll();
     } : null
   });
 }
@@ -159,6 +179,10 @@ async function umsatzDialog(customerId, vorhandener){
 /* ---------- Rendern ---------- */
 
 function renderKunden(){
+  // Vor den Abbruchzweigen weiter unten — sonst bliebe die Umsatzliste bei
+  // leerer Kundenliste auf einem alten Stand stehen.
+  renderUmsaetze();
+
   const { von, bis, name } = gewaehlterZeitraum();
   const bisAnzeige = letzterTagDesMonats(bis);
 
@@ -194,7 +218,7 @@ function renderKunden(){
   document.getElementById("kdSchnittSub").textContent =
     schnitt == null
       ? "Braucht Umsatz und getrackte Zeit im Zeitraum"
-      : "Umsatz ÷ abrechenbare Stunden";
+      : `unter ${AMPEL_ROT} € rot · ab ${AMPEL_GRUEN} € grün`;
 
   document.getElementById("kdIntern").textContent = stundenIntern > 0 ? num(stundenIntern,1) + " Std." : "—";
   document.getElementById("kdInternSub").textContent =
@@ -207,9 +231,12 @@ function renderKunden(){
   const cov = document.getElementById("kdCoverage");
   if(stundenAlle > 0){
     const pct = (zugeordnet / stundenAlle) * 100;
+    // "einem Kunden zugeordnet" waere falsch: die interne Zeit zaehlt mit,
+    // und direkt daneben steht "nicht auf Kunden abrechenbar".
     cov.textContent =
-      "Grundlage: " + num(zugeordnet,1) + " von " + num(stundenAlle,1) + " getrackten Stunden sind einem Kunden zugeordnet (" +
-      num(pct,0) + "%). Der Tracker erfasst nur, was im Popup beantwortet wird — die tatsächliche Arbeitszeit ist höher, der Stundenlohn also eher zu hoch als zu niedrig.";
+      "Grundlage: " + num(zugeordnet,1) + " von " + num(stundenAlle,1) +
+      " getrackten Stunden haben überhaupt eine Zuordnung (" + num(pct,0) + "%). " +
+      "Der Tracker erfasst nur, was im Popup beantwortet wird — die tatsächliche Arbeitszeit ist höher, der Stundenlohn also eher zu hoch als zu niedrig.";
     cov.style.display = "block";
   } else {
     cov.style.display = "none";
@@ -217,6 +244,13 @@ function renderKunden(){
 
   // Tabelle
   const list = document.getElementById("kdList");
+  if(state.ladeFehler){
+    list.innerHTML = emptyState(
+      "Kundendaten konnten nicht geladen werden",
+      "Meldung der Datenbank: " + state.ladeFehler + " — solange das SQL-Skript aus sql/ noch nicht gelaufen ist, ist das erwartet."
+    );
+    return;
+  }
   if(!state.customers.length){
     list.innerHTML = emptyState(
       "Noch keine Kunden angelegt",
@@ -251,13 +285,51 @@ function renderKunden(){
         <td>${z.lohn == null
               ? `<span class="t-muted">${z.umsatz > 0 ? "keine Zeit erfasst" : "–"}</span>`
               : `<span class="lohn-badge lohn-${lohnKlasse(z.lohn)}">${escapeHtml(euro(z.lohn))} / Std.</span>`}</td>
-        <td>${z.c.status === "aktiv" ? "" : `<span class="status-badge st-${escapeHtml(z.c.status)}">${escapeHtml(z.c.status)}</span>`}</td>
+        <td>${z.c.status === "aktiv" ? "" : `<span class="status-badge st-${escapeHtml(z.c.status)}">${escapeHtml(statusLabel(z.c.status))}</span>`}</td>
         <td class="kd-actions">
           <button type="button" class="kd-btn" data-kd="umsatz" data-id="${escapeHtml(z.c.id)}">+ Umsatz</button>
           <button type="button" class="kd-btn" data-kd="edit" data-id="${escapeHtml(z.c.id)}">Bearbeiten</button>
         </td>
       </tr>`).join("")}
     </tbody>
+  </table></div>`;
+}
+
+/* Alle Umsatzeinträge zum Nachsehen und Korrigieren.
+
+   Ohne diese Liste gab es keinen Weg zu einem bestehenden Eintrag: Ein
+   Tippfehler beim Betrag (30.000 statt 3.000) wäre nur noch im SQL-Editor zu
+   beheben gewesen. */
+function renderUmsaetze(){
+  const el = document.getElementById("kdRevenues");
+  if(state.ladeFehler){ el.innerHTML = ""; return; }
+
+  if(!state.revenues.length){
+    el.innerHTML = emptyState(
+      "",
+      "Noch keine Umsätze erfasst. Über „+ Umsatz erfassen“ oben legst du den ersten an.",
+      { inline:true }
+    );
+    return;
+  }
+
+  el.innerHTML = `<div class="table-wrap"><table>
+    <thead><tr><th>Kunde</th><th>Art</th><th>Betrag</th><th>Zeitraum</th><th>Bezeichnung</th><th></th></tr></thead>
+    <tbody>${state.revenues.map(r=>{
+      const k = kundeNach(r.customer_id);
+      return `<tr>
+        <td><span class="kd-name">${escapeHtml(k ? k.name : "—")}</span></td>
+        <td>${r.kind === "retainer" ? "Retainer" : "Einmalig"}</td>
+        <td>${escapeHtml(euro(r.amount))}${r.kind === "retainer" ? " <span class=\"t-muted\">/ Monat</span>" : ""}</td>
+        <td>${escapeHtml(fmtDate(r.period_start))}${r.period_start.slice(0,4)}${
+              r.period_end ? " – " + escapeHtml(fmtDate(r.period_end)) + r.period_end.slice(0,4)
+                           : ' <span class="t-muted">(laufend)</span>'}</td>
+        <td>${escapeHtml(r.title || "")}</td>
+        <td class="kd-actions">
+          <button type="button" class="kd-btn" data-kd="rev-edit" data-id="${escapeHtml(r.id)}">Bearbeiten</button>
+        </td>
+      </tr>`;
+    }).join("")}</tbody>
   </table></div>`;
 }
 
@@ -272,6 +344,13 @@ document.getElementById("kdList").addEventListener("click", ev=>{
   if(!btn) return;
   if(btn.dataset.kd === "edit") kundeDialog(btn.dataset.id);
   if(btn.dataset.kd === "umsatz") umsatzDialog(btn.dataset.id, null);
+});
+
+document.getElementById("kdRevenues").addEventListener("click", ev=>{
+  const btn = ev.target.closest('[data-kd="rev-edit"]');
+  if(!btn) return;
+  const eintrag = state.revenues.find(r=>String(r.id) === String(btn.dataset.id));
+  if(eintrag) umsatzDialog(eintrag.customer_id, eintrag);
 });
 
 onRender("kunden", renderKunden);

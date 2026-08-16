@@ -20,7 +20,9 @@ export const state = {
   projects:      [], // Langzeitprojekte aus "projects"
   projectSteps:  [], // Zugehörige Schritte aus "project_steps"
   customers:     [], // Kunden und interne Zuordnungen aus "customers"
+  revenues:      [], // Rohe Umsatzeintraege aus "revenues" — zum Bearbeiten
   revenueMonths: [], // Umsatz je Kunde und Monat aus der Sicht "revenue_months"
+  ladeFehler:    null, // Meldung, wenn Kunden/Umsaetze nicht geladen werden konnten
 
   boardWeekIdx: 0,    // aktuell im Aufgaben-Board angezeigte Woche (Index in WEEKS)
   ztWeekIdx: null     // aktuell im Zeittracking angezeigte Woche; null = noch nicht gesetzt
@@ -125,19 +127,6 @@ export function normStatus(t){
 /* "2026-08-16" -> "2026-08-01" */
 export function monatsStart(datumStr){
   return datumStr.slice(0, 7) + "-01";
-}
-
-/* Liste der Monatsanfaenge von vonMonat bis bisMonat, beide einschliesslich. */
-export function monateZwischen(vonMonat, bisMonat){
-  const raus = [];
-  let [j, m] = vonMonat.split("-").map(Number);
-  const [jb, mb] = bisMonat.split("-").map(Number);
-  while(j < jb || (j === jb && m <= mb)){
-    raus.push(j + "-" + String(m).padStart(2, "0") + "-01");
-    m++;
-    if(m > 12){ m = 1; j++; }
-  }
-  return raus;
 }
 
 export function kundeNach(id){

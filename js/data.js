@@ -7,7 +7,7 @@ import { showErrorBanner } from "./ui/bus.js";
 
 export async function fetchAllData(){
   const [personalRes, teamRes, timeRes, tasksRes, goalsRes, commitRes, projRes, stepRes,
-         custRes, revRes] = await Promise.all([
+         custRes, revMonRes, revRes] = await Promise.all([
     db.from("daily_personal").select("*"),
     db.from("daily_team").select("*"),
     db.from("time_entries").select("*"),
@@ -17,7 +17,8 @@ export async function fetchAllData(){
     db.from("projects").select("*").order("created_at", { ascending: true }),
     db.from("project_steps").select("*").order("created_at", { ascending: true }),
     db.from("customers").select("*").order("sort_order", { ascending: true }),
-    db.from("revenue_months").select("*")
+    db.from("revenue_months").select("*"),
+    db.from("revenues").select("*").order("period_start", { ascending: false })
   ]);
   if(projRes.error){ console.error(projRes.error); state.projects = []; }
   else{ state.projects = projRes.data; }
@@ -33,11 +34,16 @@ export async function fetchAllData(){
   else{ state.commitments = commitRes.data; }
   // Kunden und Umsaetze gibt es erst, nachdem sql/001 gelaufen ist. Bis dahin
   // meldet Supabase einen Fehler — das Dashboard soll deswegen nicht stehen
-  // bleiben, sondern den Kunden-Reiter einfach leer zeigen.
+  // bleiben. Der Grund wird aber gemerkt: "noch keine Kunden angelegt" und
+  // "Tabelle fehlt oder Passwort falsch" saehen sonst identisch aus.
+  const kundenFehler = custRes.error || revMonRes.error || revRes.error;
+  state.ladeFehler = kundenFehler ? kundenFehler.message : null;
   if(custRes.error){ console.error(custRes.error); state.customers = []; }
   else{ state.customers = custRes.data; }
-  if(revRes.error){ console.error(revRes.error); state.revenueMonths = []; }
-  else{ state.revenueMonths = revRes.data; }
+  if(revMonRes.error){ console.error(revMonRes.error); state.revenueMonths = []; }
+  else{ state.revenueMonths = revMonRes.data; }
+  if(revRes.error){ console.error(revRes.error); state.revenues = []; }
+  else{ state.revenues = revRes.data; }
 
   const dp = {};
   if(personalRes.error){ console.error(personalRes.error); showErrorBanner("Daten konnten nicht geladen werden: "+personalRes.error.message); }
@@ -98,9 +104,16 @@ export async function kundeSpeichern(werte, id){
     kind: werte.kind,
     status: werte.status,
     note: werte.note || null,
-    active: werte.status !== "beendet",
     updated_at: new Date().toISOString()
   };
+  // "active" steuert die Sichtbarkeit im Tracker-Popup und wird ueber das
+  // eigene Feld gesetzt. Frueher wurde es bei JEDEM Speichern aus dem Status
+  // abgeleitet — dadurch tauchte eine Karteileiche, die man nur kurz auf
+  // "intern" stellen wollte, ploetzlich in Simons Popup auf.
+  nutzlast.active = werte.active !== undefined
+    ? !!werte.active && werte.status !== "beendet"
+    : werte.status !== "beendet";
+
   const antwort = id
     ? await db.from("customers").update(nutzlast).eq("id", id).select()
     : await db.from("customers").insert({ ...nutzlast, sort_order: 100 }).select();

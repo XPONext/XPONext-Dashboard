@@ -103,6 +103,10 @@ create policy "app_secret_all" on public.revenues
 -- garantiert gleich — sonst rechnet jede Stelle anders.
 --
 -- Ein laufender Retainer ohne Enddatum wird bis zum heutigen Monat ausgerollt.
+-- Zwei bewusste Ungenauigkeiten: Die Rundung je Monat kann Cent verlieren
+-- (1.000 EUR auf 3 Monate = 3 x 333,33 = 999,99), und ein angebrochener
+-- Endmonat zaehlt voll. Beides ist fuer die Frage "was verdiene ich pro
+-- Stunde" ohne Bedeutung.
 -- ------------------------------------------------------------
 create or replace view public.revenue_months
 with (security_invoker = on) as
@@ -139,17 +143,45 @@ grant select on public.revenue_months to anon, authenticated;
 -- Beleg dafür, was der Tracker tatsächlich geschickt hat. Ein reiner Textabgleich
 -- würde bei jeder Umbenennung eines Kunden die Historie zerreißen.
 -- ------------------------------------------------------------
+-- on delete set null: Wird ein Kunde geloescht, bleiben seine Zeiteintraege
+-- erhalten und verlieren nur die Verknuepfung. Ohne diese Angabe waere das
+-- Loeschen eines Kunden mit getrackter Zeit schlicht unmoeglich gewesen.
 alter table public.time_entries
-  add column if not exists customer_id uuid references public.customers(id);
+  add column if not exists customer_id uuid references public.customers(id) on delete set null;
+
+-- Falls die Spalte aus einem frueheren Lauf schon ohne "on delete set null"
+-- existiert: Regel nachziehen.
+do $$
+declare
+  fk_name text;
+begin
+  select con.conname into fk_name
+  from pg_constraint con
+  join pg_class rel on rel.oid = con.conrelid
+  where rel.relname = 'time_entries'
+    and con.contype = 'f'
+    and con.confdeltype <> 'n'                                  -- 'n' = set null
+    and con.conkey = (
+      select array_agg(attnum) from pg_attribute
+      where attrelid = rel.oid and attname = 'customer_id');
+  if fk_name is not null then
+    execute format('alter table public.time_entries drop constraint %I', fk_name);
+    alter table public.time_entries
+      add constraint time_entries_customer_id_fkey
+      foreign key (customer_id) references public.customers(id) on delete set null;
+  end if;
+end $$;
 
 create index if not exists time_entries_kunde_idx
   on public.time_entries (customer_id, ts);
 
+-- Kein security definer noetig: anon darf customers mit dem Header ohnehin
+-- lesen. Ohne definer ist die Funktion nicht mehr als Rechteerweiterung
+-- missbrauchbar.
 create or replace function public.resolve_customer()
 returns trigger
 language plpgsql
-security definer
-set search_path = public
+set search_path = public, pg_temp
 as $$
 begin
   new.customer_id := null;
@@ -167,6 +199,11 @@ create trigger trg_resolve_customer
   before insert or update of zuordnung on public.time_entries
   for each row execute function public.resolve_customer();
 
+-- Zu wissen: Der Trigger feuert nur, wenn `zuordnung` mitgeschrieben wird.
+-- Wer customer_id von Hand umhaengt, ohne zuordnung anzufassen, behaelt seinen
+-- Wert — bis zum naechsten Schreibvorgang, der zuordnung mitschickt. Dann
+-- gewinnt wieder der Text. Der Text ist bewusst die fuehrende Quelle.
+
 
 -- ------------------------------------------------------------
 -- 5) Bestand übernehmen
@@ -176,16 +213,32 @@ create trigger trg_resolve_customer
 -- sort_order = 900 — es taucht also nicht im Popup auf, geht aber auch
 -- nicht verloren. Was davon ein echter Kunde ist, stellst du im Dashboard um.
 -- ------------------------------------------------------------
-insert into public.customers (name, kind, active, sort_order)
-select
-  z.name,
-  case when lower(z.name) in ('xpo','xpo intern','intern','neukunden',
-                              'neukunden-akquise','sonstiges','pause')
-       then 'intern' else 'kunde' end,
-  z.active,
-  z.sort_order
-from public.zuordnung_optionen z
-on conflict (name) do nothing;
+-- Quelle ist die alte Tabelle. Beim ersten Lauf heisst sie noch
+-- zuordnung_optionen, ab dem zweiten zuordnung_optionen_alt — deshalb
+-- dynamisch, damit das Skript wiederholbar bleibt.
+do $$
+declare
+  quelle text;
+begin
+  select c.relname into quelle
+  from pg_class c join pg_namespace n on n.oid = c.relnamespace
+  where n.nspname = 'public' and c.relkind = 'r'
+    and c.relname in ('zuordnung_optionen','zuordnung_optionen_alt')
+  order by case c.relname when 'zuordnung_optionen' then 0 else 1 end
+  limit 1;
+
+  if quelle is not null then
+    execute format($f$
+      insert into public.customers (name, kind, active, sort_order)
+      select z.name,
+             case when lower(z.name) in ('xpo','xpo intern','intern','neukunden',
+                                         'neukunden-akquise','sonstiges','pause')
+                  then 'intern' else 'kunde' end,
+             z.active, z.sort_order
+      from public.%I z
+      on conflict (name) do nothing $f$, quelle);
+  end if;
+end $$;
 
 insert into public.customers (name, kind, active, sort_order, note)
 select distinct
@@ -226,8 +279,24 @@ where t.customer_id is null
 --
 -- `security_invoker = on` sorgt dafür, dass die RLS von customers greift.
 -- ------------------------------------------------------------
-alter table if exists public.zuordnung_optionen
-  rename to zuordnung_optionen_alt;
+-- Nur umbenennen, wenn zuordnung_optionen noch eine echte TABELLE ist.
+-- Ohne diesen Schutz wuerde ein zweiter Lauf versuchen, die inzwischen
+-- angelegte View umzubenennen: Im SQL-Editor laeuft alles in einer
+-- Transaktion, der Fehler haette also den kompletten Durchlauf
+-- zurueckgerollt — und im schlechteren Fall die View weggezogen und
+-- popup.py stillschweigend lahmgelegt.
+do $$
+begin
+  if exists (
+    select 1 from pg_class c
+    join pg_namespace n on n.oid = c.relnamespace
+    where n.nspname = 'public'
+      and c.relname = 'zuordnung_optionen'
+      and c.relkind = 'r'          -- r = ordinary table, v = view
+  ) then
+    alter table public.zuordnung_optionen rename to zuordnung_optionen_alt;
+  end if;
+end $$;
 
 create or replace view public.zuordnung_optionen
 with (security_invoker = on) as
@@ -288,6 +357,19 @@ on conflict (kind, name) do nothing;
 
 
 -- ------------------------------------------------------------
+-- 6c) Rechte
+--
+-- Die Policies regeln, WER was darf; der grant regelt, ob die Rolle die
+-- Tabelle ueberhaupt ansprechen darf. In einer unveraenderten Supabase-Instanz
+-- ist das meist schon voreingestellt — explizit gesetzt schliesst es den Fall
+-- "leere Liste statt Fehlermeldung" sicher aus.
+-- ------------------------------------------------------------
+grant select, insert, update, delete
+  on public.customers, public.revenues, public.tracker_options
+  to anon, authenticated;
+
+
+-- ------------------------------------------------------------
 -- 7) Gegenprobe — nach dem Ausführen ansehen
 -- ------------------------------------------------------------
 
@@ -324,10 +406,19 @@ order by sort_order;
 -- Die Popup-Abfrage mit den echten Kopfzeilen testen. Erst wenn hier eine
 -- Liste zurückkommt, ist der Schritt fertig:
 --
---   curl -s "$SUPABASE_URL/rest/v1/zuordnung_optionen?select=name&active=eq.true&order=sort_order.asc" \
---     -H "apikey: $SUPABASE_ANON_KEY" \
---     -H "Authorization: Bearer $SUPABASE_ANON_KEY" \
---     -H "x-app-secret: $APP_SECRET"
+--   for pfad in \
+--     "zuordnung_optionen?select=name&active=eq.true&order=sort_order.asc" \
+--     "customers?select=name,kind" \
+--     "revenue_months?select=customer_id,month_start,amount" \
+--     "tracker_options?select=name&kind=eq.state"
+--   do
+--     echo "--- $pfad"
+--     curl -s "$SUPABASE_URL/rest/v1/$pfad" \
+--       -H "apikey: $SUPABASE_ANON_KEY" \
+--       -H "Authorization: Bearer $SUPABASE_ANON_KEY" \
+--       -H "x-app-secret: $APP_SECRET"
+--     echo
+--   done
 --
 -- (Die Werte stehen in time_tracker/.env)
 -- ============================================================
