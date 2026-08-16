@@ -1,3 +1,11 @@
+import {
+  WEEKS, N_WEEKS, LEAD_GEN_PER_PERSON, TOTAL, WEEKLY_TARGET, LEVERS, PERSONS, TOTAL_HEBEL,
+  PRIORITY_ORDER, STATUS_COLUMNS,
+  SUPABASE_URL, SUPABASE_ANON_KEY, SECRET_STORAGE_KEY, PERSON_STORAGE_KEY
+} from "./config.js";
+import { escapeHtml, fmtDate, weekLabel, euro, num, localDateStr, barClass } from "./utils/format.js";
+import { weekIndexForDate, findCurrentWeekIndex } from "./utils/weeks.js";
+
 /* ---------- Fehlerbanner ----------
    Seit dem Umbau auf ES-Module scheitern Ladefehler still, wenn die Konsole zu
    ist. Der Banner macht sie sichtbar — er ist der Ersatz für ein Test-Setup. */
@@ -21,43 +29,6 @@ window.addEventListener("unhandledrejection", ev=>{
   showErrorBanner("Es ist ein Fehler aufgetreten: "+((r&&r.message)||r||"unbekannt")+" — bitte die Seite neu laden.");
 });
 
-/* ---------- Wochen-Definition (14.07.2026 – 31.12.2026, 25 Kalenderwochen) ---------- */
-const WEEKS = [
-  ["2026-07-13","2026-07-19"],["2026-07-20","2026-07-26"],["2026-07-27","2026-08-02"],
-  ["2026-08-03","2026-08-09"],["2026-08-10","2026-08-16"],["2026-08-17","2026-08-23"],
-  ["2026-08-24","2026-08-30"],["2026-08-31","2026-09-06"],["2026-09-07","2026-09-13"],
-  ["2026-09-14","2026-09-20"],["2026-09-21","2026-09-27"],["2026-09-28","2026-10-04"],
-  ["2026-10-05","2026-10-11"],["2026-10-12","2026-10-18"],["2026-10-19","2026-10-25"],
-  ["2026-10-26","2026-11-01"],["2026-11-02","2026-11-08"],["2026-11-09","2026-11-15"],
-  ["2026-11-16","2026-11-22"],["2026-11-23","2026-11-29"],["2026-11-30","2026-12-06"],
-  ["2026-12-07","2026-12-13"],["2026-12-14","2026-12-20"],["2026-12-21","2026-12-27"],
-  ["2026-12-28","2026-12-31"]
-];
-const N_WEEKS = WEEKS.length;
-
-const LEAD_GEN_PER_PERSON = 12; // Std./Woche pro Person (4 Std./Tag x 3 Tage)
-const TOTAL = { leadGen: LEAD_GEN_PER_PERSON * 2 * 25, termineGebucht: 167, termineShowup: 100, closes: 10, umsatz: 20000 };
-const WEEKLY_TARGET = {
-  leadGen: LEAD_GEN_PER_PERSON * 2, // kombiniert für beide Personen
-  termineGebucht: TOTAL.termineGebucht / N_WEEKS,
-  termineShowup: TOTAL.termineShowup / N_WEEKS,
-  closes: TOTAL.closes / N_WEEKS,
-  umsatz: TOTAL.umsatz / N_WEEKS,
-  hebel: 7 // Std./Woche pro Person
-};
-const LEVERS = [
-  ["callBreakdowns","Call-Breakdowns"],
-  ["coldCall","Cold-Call-Breakdowns"],
-  ["coachings","Coachings"],
-  ["offer","Offer-Verbesserung"],
-  ["zielgruppe","Zielgruppenverständnis"]
-];
-const PERSONS = [["tim","Tim"],["simon","Simon"]];
-const TOTAL_HEBEL = WEEKLY_TARGET.hebel * PERSONS.length * N_WEEKS; // 350 (7 Std. x 2 Personen x 25 Wochen)
-
-const SUPABASE_URL = "https://powtvdmtphudlnsffmtk.supabase.co";
-const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBvd3R2ZG10cGh1ZGxuc2ZmbXRrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQwNTAzNTgsImV4cCI6MjA5OTYyNjM1OH0.WHE73m7pXpD3MnzPQQn0FJ0HTGx_bq0cVBL6G3DkYuo";
-const SECRET_STORAGE_KEY = "xponext_kpi_secret";
 let db;
 
 function buildClient(secret){
@@ -85,13 +56,6 @@ async function ensureAuthorized(){
     alert("Falsches Passwort, bitte erneut versuchen.");
     secret = null;
   }
-}
-
-function weekIndexForDate(dateStr){
-  for(let i=0;i<N_WEEKS;i++){
-    if(dateStr>=WEEKS[i][0] && dateStr<=WEEKS[i][1]) return i;
-  }
-  return -1;
 }
 
 async function fetchAllData(){
@@ -204,52 +168,12 @@ let GOALS = []; // Wochenfokus aus der Supabase-Tabelle "weekly_goals"
 let COMMITMENTS = []; // Wochen-Commitments aus der Supabase-Tabelle "weekly_commitments"
 let PROJECTS = [];    // Langzeitprojekte aus der Supabase-Tabelle "projects"
 let PROJECT_STEPS = []; // Zugehörige Schritte aus "project_steps"
-const PRIORITY_ORDER = { hoch: 0, mittel: 1, niedrig: 2 };
-
-// Kanban-Spalten: [status-key, Anzeigename]
-const STATUS_COLUMNS = [
-  ["backlog","Backlog"],
-  ["auswahl","Zur Auswahl"],
-  ["inarbeit","In Arbeit"],
-  ["review","In Review"],
-  ["done","Done"]
-];
 let boardWeekIdx = 0; // aktuell im Aufgaben-Board angezeigte Woche (Index in WEEKS)
 let ztWeekIdx = null; // aktuell im Zeittracking angezeigte Woche; null = noch nicht gesetzt, startet auf der laufenden
 // Status robust bestimmen — auch für Alt-Aufgaben ohne status-Feld
 function normStatus(t){
   if(t.status && STATUS_COLUMNS.some(c=>c[0]===t.status)) return t.status;
   return t.done ? "done" : "backlog";
-}
-const PERSON_STORAGE_KEY = "xponext_kpi_person";
-
-function escapeHtml(s){
-  return String(s).replace(/[&<>"']/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
-}
-
-function fmtDate(iso){
-  const d = new Date(iso+"T00:00:00");
-  return d.toLocaleDateString("de-DE",{day:"2-digit",month:"2-digit"});
-}
-function weekLabel(i){
-  return `KW ${i+1} (${fmtDate(WEEKS[i][0])}–${fmtDate(WEEKS[i][1])})`;
-}
-function euro(n){
-  return "€" + Math.round(n).toLocaleString("de-DE");
-}
-function num(n, digits){
-  return n.toLocaleString("de-DE",{maximumFractionDigits: digits===undefined?1:digits});
-}
-
-function findCurrentWeekIndex(){
-  const today = new Date(); today.setHours(0,0,0,0);
-  for(let i=0;i<WEEKS.length;i++){
-    const s = new Date(WEEKS[i][0]+"T00:00:00");
-    const e = new Date(WEEKS[i][1]+"T23:59:59");
-    if(today>=s && today<=e) return i;
-  }
-  if(today < new Date(WEEKS[0][0]+"T00:00:00")) return 0;
-  return WEEKS.length-1;
 }
 
 function personEntry(i, person){
@@ -303,17 +227,7 @@ function cumulative(){
   return {c, weeksLogged, onTarget, bestWeek, bestUmsatz};
 }
 
-function barClass(pct){
-  if(pct>=100) return "ok";
-  if(pct>=60) return "warn";
-  return "low";
-}
-
 /* ---------- Zeittracking ---------- */
-function localDateStr(tsIso){
-  const d = new Date(tsIso);
-  return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
-}
 
 function filterTimeEntries({dateFrom, dateTo, person}){
   return TIME_ENTRIES.filter(e=>{
