@@ -41,18 +41,31 @@
   --green:#1B7F4C;        --green-bg:#E6F4EC;
 
   /* ---------- Serienfarben ----------
-     Fuer Kategorien in Diagrammen und Aufteilungen: Kunden, States,
-     Aktivitaeten. Bewusst getrennt von der Ampel oben. */
-  --series-1:#3F5137;
-  --series-2:#7A8B6F;
-  --series-3:#4A6C8C;
-  --series-4:#8C6A4A;
-  --series-5:#6B5B8C;
-  --series-6:#B0B7AB;
+     Fuer Kategorien in Diagrammen: Kunden, States, Aktivitaeten.
+     Bewusst getrennt von der Ampel oben und vom Marken-Oliv.
+
+     Die Reihenfolge ist NICHT frei waehlbar — sie ist der Mechanismus, der
+     die Farben auch bei Rot-Gruen-Schwaeche unterscheidbar haelt. Farben
+     werden von Slot 1 an vergeben, nie durchgewechselt.
+
+     Ein erster Versuch mit abgetoenten Oliv-Varianten ist am Pruefskript
+     gescheitert: zu geringe Saettigung, die Farben lasen sich als Grau
+     (Chroma 0.02-0.08 statt >= 0.10). Diese Werte bestehen alle Pruefungen.
+     Das Marken-Oliv bleibt der Oberflaeche vorbehalten (Knoepfe, Balken,
+     Navigation) — es ist eine Markenfarbe, keine Datenfarbe. */
+  --series-1:#2A78D6;   /* blau    */
+  --series-2:#EB6834;   /* orange  */
+  --series-3:#1BAF7A;   /* aqua    */
+  --series-4:#EDA100;   /* gelb    */
+  --series-5:#E87BA4;   /* magenta */
+  --series-6:#008300;   /* gruen   */
+  --series-7:#4A3AA7;   /* violett */
+  --series-8:#E34948;   /* rot     */
 
   /* ---------- Diagramme ---------- */
-  --chart-grid:#EDEFF2;
-  --chart-axis:#9CA3AF;
+  --chart-grid:#E1E0D9;    /* Hilfslinien: eine Stufe von der Flaeche entfernt */
+  --chart-axis:#C3C2B7;    /* Grundlinie */
+  --chart-ink:#898781;     /* Achsenbeschriftung */
   --chart-h-sm:120px;
   --chart-h-md:200px;
   --chart-h-lg:300px;
