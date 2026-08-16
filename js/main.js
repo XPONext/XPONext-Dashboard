@@ -1,10 +1,15 @@
 import {
   WEEKS, N_WEEKS, LEAD_GEN_PER_PERSON, TOTAL, WEEKLY_TARGET, LEVERS, PERSONS, TOTAL_HEBEL,
-  PRIORITY_ORDER, STATUS_COLUMNS,
-  SUPABASE_URL, SUPABASE_ANON_KEY, SECRET_STORAGE_KEY, PERSON_STORAGE_KEY
+  PRIORITY_ORDER, STATUS_COLUMNS, PERSON_STORAGE_KEY
 } from "./config.js";
 import { escapeHtml, fmtDate, weekLabel, euro, num, localDateStr, barClass } from "./utils/format.js";
 import { weekIndexForDate, findCurrentWeekIndex } from "./utils/weeks.js";
+import { db, ensureAuthorized } from "./supabase.js";
+import { fetchAllData, upsertDailyPersonal, upsertDailyTeam } from "./data.js";
+import {
+  state, buildWeeklyAggregates, personEntry, teamEntry, hebelHours,
+  combinedEntry, cumulative, normStatus
+} from "./state.js";
 
 /* ---------- Fehlerbanner ----------
    Seit dem Umbau auf ES-Module scheitern Ladefehler still, wenn die Konsole zu
@@ -29,208 +34,10 @@ window.addEventListener("unhandledrejection", ev=>{
   showErrorBanner("Es ist ein Fehler aufgetreten: "+((r&&r.message)||r||"unbekannt")+" — bitte die Seite neu laden.");
 });
 
-let db;
-
-function buildClient(secret){
-  return supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-    global: { headers: { "x-app-secret": secret } }
-  });
-}
-
-async function ensureAuthorized(){
-  let secret = localStorage.getItem(SECRET_STORAGE_KEY);
-  while(true){
-    if(!secret){
-      secret = window.prompt("Team-Passwort für den KPI-Tracker eingeben:");
-      if(secret === null){
-        document.body.innerHTML = "<p style='padding:2rem;font-family:sans-serif;'>Ohne Passwort kein Zugriff auf den Tracker.</p>";
-        throw new Error("Kein Passwort eingegeben");
-      }
-    }
-    db = buildClient(secret);
-    const { error } = await db.from("daily_team").upsert({ date: "2000-01-01", termine_gebucht: 0 });
-    if(!error){
-      localStorage.setItem(SECRET_STORAGE_KEY, secret);
-      return;
-    }
-    alert("Falsches Passwort, bitte erneut versuchen.");
-    secret = null;
-  }
-}
-
-async function fetchAllData(){
-  const [personalRes, teamRes, timeRes, tasksRes, goalsRes, commitRes, projRes, stepRes] = await Promise.all([
-    db.from("daily_personal").select("*"),
-    db.from("daily_team").select("*"),
-    db.from("time_entries").select("*"),
-    db.from("tasks").select("*").order("created_at", { ascending: true }),
-    db.from("weekly_goals").select("*"),
-    db.from("weekly_commitments").select("*").order("created_at", { ascending: true }),
-    db.from("projects").select("*").order("created_at", { ascending: true }),
-    db.from("project_steps").select("*").order("created_at", { ascending: true })
-  ]);
-  if(projRes.error){ console.error(projRes.error); PROJECTS = []; }
-  else{ PROJECTS = projRes.data; }
-  if(stepRes.error){ console.error(stepRes.error); PROJECT_STEPS = []; }
-  else{ PROJECT_STEPS = stepRes.data; }
-  if(timeRes.error){ console.error(timeRes.error); TIME_ENTRIES = []; }
-  else{ TIME_ENTRIES = timeRes.data; }
-  if(tasksRes.error){ console.error(tasksRes.error); TASKS = []; }
-  else{ TASKS = tasksRes.data; }
-  if(goalsRes.error){ console.error(goalsRes.error); GOALS = []; }
-  else{ GOALS = goalsRes.data; }
-  if(commitRes.error){ console.error(commitRes.error); COMMITMENTS = []; }
-  else{ COMMITMENTS = commitRes.data; }
-  const dp = {};
-  if(personalRes.error){ console.error(personalRes.error); alert("Daten konnten nicht geladen werden: "+personalRes.error.message); }
-  else{
-    personalRes.data.forEach(row=>{
-      if(!dp[row.date]) dp[row.date] = {};
-      dp[row.date][row.person] = { leadGenHours: Number(row.lead_gen_hours)||0, hebel: row.hebel || {} };
-    });
-  }
-
-  const dt = {};
-  if(teamRes.error){ console.error(teamRes.error); alert("Team-Daten konnten nicht geladen werden: "+teamRes.error.message); }
-  else{
-    teamRes.data.forEach(row=>{
-      dt[row.date] = {
-        termineGebucht: Number(row.termine_gebucht)||0,
-        termineShowup: Number(row.termine_showup)||0,
-        closes: Array.isArray(row.closes) ? row.closes.map(Number) : []
-      };
-    });
-  }
-
-  DAILY_PERSONAL = dp;
-  DAILY_TEAM = dt;
-  buildWeeklyAggregates();
-}
-
-function buildWeeklyAggregates(){
-  const data = {}, dataTeam = {};
-  for(let i=0;i<N_WEEKS;i++){
-    data[i] = { tim: {leadGenHours:0, hebel:{}}, simon: {leadGenHours:0, hebel:{}} };
-    dataTeam[i] = { termineGebucht:0, termineShowup:0, closesCount:0, closesSum:0 };
-  }
-  Object.entries(DAILY_PERSONAL).forEach(([date, persons])=>{
-    const wi = weekIndexForDate(date);
-    if(wi<0) return;
-    PERSONS.forEach(([key])=>{
-      const d = persons[key];
-      if(!d) return;
-      data[wi][key].leadGenHours += Number(d.leadGenHours)||0;
-      LEVERS.forEach(([lk])=>{
-        data[wi][key].hebel[lk] = (data[wi][key].hebel[lk]||0) + (Number(d.hebel[lk])||0);
-      });
-    });
-  });
-  Object.entries(DAILY_TEAM).forEach(([date, t])=>{
-    const wi = weekIndexForDate(date);
-    if(wi<0) return;
-    dataTeam[wi].termineGebucht += Number(t.termineGebucht)||0;
-    dataTeam[wi].termineShowup += Number(t.termineShowup)||0;
-    const closes = t.closes || [];
-    dataTeam[wi].closesCount += closes.length;
-    dataTeam[wi].closesSum += closes.reduce((s,v)=>s+(Number(v)||0),0);
-  });
-  DATA = data;
-  DATA_TEAM = dataTeam;
-}
-
-async function upsertDailyPersonal(date, person){
-  const e = (DAILY_PERSONAL[date] && DAILY_PERSONAL[date][person]) || {leadGenHours:0, hebel:{}};
-  const { error } = await db.from("daily_personal").upsert({
-    date, person, lead_gen_hours: e.leadGenHours, hebel: e.hebel, updated_at: new Date().toISOString()
-  });
-  if(error){ console.error(error); alert("Speichern fehlgeschlagen: "+error.message); }
-}
-
-async function upsertDailyTeam(date){
-  const e = DAILY_TEAM[date] || {termineGebucht:0, termineShowup:0, closes:[]};
-  const { error } = await db.from("daily_team").upsert({
-    date,
-    termine_gebucht: e.termineGebucht,
-    termine_showup: e.termineShowup,
-    closes: e.closes,
-    updated_at: new Date().toISOString()
-  });
-  if(error){ console.error(error); alert("Speichern fehlgeschlagen: "+error.message); }
-}
-
-let DAILY_PERSONAL = {}; // { "2026-07-14": { tim: {calls, hebel:{...}}, simon: {...} } }
-let DAILY_TEAM = {}; // { "2026-07-14": {termineGebucht, termineShowup, closes, umsatz} }
-let DATA = {}; // Wochen-Aggregate, aus DAILY_PERSONAL berechnet: { 1: { tim: {calls, hebel:{...}}, simon: {...} } }
-let DATA_TEAM = {}; // Wochen-Aggregate, aus DAILY_TEAM berechnet: { 1: {termineGebucht, termineShowup, closes, umsatz} }
-let TIME_ENTRIES = []; // Rohe Zeittracking-Einträge aus der Supabase-Tabelle "time_entries"
-let TASKS = []; // Rohe Aufgaben aus der Supabase-Tabelle "tasks"
-let GOALS = []; // Wochenfokus aus der Supabase-Tabelle "weekly_goals"
-let COMMITMENTS = []; // Wochen-Commitments aus der Supabase-Tabelle "weekly_commitments"
-let PROJECTS = [];    // Langzeitprojekte aus der Supabase-Tabelle "projects"
-let PROJECT_STEPS = []; // Zugehörige Schritte aus "project_steps"
-let boardWeekIdx = 0; // aktuell im Aufgaben-Board angezeigte Woche (Index in WEEKS)
-let ztWeekIdx = null; // aktuell im Zeittracking angezeigte Woche; null = noch nicht gesetzt, startet auf der laufenden
-// Status robust bestimmen — auch für Alt-Aufgaben ohne status-Feld
-function normStatus(t){
-  if(t.status && STATUS_COLUMNS.some(c=>c[0]===t.status)) return t.status;
-  return t.done ? "done" : "backlog";
-}
-
-function personEntry(i, person){
-  const w = (DATA[i] && DATA[i][person]) || {};
-  return {
-    leadGenHours: Number(w.leadGenHours)||0,
-    hebel: w.hebel || {}
-  };
-}
-
-function teamEntry(i){
-  const w = DATA_TEAM[i] || {};
-  return {
-    termineGebucht: Number(w.termineGebucht)||0,
-    termineShowup: Number(w.termineShowup)||0,
-    closes: Number(w.closesCount)||0,
-    umsatz: Number(w.closesSum)||0
-  };
-}
-
-function hebelHours(entry){
-  return LEVERS.reduce((s,[k])=>s+(Number(entry.hebel[k])||0),0);
-}
-
-function combinedEntry(i){
-  const t = personEntry(i,"tim"), s = personEntry(i,"simon"), team = teamEntry(i);
-  return {
-    leadGenHours: t.leadGenHours+s.leadGenHours,
-    termineGebucht: team.termineGebucht,
-    termineShowup: team.termineShowup,
-    closes: team.closes,
-    umsatz: team.umsatz,
-    hebelHours: hebelHours(t)+hebelHours(s)
-  };
-}
-
-function cumulative(){
-  const c = {leadGenHours:0,termineGebucht:0,termineShowup:0,closes:0,umsatz:0,hebel:0};
-  let weeksLogged = 0, onTarget = 0, bestWeek = null, bestUmsatz = -1;
-  for(let i=0;i<N_WEEKS;i++){
-    const e = combinedEntry(i);
-    const hasAny = e.leadGenHours||e.termineGebucht||e.termineShowup||e.closes||e.umsatz||e.hebelHours>0;
-    if(!hasAny) continue;
-    weeksLogged++;
-    c.leadGenHours += e.leadGenHours; c.termineGebucht += e.termineGebucht; c.termineShowup += e.termineShowup;
-    c.closes += e.closes; c.umsatz += e.umsatz;
-    c.hebel += e.hebelHours;
-    if(e.umsatz >= WEEKLY_TARGET.umsatz) onTarget++;
-    if(e.umsatz > bestUmsatz){ bestUmsatz = e.umsatz; bestWeek = i; }
-  }
-  return {c, weeksLogged, onTarget, bestWeek, bestUmsatz};
-}
-
 /* ---------- Zeittracking ---------- */
 
 function filterTimeEntries({dateFrom, dateTo, person}){
-  return TIME_ENTRIES.filter(e=>{
+  return state.timeEntries.filter(e=>{
     const d = localDateStr(e.ts);
     if(dateFrom && d<dateFrom) return false;
     if(dateTo && d>dateTo) return false;
@@ -264,18 +71,18 @@ function renderTimeBreakdown(entries, field, containerId){
 function renderZeittracking(){
   const todayStr = localDateStr(new Date().toISOString());
   const curIdx = findCurrentWeekIndex();
-  if(ztWeekIdx === null) ztWeekIdx = curIdx;
-  const isCurrentWeek = ztWeekIdx === curIdx;
-  const weekFrom = WEEKS[ztWeekIdx][0], weekTo = WEEKS[ztWeekIdx][1];
+  if(state.ztWeekIdx === null) state.ztWeekIdx = curIdx;
+  const isCurrentWeek = state.ztWeekIdx === curIdx;
+  const weekFrom = WEEKS[state.ztWeekIdx][0], weekTo = WEEKS[state.ztWeekIdx][1];
 
   // Die "Heute"-Karte ergibt nur Sinn, solange man auf der laufenden Woche steht.
   document.getElementById("ztTodayCard").style.display = isCurrentWeek ? "" : "none";
   document.getElementById("ztWeekHeading").textContent = isCurrentWeek ? "Diese Woche" : "Ausgewählte Woche";
-  document.getElementById("ztWeekLabel").textContent = weekLabel(ztWeekIdx);
-  document.getElementById("ztPrevWeek").disabled = ztWeekIdx <= 0;
-  document.getElementById("ztNextWeek").disabled = ztWeekIdx >= N_WEEKS - 1;
+  document.getElementById("ztWeekLabel").textContent = weekLabel(state.ztWeekIdx);
+  document.getElementById("ztPrevWeek").disabled = state.ztWeekIdx <= 0;
+  document.getElementById("ztNextWeek").disabled = state.ztWeekIdx >= N_WEEKS - 1;
   document.querySelectorAll(".zt-week-sub").forEach(el=>{
-    el.textContent = isCurrentWeek ? "diese Woche" : weekLabel(ztWeekIdx);
+    el.textContent = isCurrentWeek ? "diese Woche" : weekLabel(state.ztWeekIdx);
   });
 
   const todayAll = filterTimeEntries({dateFrom: todayStr, dateTo: todayStr});
@@ -290,7 +97,7 @@ function renderZeittracking(){
   document.getElementById("ztWeekSimon").textContent = num(sumMinutes(weekAll.filter(e=>e.person==="simon"), true)/60, 1);
 
   const byDay = {};
-  TIME_ENTRIES.filter(e=>e.state!=="Pause").forEach(e=>{
+  state.timeEntries.filter(e=>e.state!=="Pause").forEach(e=>{
     const d = localDateStr(e.ts);
     byDay[d] = (byDay[d]||0) + (Number(e.duration_minutes)||0);
   });
@@ -455,10 +262,10 @@ document.getElementById("closesList").addEventListener("input", (ev)=>{
 function loadDayIntoForm(){
   const date = document.getElementById("entryDate").value;
   const person = document.getElementById("personSelect").value;
-  const dp = (DAILY_PERSONAL[date] && DAILY_PERSONAL[date][person]) || {leadGenHours:0};
+  const dp = (state.dailyPersonal[date] && state.dailyPersonal[date][person]) || {leadGenHours:0};
   document.getElementById("inLeadGen").value = dp.leadGenHours || 0;
 
-  const dt = DAILY_TEAM[date] || {termineGebucht:0, termineShowup:0, closes:[]};
+  const dt = state.dailyTeam[date] || {termineGebucht:0, termineShowup:0, closes:[]};
   document.getElementById("inTermineGebucht").value = dt.termineGebucht || 0;
   document.getElementById("inTermineShowup").value = dt.termineShowup || 0;
   currentClosesDraft = [...(dt.closes || [])];
@@ -495,7 +302,7 @@ function renderPreview(i){
 function loadDayIntoHebelForm(){
   const date = document.getElementById("entryDateHebel").value;
   const person = document.getElementById("personSelectHebel").value;
-  const dp = (DAILY_PERSONAL[date] && DAILY_PERSONAL[date][person]) || {hebel:{}};
+  const dp = (state.dailyPersonal[date] && state.dailyPersonal[date][person]) || {hebel:{}};
   LEVERS.forEach(([key])=>{
     document.getElementById(HEBEL_INPUT_IDS[key]).value = Number((dp.hebel||{})[key])||0;
   });
@@ -574,7 +381,7 @@ function renderGoal(){
   const wi = entryWeekIdx();
   const weekStart = WEEKS[wi][0];
   document.getElementById("goalWeekLabel").textContent = weekLabel(wi);
-  const goal = GOALS.find(g=>g.week_start===weekStart);
+  const goal = state.goals.find(g=>g.week_start===weekStart);
   const disp = document.getElementById("goalDisplay");
   if(goal && goal.goal && goal.goal.trim()){
     disp.textContent = goal.goal;
@@ -590,7 +397,7 @@ function renderCommitments(){
   const weekStart = WEEKS[wi][0];
   document.getElementById("commitmentsWeekLabel").textContent = "worauf ihr euch in "+weekLabel(wi)+" festlegt";
 
-  const rows = COMMITMENTS.filter(c=>c.week_start===weekStart);
+  const rows = state.commitments.filter(c=>c.week_start===weekStart);
   const list = document.getElementById("commitmentsList");
   if(!rows.length){
     list.innerHTML = `<div class="commit-empty">Noch keine Commitments für diese Woche.</div>`;
@@ -611,26 +418,26 @@ function renderCommitments(){
 const PROJECT_STATUS_LABEL = { aktiv:"Aktiv", pausiert:"Pausiert", fertig:"Abgeschlossen" };
 
 function stepsOf(projectId){
-  return PROJECT_STEPS.filter(s=>String(s.project_id)===String(projectId));
+  return state.projectSteps.filter(s=>String(s.project_id)===String(projectId));
 }
 
 function renderProjects(){
   const showDone = document.getElementById("showDoneProjects").checked;
 
   // Kennzahlen immer über alle Projekte rechnen, unabhängig vom Anzeigefilter.
-  const activeProjects = PROJECTS.filter(p=>p.status==="aktiv");
-  const openSteps = PROJECT_STEPS.filter(s=>!s.done && PROJECTS.some(p=>String(p.id)===String(s.project_id) && p.status!=="fertig"));
+  const activeProjects = state.projects.filter(p=>p.status==="aktiv");
+  const openSteps = state.projectSteps.filter(s=>!s.done && state.projects.some(p=>String(p.id)===String(s.project_id) && p.status!=="fertig"));
   document.getElementById("projStatActive").textContent = activeProjects.length;
   document.getElementById("projStatOpen").textContent = openSteps.length;
-  document.getElementById("projStatDone").textContent = PROJECT_STEPS.filter(s=>s.done).length;
+  document.getElementById("projStatDone").textContent = state.projectSteps.filter(s=>s.done).length;
 
   const todayStr = todayIso();
-  const upcoming = PROJECTS
+  const upcoming = state.projects
     .filter(p=>p.status!=="fertig" && p.due_date)
     .sort((a,b)=>a.due_date.localeCompare(b.due_date))[0];
   document.getElementById("projStatDeadline").textContent = upcoming ? (fmtDate(upcoming.due_date)+" · "+upcoming.title) : "—";
 
-  const visible = PROJECTS.filter(p=>showDone || p.status!=="fertig");
+  const visible = state.projects.filter(p=>showDone || p.status!=="fertig");
   // Offene zuerst, innerhalb dessen die mit der nächsten Deadline oben.
   visible.sort((a,b)=>{
     const rank = s => s==="aktiv" ? 0 : (s==="pausiert" ? 1 : 2);
@@ -643,7 +450,7 @@ function renderProjects(){
 
   const list = document.getElementById("projectsList");
   if(!visible.length){
-    list.innerHTML = `<div class="projects-empty">${PROJECTS.length ? "Keine offenen Projekte — setz den Haken oben, um die abgeschlossenen zu sehen." : "Noch keine Projekte angelegt."}</div>`;
+    list.innerHTML = `<div class="projects-empty">${state.projects.length ? "Keine offenen Projekte — setz den Haken oben, um die abgeschlossenen zu sehen." : "Noch keine Projekte angelegt."}</div>`;
     return;
   }
 
@@ -687,12 +494,12 @@ const PERSON_LABEL = { tim:"Tim", simon:"Simon", beide:"Beide" };
 const PRIO_LABEL = { hoch:"Hoch", mittel:"Mittel", niedrig:"Niedrig" };
 
 function renderTasks(){
-  const weekStart = WEEKS[boardWeekIdx][0];
-  document.getElementById("tasksWeekLabel").textContent = weekLabel(boardWeekIdx);
-  document.getElementById("taskPrevWeek").disabled = boardWeekIdx <= 0;
-  document.getElementById("taskNextWeek").disabled = boardWeekIdx >= N_WEEKS - 1;
+  const weekStart = WEEKS[state.boardWeekIdx][0];
+  document.getElementById("tasksWeekLabel").textContent = weekLabel(state.boardWeekIdx);
+  document.getElementById("taskPrevWeek").disabled = state.boardWeekIdx <= 0;
+  document.getElementById("taskNextWeek").disabled = state.boardWeekIdx >= N_WEEKS - 1;
 
-  const weekTasks = TASKS.filter(t=>t.week_start===weekStart);
+  const weekTasks = state.tasks.filter(t=>t.week_start===weekStart);
   const board = document.getElementById("kanbanBoard");
   board.innerHTML = STATUS_COLUMNS.map(([key,label])=>{
     const colTasks = weekTasks.filter(t=>normStatus(t)===key).slice().sort((a,b)=>{
@@ -772,9 +579,9 @@ document.getElementById("personSelectHebel").addEventListener("change", ()=>{
 document.getElementById("saveWeekBtn").addEventListener("click", async ()=>{
   const date = document.getElementById("entryDate").value;
   const person = document.getElementById("personSelect").value;
-  const existingHebel = (DAILY_PERSONAL[date] && DAILY_PERSONAL[date][person] && DAILY_PERSONAL[date][person].hebel) || {};
-  if(!DAILY_PERSONAL[date]) DAILY_PERSONAL[date] = {};
-  DAILY_PERSONAL[date][person] = {
+  const existingHebel = (state.dailyPersonal[date] && state.dailyPersonal[date][person] && state.dailyPersonal[date][person].hebel) || {};
+  if(!state.dailyPersonal[date]) state.dailyPersonal[date] = {};
+  state.dailyPersonal[date][person] = {
     leadGenHours: Number(document.getElementById("inLeadGen").value)||0,
     hebel: existingHebel
   };
@@ -788,7 +595,7 @@ document.getElementById("saveWeekBtn").addEventListener("click", async ()=>{
 
 document.getElementById("saveTeamBtn").addEventListener("click", async ()=>{
   const date = document.getElementById("entryDate").value;
-  DAILY_TEAM[date] = {
+  state.dailyTeam[date] = {
     termineGebucht: Number(document.getElementById("inTermineGebucht").value)||0,
     termineShowup: Number(document.getElementById("inTermineShowup").value)||0,
     closes: currentClosesDraft.filter(v=>v>0)
@@ -804,13 +611,13 @@ document.getElementById("saveTeamBtn").addEventListener("click", async ()=>{
 document.getElementById("saveHebelBtn").addEventListener("click", async ()=>{
   const date = document.getElementById("entryDateHebel").value;
   const person = document.getElementById("personSelectHebel").value;
-  const existingLeadGen = (DAILY_PERSONAL[date] && DAILY_PERSONAL[date][person] && DAILY_PERSONAL[date][person].leadGenHours) || 0;
+  const existingLeadGen = (state.dailyPersonal[date] && state.dailyPersonal[date][person] && state.dailyPersonal[date][person].leadGenHours) || 0;
   const newHebel = {};
   LEVERS.forEach(([key])=>{
     newHebel[key] = Number(document.getElementById(HEBEL_INPUT_IDS[key]).value)||0;
   });
-  if(!DAILY_PERSONAL[date]) DAILY_PERSONAL[date] = {};
-  DAILY_PERSONAL[date][person] = { leadGenHours: existingLeadGen, hebel: newHebel };
+  if(!state.dailyPersonal[date]) state.dailyPersonal[date] = {};
+  state.dailyPersonal[date][person] = { leadGenHours: existingLeadGen, hebel: newHebel };
   await upsertDailyPersonal(date, person);
   buildWeeklyAggregates();
   const msg = document.getElementById("saveHebelMsg");
@@ -822,7 +629,7 @@ document.getElementById("saveHebelBtn").addEventListener("click", async ()=>{
 /* ---------- Wochenfokus-Modal ---------- */
 function openGoalModal(){
   const weekStart = WEEKS[entryWeekIdx()][0];
-  const goal = GOALS.find(g=>g.week_start===weekStart);
+  const goal = state.goals.find(g=>g.week_start===weekStart);
   document.getElementById("inGoalText").value = goal ? goal.goal : "";
   document.getElementById("goalModal").classList.add("open");
   setTimeout(()=>document.getElementById("inGoalText").focus(), 0);
@@ -838,8 +645,8 @@ document.getElementById("goalModalSave").addEventListener("click", async ()=>{
   const weekStart = WEEKS[entryWeekIdx()][0];
   const { data, error } = await db.from("weekly_goals").upsert({ week_start: weekStart, goal }, { onConflict: "week_start" }).select();
   if(error){ console.error(error); alert("Wochenfokus konnte nicht gespeichert werden: "+error.message); return; }
-  const idx = GOALS.findIndex(g=>g.week_start===weekStart);
-  if(idx>=0) GOALS[idx] = data[0]; else GOALS.push(data[0]);
+  const idx = state.goals.findIndex(g=>g.week_start===weekStart);
+  if(idx>=0) state.goals[idx] = data[0]; else state.goals.push(data[0]);
   closeGoalModal();
   renderGoal();
 });
@@ -850,7 +657,7 @@ let stepForProjectId = null;
 
 function openProjectModal(id){
   editingProjectId = id ?? null;
-  const p = id != null ? PROJECTS.find(x=>String(x.id)===String(id)) : null;
+  const p = id != null ? state.projects.find(x=>String(x.id)===String(id)) : null;
   document.getElementById("projectModalTitle").textContent = p ? "Projekt bearbeiten" : "Neues Projekt";
   document.getElementById("inProjectTitle").value = p ? p.title : "";
   document.getElementById("inProjectDesc").value = p && p.description ? p.description : "";
@@ -881,12 +688,12 @@ document.getElementById("projectSaveBtn").addEventListener("click", async ()=>{
   if(editingProjectId != null){
     const { data, error } = await db.from("projects").update(payload).eq("id", editingProjectId).select();
     if(error){ console.error(error); alert("Projekt konnte nicht gespeichert werden: "+error.message); return; }
-    const idx = PROJECTS.findIndex(p=>String(p.id)===String(editingProjectId));
-    if(idx>=0) PROJECTS[idx] = data[0];
+    const idx = state.projects.findIndex(p=>String(p.id)===String(editingProjectId));
+    if(idx>=0) state.projects[idx] = data[0];
   } else {
     const { data, error } = await db.from("projects").insert(payload).select();
     if(error){ console.error(error); alert("Projekt konnte nicht angelegt werden: "+error.message); return; }
-    PROJECTS.push(data[0]);
+    state.projects.push(data[0]);
   }
   closeProjectModal();
   renderProjects();
@@ -894,13 +701,13 @@ document.getElementById("projectSaveBtn").addEventListener("click", async ()=>{
 
 document.getElementById("projectDeleteBtn").addEventListener("click", async ()=>{
   if(editingProjectId == null) return;
-  const p = PROJECTS.find(x=>String(x.id)===String(editingProjectId));
+  const p = state.projects.find(x=>String(x.id)===String(editingProjectId));
   const n = stepsOf(editingProjectId).length;
   if(!confirm(`Projekt "${p?p.title:""}" wirklich löschen?${n?`\n\nDie ${n} zugehörigen Schritte werden mitgelöscht.`:""}`)) return;
   const { error } = await db.from("projects").delete().eq("id", editingProjectId);
   if(error){ console.error(error); alert("Projekt konnte nicht gelöscht werden: "+error.message); return; }
-  PROJECTS = PROJECTS.filter(x=>String(x.id)!==String(editingProjectId));
-  PROJECT_STEPS = PROJECT_STEPS.filter(s=>String(s.project_id)!==String(editingProjectId));
+  state.projects = state.projects.filter(x=>String(x.id)!==String(editingProjectId));
+  state.projectSteps = state.projectSteps.filter(s=>String(s.project_id)!==String(editingProjectId));
   closeProjectModal();
   renderProjects();
 });
@@ -928,7 +735,7 @@ document.getElementById("stepSaveBtn").addEventListener("click", async ()=>{
     done: false
   }).select();
   if(error){ console.error(error); alert("Schritt konnte nicht gespeichert werden: "+error.message); return; }
-  PROJECT_STEPS.push(data[0]);
+  state.projectSteps.push(data[0]);
   closeStepModal();
   renderProjects();
 });
@@ -941,7 +748,7 @@ document.getElementById("projectsList").addEventListener("click", async (ev)=>{
   if(act === "proj-edit"){ openProjectModal(id); return; }
   if(act === "step-add"){ openStepModal(id); return; }
 
-  const s = PROJECT_STEPS.find(x=>String(x.id)===String(id));
+  const s = state.projectSteps.find(x=>String(x.id)===String(id));
   if(!s) return;
 
   if(act === "step-toggle"){
@@ -954,7 +761,7 @@ document.getElementById("projectsList").addEventListener("click", async (ev)=>{
     if(!confirm("Schritt \""+s.text+"\" löschen?")) return;
     const { error } = await db.from("project_steps").delete().eq("id", s.id);
     if(error){ console.error(error); alert("Konnte nicht gelöscht werden: "+error.message); return; }
-    PROJECT_STEPS = PROJECT_STEPS.filter(x=>String(x.id)!==String(id));
+    state.projectSteps = state.projectSteps.filter(x=>String(x.id)!==String(id));
     renderProjects();
   }
 });
@@ -981,7 +788,7 @@ document.getElementById("addCommitmentBtn").addEventListener("click", async ()=>
     week_start: WEEKS[entryWeekIdx()][0], text, assignee, done: false
   }).select();
   if(error){ console.error(error); alert("Commitment konnte nicht gespeichert werden: "+error.message); return; }
-  COMMITMENTS.push(data[0]);
+  state.commitments.push(data[0]);
   closeAddCommitmentModal();
   renderCommitments();
 });
@@ -990,7 +797,7 @@ document.getElementById("commitmentsList").addEventListener("click", async (ev)=
   const el = ev.target.closest("[data-act]");
   if(!el) return;
   const id = el.dataset.id;
-  const c = COMMITMENTS.find(x=>String(x.id)===String(id));
+  const c = state.commitments.find(x=>String(x.id)===String(id));
   if(!c) return;
 
   if(el.dataset.act === "toggle"){
@@ -1003,7 +810,7 @@ document.getElementById("commitmentsList").addEventListener("click", async (ev)=
     if(!confirm("Commitment \""+c.text+"\" löschen?")) return;
     const { error } = await db.from("weekly_commitments").delete().eq("id", c.id);
     if(error){ console.error(error); alert("Konnte nicht gelöscht werden: "+error.message); return; }
-    COMMITMENTS = COMMITMENTS.filter(x=>String(x.id)!==String(id));
+    state.commitments = state.commitments.filter(x=>String(x.id)!==String(id));
     renderCommitments();
   }
 });
@@ -1029,34 +836,34 @@ document.getElementById("addTaskBtn").addEventListener("click", async ()=>{
   const assignee = document.getElementById("inTaskAssignee").value;
   const priority = document.getElementById("inTaskPriority").value;
   const { data, error } = await db.from("tasks").insert({
-    week_start: WEEKS[boardWeekIdx][0], text, assignee, priority, done: false
+    week_start: WEEKS[state.boardWeekIdx][0], text, assignee, priority, done: false
   }).select();
   if(error){ console.error(error); alert("Aufgabe konnte nicht gespeichert werden: "+error.message); return; }
-  TASKS.push(data[0]);
+  state.tasks.push(data[0]);
   closeAddTaskModal();
   renderTasks();
 });
 
 /* ---------- Board: Wochen-Navigation ---------- */
 document.getElementById("taskPrevWeek").addEventListener("click", ()=>{
-  if(boardWeekIdx > 0){ boardWeekIdx--; renderTasks(); }
+  if(state.boardWeekIdx > 0){ state.boardWeekIdx--; renderTasks(); }
 });
 document.getElementById("taskNextWeek").addEventListener("click", ()=>{
-  if(boardWeekIdx < N_WEEKS - 1){ boardWeekIdx++; renderTasks(); }
+  if(state.boardWeekIdx < N_WEEKS - 1){ state.boardWeekIdx++; renderTasks(); }
 });
 
 /* ---------- Zeittracking: Wochen-Navigation ---------- */
 document.getElementById("ztPrevWeek").addEventListener("click", ()=>{
-  if(ztWeekIdx > 0){ ztWeekIdx--; renderZeittracking(); }
+  if(state.ztWeekIdx > 0){ state.ztWeekIdx--; renderZeittracking(); }
 });
 document.getElementById("ztNextWeek").addEventListener("click", ()=>{
-  if(ztWeekIdx < N_WEEKS - 1){ ztWeekIdx++; renderZeittracking(); }
+  if(state.ztWeekIdx < N_WEEKS - 1){ state.ztWeekIdx++; renderZeittracking(); }
 });
 
 /* ---------- Board: Karte anklicken -> Modal ---------- */
 let modalTaskId = null;
 function openTaskModal(id){
-  const t = TASKS.find(x=>String(x.id)===String(id));
+  const t = state.tasks.find(x=>String(x.id)===String(id));
   if(!t) return;
   modalTaskId = t.id;
   document.getElementById("modalTaskText").value = t.text;
@@ -1064,7 +871,7 @@ function openTaskModal(id){
   document.getElementById("modalAssignee").value = t.assignee;
   document.getElementById("modalPriority").value = t.priority;
   // "Nächste Woche" nur anbieten, wenn es eine nächste Woche gibt
-  document.getElementById("modalPushWeek").style.display = (boardWeekIdx < N_WEEKS - 1) ? "inline-flex" : "none";
+  document.getElementById("modalPushWeek").style.display = (state.boardWeekIdx < N_WEEKS - 1) ? "inline-flex" : "none";
   document.getElementById("taskModal").classList.add("open");
 }
 function closeTaskModal(){
@@ -1089,7 +896,7 @@ document.addEventListener("keydown", (ev)=>{
 
 document.getElementById("modalSave").addEventListener("click", async ()=>{
   if(modalTaskId == null) return;
-  const t = TASKS.find(x=>String(x.id)===String(modalTaskId));
+  const t = state.tasks.find(x=>String(x.id)===String(modalTaskId));
   if(!t) return;
   const text = document.getElementById("modalTaskText").value.trim();
   if(!text){ alert("Der Aufgabentext darf nicht leer sein."); return; }
@@ -1105,10 +912,10 @@ document.getElementById("modalSave").addEventListener("click", async ()=>{
 });
 
 document.getElementById("modalPushWeek").addEventListener("click", async ()=>{
-  if(modalTaskId == null || boardWeekIdx >= N_WEEKS - 1) return;
-  const t = TASKS.find(x=>String(x.id)===String(modalTaskId));
+  if(modalTaskId == null || state.boardWeekIdx >= N_WEEKS - 1) return;
+  const t = state.tasks.find(x=>String(x.id)===String(modalTaskId));
   if(!t) return;
-  const nextWeekStart = WEEKS[boardWeekIdx + 1][0];
+  const nextWeekStart = WEEKS[state.boardWeekIdx + 1][0];
   const { error } = await db.from("tasks").update({ week_start: nextWeekStart }).eq("id", t.id);
   if(error){ console.error(error); alert("Verschieben fehlgeschlagen: "+error.message); return; }
   t.week_start = nextWeekStart;
@@ -1122,7 +929,7 @@ document.getElementById("modalDelete").addEventListener("click", async ()=>{
   const id = modalTaskId;
   const { error } = await db.from("tasks").delete().eq("id", id);
   if(error){ console.error(error); alert("Löschen fehlgeschlagen: "+error.message); return; }
-  TASKS = TASKS.filter(t=>String(t.id)!==String(id));
+  state.tasks = state.tasks.filter(t=>String(t.id)!==String(id));
   closeTaskModal();
   renderTasks();
 });
@@ -1136,7 +943,7 @@ async function init(){
   }
   await ensureAuthorized();
   populateEntryControls();
-  boardWeekIdx = findCurrentWeekIndex();
+  state.boardWeekIdx = findCurrentWeekIndex();
   await fetchAllData();
   loadDayIntoForm();
   loadDayIntoHebelForm();
