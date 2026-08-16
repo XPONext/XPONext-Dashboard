@@ -6,228 +6,10 @@
 <title>XPO Dashboard</title>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-<style>
-  :root{
-    --accent:#3F5137; --accent-dark:#2E3D28; --accent-light:#E8EDE6;
-    --text-primary:#0D0D0D; --text-body:#4B5563; --text-muted:#9CA3AF;
-    --bg:#FFFFFF; --bg-subtle:#F9FAFB; --bg-dark:#0D0D0D;
-    --border:#E5E7EB;
-    --amber:#B45309; --amber-bg:#FEF3C7; --red:#B91C1C; --red-bg:#FEE2E2;
-    --green:#1B7F4C; --green-bg:#E6F4EC;
-    --shadow-sm:0 1px 2px rgba(13,13,13,0.045), 0 1px 1px rgba(13,13,13,0.03);
-    --shadow-md:0 8px 20px -6px rgba(13,13,13,0.09), 0 2px 6px rgba(13,13,13,0.05);
-    --ease:cubic-bezier(.2,.7,.2,1);
-  }
-  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
-  body{font-family:'Inter',-apple-system,sans-serif;background:var(--bg-subtle);color:var(--text-primary);-webkit-font-smoothing:antialiased;letter-spacing:-0.006em;}
-  a{color:inherit;}
-  .container{max-width:900px;margin:0 auto;padding:0 5%;}
-
-  .app{display:flex;align-items:stretch;min-height:100vh;}
-
-  .sidebar{width:248px;flex-shrink:0;background:#fff;border-right:1px solid var(--border);padding:1.6rem 1.1rem;position:sticky;top:0;height:100vh;overflow-y:auto;}
-  .logo{font-size:1.2rem;font-weight:800;color:var(--text-primary);letter-spacing:-0.01em;padding:0 0.4rem;margin-bottom:2rem;}
-  .logo span{color:var(--accent);}
-  .tabs{display:flex;flex-direction:column;gap:0.15rem;}
-  .tab-btn{background:none;border:none;border-left:3px solid transparent;padding:0.65rem 0.8rem;border-radius:0 8px 8px 0;font-family:'Inter',sans-serif;font-weight:600;font-size:0.88rem;color:var(--text-body);cursor:pointer;text-align:left;transition:background .15s var(--ease), color .15s var(--ease), border-color .15s var(--ease);}
-  .tab-btn.active{background:var(--accent-light);color:var(--accent-dark);border-left-color:var(--accent);}
-  .tab-btn:hover:not(.active){background:var(--bg-subtle);color:var(--text-primary);}
-
-  .main{flex:1;min-width:0;padding-bottom:4rem;}
-
-  @media(max-width:800px){
-    .app{flex-direction:column;}
-    .sidebar{width:100%;height:auto;position:static;border-right:none;border-bottom:1px solid var(--border);padding:0.9rem 5%;}
-    .logo{margin-bottom:0.8rem;}
-    .tabs{flex-direction:row;overflow-x:auto;gap:0.3rem;}
-    .tab-btn{border-left:none;border-radius:8px;white-space:nowrap;}
-    .tab-btn.active{border-left-color:transparent;}
-  }
-
-  .hero{padding:3rem 5% 1.6rem;}
-  .hero h1{font-size:clamp(1.75rem,3.4vw,2.4rem);font-weight:900;color:var(--text-primary);margin-bottom:0.45rem;letter-spacing:-0.015em;}
-  .hero h1 span{color:var(--accent);}
-  .hero p{color:var(--text-body);font-size:1rem;}
-
-  section.view{display:none;padding:0 5% 2.5rem;}
-  section.view.active{display:block;}
-
-  .card{background:#fff;border:1px solid var(--border);border-radius:14px;padding:1.7rem;margin-bottom:1.3rem;box-shadow:var(--shadow-sm);transition:box-shadow .2s var(--ease);}
-  .card h2{font-size:1.08rem;font-weight:800;margin-bottom:1rem;color:var(--text-primary);letter-spacing:-0.01em;}
-  .card h2 small{display:block;font-weight:500;font-size:0.8rem;color:var(--text-muted);margin-top:0.25rem;letter-spacing:0;}
-
-  .hero-progress{background:var(--bg-dark);border-radius:16px;padding:2.1rem 1.9rem;color:#fff;margin-bottom:1.3rem;box-shadow:var(--shadow-md);}
-  .hero-progress .row{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:0.8rem;flex-wrap:wrap;gap:0.4rem;}
-  .hero-progress .row .label{font-size:0.82rem;color:#9CA6B4;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;}
-  .hero-progress .row .value{font-size:2.1rem;font-weight:900;letter-spacing:-0.02em;}
-  .hero-progress .value span{color:var(--accent-light);}
-  .bar-track-lg{background:rgba(255,255,255,0.1);border-radius:99px;height:20px;overflow:hidden;position:relative;box-shadow:inset 0 1px 2px rgba(0,0,0,0.2);}
-  .bar-fill-lg{background:linear-gradient(90deg, var(--accent-dark), var(--accent));height:100%;border-radius:99px;transition:width .5s var(--ease);}
-  .hero-progress .meta{margin-top:0.7rem;font-size:0.83rem;color:#8A94A3;}
-
-  .grid4{display:grid;grid-template-columns:repeat(4,1fr);gap:1rem;}
-  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:1.3rem;align-items:start;}
-  .grid2 .card{margin-bottom:0;}
-  @media(max-width:800px){.grid4{grid-template-columns:repeat(2,1fr);} .grid2{grid-template-columns:1fr;}}
-  .stat{background:#fff;border:1px solid var(--border);border-radius:13px;padding:1.15rem 1.25rem;box-shadow:var(--shadow-sm);}
-  .stat .lbl{font-size:0.72rem;color:var(--text-muted);font-weight:700;text-transform:uppercase;letter-spacing:0.055em;margin-bottom:0.4rem;}
-  .stat .num{font-size:1.55rem;font-weight:800;color:var(--text-primary);margin-bottom:0.55rem;letter-spacing:-0.015em;}
-  .stat .num small{font-size:0.82rem;font-weight:500;color:var(--text-muted);letter-spacing:0;}
-  .bar-track{background:var(--bg-subtle);border-radius:99px;height:8px;overflow:hidden;border:1px solid var(--border);}
-  .bar-fill{height:100%;border-radius:99px;transition:width .35s var(--ease);}
-  .bar-fill.ok{background:var(--accent);}
-  .bar-fill.warn{background:#D97706;}
-  .bar-fill.low{background:#DC2626;}
-  .stat .pct{font-size:0.76rem;color:var(--text-muted);margin-top:0.35rem;}
-
-  .badge{display:inline-flex;align-items:center;gap:5px;background:var(--accent-light);color:var(--accent-dark);padding:0.25rem 0.7rem;border-radius:99px;font-size:0.76rem;font-weight:700;}
-  .badge.warn{background:var(--amber-bg);color:var(--amber);}
-  .badge.low{background:var(--red-bg);color:var(--red);}
-
-  select, input[type=number], input[type=date], input[type=text]{
-    font-family:'Inter',sans-serif;border:1.5px solid var(--border);border-radius:8px;padding:0.55rem 0.7rem;font-size:0.93rem;color:var(--text-primary);width:100%;background:#fff;transition:border-color .15s var(--ease), box-shadow .15s var(--ease);
-  }
-  select:focus,input:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-light);}
-  label{display:block;font-size:0.8rem;font-weight:600;color:var(--text-body);margin-bottom:0.35rem;}
-  .field{margin-bottom:1rem;}
-  .form-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:1rem;}
-  /* Wochenfokus-Banner (dunkel, read-only) */
-  .focus-banner{background:var(--bg-dark);border-radius:16px;padding:1.5rem 1.7rem;box-shadow:var(--shadow-md);}
-  .focus-label{font-size:0.74rem;font-weight:700;color:#8A94A3;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:0.7rem;}
-  .focus-text{font-size:1.5rem;font-weight:800;color:#fff;letter-spacing:-0.015em;line-height:1.3;word-break:break-word;}
-  .focus-text.empty{font-size:1.05rem;font-weight:500;color:#6B7280;letter-spacing:0;}
-  .focus-stroke{width:64px;height:3px;background:var(--accent);border-radius:99px;margin-top:0.9rem;}
-  .board-actions{display:flex;gap:0.7rem;flex-wrap:wrap;margin:1.1rem 0 1.3rem;}
-  #inGoalText{font-size:1.05rem;font-weight:600;color:var(--accent-dark);}
-
-  .btn{background:var(--accent);color:#fff;padding:0.72rem 1.5rem;border-radius:9px;border:none;font-weight:700;font-size:0.92rem;cursor:pointer;font-family:'Inter',sans-serif;box-shadow:0 1px 2px rgba(46,61,40,0.25);transition:transform .12s var(--ease), box-shadow .12s var(--ease), background .12s var(--ease);}
-  .btn:hover{background:var(--accent-dark);transform:translateY(-1px);box-shadow:0 4px 10px rgba(46,61,40,0.28);}
-  .btn:active{transform:translateY(0);}
-  .btn-outline{background:#fff;color:var(--text-primary);padding:0.72rem 1.5rem;border-radius:9px;border:1.5px solid #D1D5DB;font-weight:600;font-size:0.92rem;cursor:pointer;font-family:'Inter',sans-serif;transition:border-color .12s var(--ease), background .12s var(--ease);}
-  .btn-outline:hover{border-color:var(--accent);background:var(--bg-subtle);}
-
-  table{width:100%;border-collapse:collapse;font-size:0.85rem;}
-  th{background:var(--accent-dark);color:#fff;text-align:left;padding:0.65rem 0.8rem;font-weight:700;font-size:0.74rem;text-transform:uppercase;letter-spacing:0.04em;}
-  td{padding:0.6rem 0.8rem;border-bottom:1px solid var(--border);color:var(--text-body);}
-  tr:nth-child(even) td{background:var(--bg-subtle);}
-  tr.current-week td{background:var(--accent-light) !important;}
-  .table-wrap{overflow-x:auto;border-radius:11px;border:1px solid var(--border);}
-  .table-wrap table{border-radius:11px;}
-  .cell-bar{display:flex;align-items:center;gap:0.5rem;min-width:110px;}
-  .cell-bar .bar-track{flex:1;}
-  .row-metric{margin-bottom:0.9rem;}
-  .row-metric .top{display:flex;justify-content:space-between;font-size:0.85rem;margin-bottom:0.35rem;}
-  .row-metric .top .name{font-weight:600;color:var(--text-primary);}
-  .row-metric .top .vals{color:var(--text-muted);}
-
-  .lever-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:0.9rem;margin-bottom:1rem;}
-  .lever{border:1px solid var(--border);border-radius:11px;padding:0.95rem;background:var(--bg-subtle);}
-  .lever .name{font-size:0.8rem;font-weight:700;margin-bottom:0.55rem;color:var(--text-primary);}
-
-  .save-msg{display:none;color:var(--accent-dark);background:var(--accent-light);padding:0.6rem 1rem;border-radius:8px;font-size:0.84rem;font-weight:600;margin-top:0.8rem;}
-  .streak{display:flex;gap:1.3rem;flex-wrap:wrap;margin-top:0.7rem;}
-  .streak .item{text-align:center;}
-  .streak .item .n{font-size:1.65rem;font-weight:900;color:var(--accent);letter-spacing:-0.01em;}
-  .streak .item .l{font-size:0.73rem;color:var(--text-muted);font-weight:600;text-transform:uppercase;letter-spacing:0.03em;}
-
-  /* Aufgaben-Board (Kanban) */
-  #view-aufgaben .container{max-width:1120px;}
-  .board-head{display:flex;align-items:center;justify-content:space-between;gap:1rem;margin-bottom:1.2rem;flex-wrap:wrap;}
-  .board-head h2{margin-bottom:0;}
-  .week-nav{display:flex;align-items:center;gap:0.55rem;font-size:0.85rem;font-weight:700;color:var(--text-body);}
-  .wk-btn{background:#fff;border:1.5px solid var(--border);border-radius:8px;width:30px;height:30px;font-size:1.15rem;line-height:1;color:var(--text-body);cursor:pointer;font-family:'Inter',sans-serif;transition:border-color .12s var(--ease), background .12s var(--ease);}
-  .wk-btn:hover:not(:disabled){border-color:var(--accent);background:var(--bg-subtle);}
-  .wk-btn:disabled{opacity:0.35;cursor:not-allowed;}
-
-  .kanban{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:0.75rem;}
-  @media(max-width:900px){
-    .kanban{display:flex;overflow-x:auto;padding-bottom:0.6rem;scroll-snap-type:x proximity;}
-    .kanban .kanban-col{flex:0 0 76%;scroll-snap-align:start;}
-  }
-  .kanban-col{background:var(--bg-subtle);border:1px solid var(--border);border-radius:12px;padding:0.7rem 0.6rem;display:flex;flex-direction:column;min-height:130px;}
-  .kanban-col-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:0.75rem;padding:0 0.15rem;}
-  .kanban-col-title{font-size:0.71rem;font-weight:800;color:var(--text-primary);text-transform:uppercase;letter-spacing:0.04em;}
-  .kanban-count{font-size:0.68rem;font-weight:800;color:var(--accent-dark);background:var(--accent-light);border-radius:99px;padding:0.09rem 0.45rem;min-width:20px;text-align:center;}
-  .kanban-cards{display:flex;flex-direction:column;gap:0.55rem;flex:1;}
-  .kanban-card{background:#fff;border:1px solid var(--border);border-radius:10px;padding:0.65rem 0.7rem;cursor:pointer;box-shadow:var(--shadow-sm);transition:border-color .12s var(--ease), transform .12s var(--ease);}
-  .kanban-card:hover{border-color:var(--accent);transform:translateY(-1px);}
-  .kanban-card-text{font-size:0.86rem;color:var(--text-primary);line-height:1.4;word-break:break-word;margin-bottom:0.5rem;}
-  .kanban-card.is-done .kanban-card-text{text-decoration:line-through;color:var(--text-muted);}
-  .kanban-card-badges{display:flex;gap:0.35rem;flex-wrap:wrap;}
-  .kanban-empty{font-size:0.75rem;color:var(--text-muted);text-align:center;padding:0.55rem 0;opacity:0.7;}
-
-  .task-badge{font-size:0.66rem;font-weight:700;padding:0.18rem 0.52rem;border-radius:99px;white-space:nowrap;}
-  .task-badge.person{background:var(--accent-light);color:var(--accent-dark);}
-  .task-badge.prio-hoch{background:var(--red-bg);color:var(--red);}
-  .task-badge.prio-mittel{background:var(--amber-bg);color:var(--amber);}
-  .task-badge.prio-niedrig{background:#fff;color:var(--text-muted);border:1px solid var(--border);}
-
-  /* Projekte */
-  .toggle-inline{display:inline-flex;align-items:center;gap:0.45rem;font-size:0.82rem;color:var(--text-muted);cursor:pointer;user-select:none;}
-  .toggle-inline input{width:15px;height:15px;accent-color:var(--accent);cursor:pointer;margin:0;}
-
-  .project-card{background:#fff;border:1px solid var(--border);border-radius:14px;padding:1.3rem 1.4rem;margin-bottom:1.1rem;box-shadow:var(--shadow-sm);transition:box-shadow .14s var(--ease);}
-  .project-card:hover{box-shadow:var(--shadow-md);}
-  .project-card.is-done{opacity:0.62;}
-  .project-top{display:flex;align-items:flex-start;gap:0.8rem;margin-bottom:0.2rem;}
-  .project-title{font-size:1.06rem;font-weight:800;color:var(--text-primary);letter-spacing:-0.01em;line-height:1.3;flex:1;word-break:break-word;}
-  .project-card.is-done .project-title{text-decoration:line-through;}
-  .project-desc{font-size:0.85rem;color:var(--text-muted);line-height:1.45;margin-bottom:0.75rem;word-break:break-word;}
-  .project-badges{display:flex;gap:0.35rem;flex-wrap:wrap;align-items:center;}
-  .project-edit{background:none;border:none;color:var(--text-muted);font-size:0.9rem;cursor:pointer;padding:0.15rem 0.35rem;border-radius:6px;flex:0 0 auto;}
-  .project-edit:hover{color:var(--accent);background:var(--accent-light);}
-
-  .status-badge{font-size:0.66rem;font-weight:700;padding:0.18rem 0.52rem;border-radius:99px;white-space:nowrap;text-transform:uppercase;letter-spacing:0.04em;}
-  .status-badge.st-aktiv{background:var(--accent-light);color:var(--accent-dark);}
-  .status-badge.st-pausiert{background:var(--amber-bg);color:var(--amber);}
-  .status-badge.st-fertig{background:var(--green-bg,#E6F4EC);color:var(--green,#1B7F4C);}
-  .due-badge{font-size:0.7rem;font-weight:600;color:var(--text-muted);white-space:nowrap;}
-  .due-badge.is-late{color:var(--red);}
-
-  .project-progress{display:flex;align-items:center;gap:0.7rem;margin:0.85rem 0 0.4rem;}
-  .project-progress .bar-track{flex:1;margin:0;}
-  .project-progress .ratio{font-size:0.76rem;font-weight:700;color:var(--text-muted);white-space:nowrap;}
-
-  .step-list{margin-top:0.5rem;border-top:1px solid var(--border);}
-  .step-row{display:flex;align-items:center;gap:0.65rem;padding:0.55rem 0;border-bottom:1px solid var(--border);}
-  .step-row:last-child{border-bottom:none;}
-  .step-row input[type=checkbox]{width:16px;height:16px;flex:0 0 auto;accent-color:var(--accent);cursor:pointer;margin:0;}
-  .step-text{flex:1;font-size:0.87rem;color:var(--text-primary);line-height:1.4;word-break:break-word;}
-  .step-row.is-done .step-text{text-decoration:line-through;color:var(--text-muted);}
-  .step-del{background:none;border:none;color:var(--text-muted);font-size:0.95rem;line-height:1;cursor:pointer;padding:0.2rem 0.3rem;border-radius:6px;opacity:0;transition:opacity .12s var(--ease), color .12s var(--ease);}
-  .step-row:hover .step-del{opacity:1;}
-  .step-del:hover{color:var(--red);}
-  .step-empty{font-size:0.82rem;color:var(--text-muted);padding:0.55rem 0;}
-  .step-add{margin-top:0.6rem;}
-  .projects-empty{text-align:center;padding:2.6rem 1rem;color:var(--text-muted);font-size:0.9rem;}
-  .btn-danger{color:var(--red);border-color:var(--red-bg);}
-  .btn-danger:hover{background:var(--red-bg);border-color:var(--red);}
-
-  /* Commitments */
-  .commit-row{display:flex;align-items:center;gap:0.7rem;padding:0.65rem 0;border-bottom:1px solid var(--border);}
-  .commit-row:last-child{border-bottom:none;}
-  .commit-row input[type=checkbox]{width:17px;height:17px;flex:0 0 auto;accent-color:var(--accent);cursor:pointer;margin:0;}
-  .commit-text{flex:1;font-size:0.9rem;color:var(--text-primary);line-height:1.4;word-break:break-word;}
-  .commit-row.is-done .commit-text{text-decoration:line-through;color:var(--text-muted);}
-  .commit-del{background:none;border:none;color:var(--text-muted);font-size:1rem;line-height:1;cursor:pointer;padding:0.2rem 0.3rem;border-radius:6px;opacity:0;transition:opacity .12s var(--ease), color .12s var(--ease);}
-  .commit-row:hover .commit-del{opacity:1;}
-  .commit-del:hover{color:var(--red);}
-  .commit-empty{font-size:0.85rem;color:var(--text-muted);padding:0.4rem 0;}
-
-  /* Aufgaben-Modal */
-  .modal-overlay{position:fixed;inset:0;background:rgba(13,13,13,0.45);display:none;align-items:center;justify-content:center;z-index:1000;padding:1rem;}
-  .modal-overlay.open{display:flex;}
-  .modal{background:#fff;border:1px solid var(--border);border-radius:14px;padding:1.6rem;max-width:460px;width:100%;box-shadow:var(--shadow-md);}
-  .modal-head{display:flex;align-items:flex-start;justify-content:space-between;gap:1rem;margin-bottom:1.1rem;}
-  .modal-head h3{font-size:0.72rem;font-weight:800;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.05em;}
-  .modal-close{background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:1.2rem;line-height:1;padding:0.1rem 0.3rem;}
-  .modal-close:hover{color:var(--text-primary);}
-  .modal-actions{display:flex;align-items:center;gap:0.7rem;margin-top:1.3rem;flex-wrap:wrap;}
-  .modal-del{background:none;border:none;color:var(--red);cursor:pointer;font-weight:700;font-size:0.85rem;margin-left:auto;padding:0.4rem;font-family:'Inter',sans-serif;}
-  .modal-del:hover{text-decoration:underline;}
-
-  footer{text-align:center;color:var(--text-muted);font-size:0.78rem;padding:2.2rem 5% 0;letter-spacing:0.01em;}
-</style>
+<link rel="stylesheet" href="styles/tokens.css">
+<link rel="stylesheet" href="styles/base.css">
+<link rel="stylesheet" href="styles/components.css">
+<link rel="stylesheet" href="styles/views.css">
 </head>
 <body>
 
@@ -241,6 +23,7 @@
     <button class="tab-btn" data-view="projekte">Projekte</button>
     <button class="tab-btn" data-view="hebel">Hebel</button>
     <button class="tab-btn" data-view="verlauf">Verlauf</button>
+    <button class="tab-btn" data-view="kunden">Kunden</button>
     <button class="tab-btn" data-view="zeittracking">Zeittracking</button>
   </nav>
 </aside>
@@ -426,32 +209,61 @@
 <!-- HEBEL -->
 <section class="view" id="view-hebel">
   <div class="container">
+
+    <div class="grid4">
+      <div class="stat">
+        <div class="lbl">Diese Woche</div>
+        <div class="num" id="hebWeekNum">0 <small>/ 7 Std.</small></div>
+        <div class="bar-track"><div class="bar-fill" id="hebWeekBar" style="width:0%"></div></div>
+        <div class="pct" id="hebWeekPct">—</div>
+      </div>
+      <div class="stat">
+        <div class="lbl">Jahr gesamt</div>
+        <div class="num" id="hebYearNum">0 <small>/ 175 Std.</small></div>
+        <div class="bar-track"><div class="bar-fill" id="hebYearBar" style="width:0%"></div></div>
+        <div class="pct" id="hebYearPct">—</div>
+      </div>
+      <div class="stat">
+        <div class="lbl">Wochen mit Ziel erreicht</div>
+        <div class="num" id="hebWeeksHit">0</div>
+        <div class="pct" id="hebWeeksHitSub">von 0 erfassten Wochen</div>
+      </div>
+      <div class="stat">
+        <div class="lbl">Stärkster Hebel</div>
+        <div class="num" id="hebTopLever" style="font-size:1.05rem;line-height:1.3">—</div>
+        <div class="pct" id="hebTopLeverSub">bisher insgesamt</div>
+      </div>
+    </div>
+
     <div class="card">
-      <h2>Hebel-Stunden eintragen <small>Ziel: 7 Std./Woche pro Person — Stand für den gewählten Tag, jederzeit korrigierbar.</small></h2>
+      <h2>Verlauf <small id="hebChartSub">Hebel-Stunden je Woche gegen das Ziel von 7 Std.</small></h2>
+      <div id="hebChart"></div>
+      <div id="hebChartTable"></div>
+    </div>
+
+    <div class="card">
+      <h2>Hebel-Stunden eintragen <small>Für den gewählten Tag — jederzeit korrigierbar.</small></h2>
       <div class="form-grid" style="max-width:600px;">
         <div class="field">
-          <label>Wer trägt ein?</label>
+          <label for="personSelectHebel">Wer trägt ein?</label>
           <select id="personSelectHebel"><option value="tim">Tim</option><option value="simon">Simon</option></select>
         </div>
         <div class="field">
-          <label>Tag auswählen</label>
+          <label for="entryDateHebel">Tag auswählen</label>
           <input type="date" id="entryDateHebel">
         </div>
       </div>
-      <div class="lever-grid">
-        <div class="lever"><div class="name">Call-Breakdowns</div><input type="number" id="hebelCallBreakdowns" min="0" step="0.25"></div>
-        <div class="lever"><div class="name">Cold-Call-Breakdowns</div><input type="number" id="hebelColdCall" min="0" step="0.25"></div>
-        <div class="lever"><div class="name">Coachings</div><input type="number" id="hebelCoachings" min="0" step="0.25"></div>
-        <div class="lever"><div class="name">Offer-Verbesserung</div><input type="number" id="hebelOffer" min="0" step="0.25"></div>
-        <div class="lever"><div class="name">Zielgruppenverständnis</div><input type="number" id="hebelZielgruppe" min="0" step="0.25"></div>
-      </div>
+      <div class="lever-list" id="hebelInputs"></div>
+      <div class="lever-sum" id="hebelDaySum">Summe für diesen Tag: 0 Std.</div>
       <button class="btn" id="saveHebelBtn">Tag speichern</button>
       <div class="save-msg" id="saveHebelMsg">Gespeichert ✓</div>
     </div>
+
     <div class="card">
-      <h2>Hebel-Stunden diese Woche</h2>
+      <h2>Aufteilung <small id="hebSplitSub">Woher die Hebel-Stunden dieser Woche kommen</small></h2>
       <div id="hebelPreview"></div>
     </div>
+
   </div>
 </section>
 
@@ -483,52 +295,110 @@
   </div>
 </section>
 
-<!-- ZEITTRACKING -->
+<section class="view" id="view-kunden">
+  <div class="container">
+
+    <div class="board-head">
+      <div class="period-nav">
+        <label for="kdZeitraum" class="t-label">Zeitraum</label>
+        <select id="kdZeitraum">
+          <option value="1">Dieser Monat</option>
+          <option value="3" selected>Letzte 3 Monate</option>
+          <option value="6">Letzte 6 Monate</option>
+          <option value="all">Gesamt</option>
+        </select>
+        <span class="period-hint" id="kdZeitraumLabel"></span>
+      </div>
+      <div class="board-actions" style="margin:0;">
+        <button class="btn" id="kdAddCustomer">+ Kunde anlegen</button>
+        <button class="btn-outline" id="kdAddRevenue">+ Umsatz erfassen</button>
+      </div>
+    </div>
+
+    <div class="grid4">
+      <div class="stat">
+        <div class="lbl">Umsatz im Zeitraum</div>
+        <div class="num" id="kdUmsatz">—</div>
+        <div class="pct" id="kdUmsatzSub">aus Retainern und Einzelaufträgen</div>
+      </div>
+      <div class="stat">
+        <div class="lbl">Abrechenbare Stunden</div>
+        <div class="num" id="kdStunden">—</div>
+        <div class="pct" id="kdStundenSub">auf Kunden gebucht</div>
+      </div>
+      <div class="stat">
+        <div class="lbl">Stundenlohn (Schnitt)</div>
+        <div class="num" id="kdSchnitt">—</div>
+        <div class="pct" id="kdSchnittSub">Umsatz ÷ abrechenbare Stunden</div>
+      </div>
+      <div class="stat">
+        <div class="lbl">Interne Zeit</div>
+        <div class="num" id="kdIntern">—</div>
+        <div class="pct" id="kdInternSub">nicht auf Kunden abrechenbar</div>
+      </div>
+    </div>
+
+    <div class="coverage-note" id="kdCoverage"></div>
+
+    <div class="card">
+      <h2>Kunden nach Stundenlohn <small id="kdTableSub">Umsatz und getrackte Zeit im gewählten Zeitraum</small></h2>
+      <div id="kdList"></div>
+    </div>
+
+    <details class="card zt-details" id="kdRevenueCard">
+      <summary><span class="zt-summary-title">Umsatzeinträge</span><span class="zt-summary-hint"></span></summary>
+      <div id="kdRevenues"></div>
+    </details>
+
+  </div>
+</section>
+
 <section class="view" id="view-zeittracking">
   <div class="container">
-    <div class="card" id="ztTodayCard">
-      <h2>Heute</h2>
-      <div class="grid4">
-        <div class="stat"><div class="lbl">Std. gearbeitet</div><div class="num" id="ztTodayHours">0</div></div>
-        <div class="stat"><div class="lbl">Tim</div><div class="num" id="ztTodayTim">0</div></div>
-        <div class="stat"><div class="lbl">Simon</div><div class="num" id="ztTodaySimon">0</div></div>
-        <div class="stat"><div class="lbl">Pause</div><div class="num" id="ztTodayPause">0</div></div>
+
+    <div class="board-head">
+      <h2 id="ztWeekHeading">Diese Woche</h2>
+      <div class="week-nav">
+        <button type="button" class="wk-btn" id="ztPrevWeek" title="Vorherige Woche">‹</button>
+        <span id="ztWeekLabel">diese Woche</span>
+        <button type="button" class="wk-btn" id="ztNextWeek" title="Nächste Woche">›</button>
+      </div>
+    </div>
+
+    <div class="grid4">
+      <div class="stat">
+        <div class="lbl">Erfasst</div>
+        <div class="num" id="ztWeekHours">0</div>
+        <div class="pct" id="ztWeekHoursSub">Stunden gesamt</div>
+      </div>
+      <div class="stat">
+        <div class="lbl">Tim</div>
+        <div class="num" id="ztWeekTim">0</div>
+        <div class="pct" id="ztWeekTimSub">Stunden</div>
+      </div>
+      <div class="stat">
+        <div class="lbl">Simon</div>
+        <div class="num" id="ztWeekSimon">0</div>
+        <div class="pct" id="ztWeekSimonSub">Stunden</div>
+      </div>
+      <div class="stat" id="ztTodayCard">
+        <div class="lbl">Heute</div>
+        <div class="num" id="ztTodayHours">0</div>
+        <div class="pct" id="ztTodaySub">Stunden</div>
       </div>
     </div>
 
     <div class="card">
-      <div class="board-head">
-        <h2 id="ztWeekHeading">Diese Woche</h2>
-        <div class="week-nav">
-          <button type="button" class="wk-btn" id="ztPrevWeek" title="Vorherige Woche">‹</button>
-          <span id="ztWeekLabel">diese Woche</span>
-          <button type="button" class="wk-btn" id="ztNextWeek" title="Nächste Woche">›</button>
-        </div>
-      </div>
-      <div class="grid4">
-        <div class="stat"><div class="lbl">Std. gearbeitet</div><div class="num" id="ztWeekHours">0</div></div>
-        <div class="stat"><div class="lbl">Tim</div><div class="num" id="ztWeekTim">0</div></div>
-        <div class="stat"><div class="lbl">Simon</div><div class="num" id="ztWeekSimon">0</div></div>
-        <div class="stat"><div class="lbl">Bester Tag <small style="font-weight:400;">gesamt</small></div><div class="num" id="ztHighscoreDay" style="font-size:1rem;">—</div></div>
-      </div>
+      <h2>Für wen <small class="zt-week-sub">diese Woche</small></h2>
+      <div id="ztByZuordnung"></div>
     </div>
 
-    <div class="grid2">
-      <div class="card">
-        <h2>Nach State <small class="zt-week-sub">diese Woche</small></h2>
-        <div id="ztByState"></div>
-      </div>
+    <details class="card zt-details">
+      <summary><span class="zt-summary-title">Nach Art der Arbeit</span><span class="zt-summary-hint"></span></summary>
+      <div id="ztByState"></div>
+      <div class="zt-legacy" id="ztLegacy"></div>
+    </details>
 
-      <div class="card">
-        <h2>Nach Zuordnung <small class="zt-week-sub">diese Woche</small></h2>
-        <div id="ztByZuordnung"></div>
-      </div>
-    </div>
-
-    <div class="card" style="margin-top:1.3rem;">
-      <h2>Nach Aktivität <small class="zt-week-sub">diese Woche</small></h2>
-      <div id="ztByAktivitaet"></div>
-    </div>
   </div>
 </section>
 
@@ -537,1375 +407,6 @@
 </main>
 </div>
 
-<!-- AUFGABEN-MODAL -->
-<div class="modal-overlay" id="taskModal">
-  <div class="modal">
-    <div class="modal-head">
-      <h3>Aufgabe bearbeiten</h3>
-      <button type="button" class="modal-close" id="modalClose" title="Schließen">✕</button>
-    </div>
-    <div class="field">
-      <label>Aufgabe</label>
-      <input type="text" id="modalTaskText">
-    </div>
-    <div class="field">
-      <label>Status</label>
-      <select id="modalStatus">
-        <option value="backlog">Backlog</option>
-        <option value="auswahl">Zur Auswahl</option>
-        <option value="inarbeit">In Arbeit</option>
-        <option value="review">In Review</option>
-        <option value="done">Done</option>
-      </select>
-    </div>
-    <div class="form-grid">
-      <div class="field" style="margin-bottom:0;">
-        <label>Zugewiesen an</label>
-        <select id="modalAssignee"><option value="tim">Tim</option><option value="simon">Simon</option><option value="beide">Beide</option></select>
-      </div>
-      <div class="field" style="margin-bottom:0;">
-        <label>Priorität</label>
-        <select id="modalPriority"><option value="hoch">Hoch</option><option value="mittel">Mittel</option><option value="niedrig">Niedrig</option></select>
-      </div>
-    </div>
-    <div class="modal-actions">
-      <button type="button" class="btn" id="modalSave">Speichern</button>
-      <button type="button" class="btn-outline" id="modalPushWeek">→ Nächste Woche</button>
-      <button type="button" class="modal-del" id="modalDelete">Löschen</button>
-    </div>
-  </div>
-</div>
-
-<!-- WOCHENFOKUS-MODAL -->
-<div class="modal-overlay" id="goalModal">
-  <div class="modal">
-    <div class="modal-head">
-      <h3>Wochenfokus ändern</h3>
-      <button type="button" class="modal-close" id="goalModalClose" title="Schließen">✕</button>
-    </div>
-    <div class="field" style="margin-bottom:0;">
-      <label>Worauf zahlen diese Woche alle Aufgaben ein?</label>
-      <input type="text" id="inGoalText" placeholder="z.B. Besser in Sales werden">
-    </div>
-    <div class="modal-actions">
-      <button type="button" class="btn" id="goalModalSave">Speichern</button>
-    </div>
-  </div>
-</div>
-
-<!-- PROJEKT-MODAL (anlegen & bearbeiten) -->
-<div class="modal-overlay" id="projectModal">
-  <div class="modal">
-    <div class="modal-head">
-      <h3 id="projectModalTitle">Neues Projekt</h3>
-      <button type="button" class="modal-close" id="projectModalClose" title="Schließen">✕</button>
-    </div>
-    <div class="field">
-      <label>Projektname</label>
-      <input type="text" id="inProjectTitle" placeholder="z.B. Eigene Website neu aufbauen">
-    </div>
-    <div class="field">
-      <label>Worum geht's? <small style="color:var(--text-muted);font-weight:400;">optional</small></label>
-      <input type="text" id="inProjectDesc" placeholder="Kurz in einem Satz">
-    </div>
-    <div class="form-grid">
-      <div class="field">
-        <label>Verantwortlich</label>
-        <select id="inProjectOwner"><option value="tim">Tim</option><option value="simon">Simon</option><option value="beide">Beide</option></select>
-      </div>
-      <div class="field">
-        <label>Status</label>
-        <select id="inProjectStatus">
-          <option value="aktiv">Aktiv</option>
-          <option value="pausiert">Pausiert</option>
-          <option value="fertig">Abgeschlossen</option>
-        </select>
-      </div>
-    </div>
-    <div class="field" style="margin-bottom:0;max-width:220px;">
-      <label>Zieldatum <small style="color:var(--text-muted);font-weight:400;">optional</small></label>
-      <input type="date" id="inProjectDue">
-    </div>
-    <div class="modal-actions">
-      <button type="button" class="btn-outline btn-danger" id="projectDeleteBtn" style="margin-right:auto;">Projekt löschen</button>
-      <button type="button" class="btn" id="projectSaveBtn">Speichern</button>
-    </div>
-  </div>
-</div>
-
-<!-- PROJEKTSCHRITT-MODAL -->
-<div class="modal-overlay" id="stepModal">
-  <div class="modal">
-    <div class="modal-head">
-      <h3>Neuer Schritt</h3>
-      <button type="button" class="modal-close" id="stepModalClose" title="Schließen">✕</button>
-    </div>
-    <div class="field">
-      <label>Was ist zu tun?</label>
-      <input type="text" id="inStepText" placeholder="z.B. Struktur der Startseite festlegen">
-    </div>
-    <div class="field" style="margin-bottom:0;">
-      <label>Zugewiesen an</label>
-      <select id="inStepAssignee"><option value="tim">Tim</option><option value="simon">Simon</option><option value="beide">Beide</option></select>
-    </div>
-    <div class="modal-actions">
-      <button type="button" class="btn" id="stepSaveBtn">Schritt hinzufügen</button>
-    </div>
-  </div>
-</div>
-
-<!-- NEUES-COMMITMENT-MODAL -->
-<div class="modal-overlay" id="addCommitmentModal">
-  <div class="modal">
-    <div class="modal-head">
-      <h3>Neues Commitment</h3>
-      <button type="button" class="modal-close" id="addCommitmentModalClose" title="Schließen">✕</button>
-    </div>
-    <div class="field">
-      <label>Worauf legst du dich diese Woche fest?</label>
-      <input type="text" id="inCommitmentText" placeholder="z.B. 12 Std. Lead-Gen">
-    </div>
-    <div class="field" style="margin-bottom:0;">
-      <label>Zugewiesen an</label>
-      <select id="inCommitmentAssignee"><option value="tim">Tim</option><option value="simon">Simon</option><option value="beide">Beide</option></select>
-    </div>
-    <div class="modal-actions">
-      <button type="button" class="btn" id="addCommitmentBtn">Commitment hinzufügen</button>
-    </div>
-  </div>
-</div>
-
-<!-- NEUE-AUFGABE-MODAL -->
-<div class="modal-overlay" id="addTaskModal">
-  <div class="modal">
-    <div class="modal-head">
-      <h3>Neue Aufgabe</h3>
-      <button type="button" class="modal-close" id="addTaskModalClose" title="Schließen">✕</button>
-    </div>
-    <div class="field">
-      <label>Aufgabe</label>
-      <input type="text" id="inTaskText" placeholder="z.B. Angebot an XY verschicken">
-    </div>
-    <div class="form-grid">
-      <div class="field" style="margin-bottom:0;">
-        <label>Zugewiesen an</label>
-        <select id="inTaskAssignee"><option value="tim">Tim</option><option value="simon">Simon</option><option value="beide">Beide</option></select>
-      </div>
-      <div class="field" style="margin-bottom:0;">
-        <label>Priorität</label>
-        <select id="inTaskPriority"><option value="hoch">Hoch</option><option value="mittel" selected>Mittel</option><option value="niedrig">Niedrig</option></select>
-      </div>
-    </div>
-    <div class="modal-actions">
-      <button type="button" class="btn" id="addTaskBtn">Aufgabe hinzufügen</button>
-    </div>
-  </div>
-</div>
-
-<script>
-/* ---------- Wochen-Definition (14.07.2026 – 31.12.2026, 25 Kalenderwochen) ---------- */
-const WEEKS = [
-  ["2026-07-13","2026-07-19"],["2026-07-20","2026-07-26"],["2026-07-27","2026-08-02"],
-  ["2026-08-03","2026-08-09"],["2026-08-10","2026-08-16"],["2026-08-17","2026-08-23"],
-  ["2026-08-24","2026-08-30"],["2026-08-31","2026-09-06"],["2026-09-07","2026-09-13"],
-  ["2026-09-14","2026-09-20"],["2026-09-21","2026-09-27"],["2026-09-28","2026-10-04"],
-  ["2026-10-05","2026-10-11"],["2026-10-12","2026-10-18"],["2026-10-19","2026-10-25"],
-  ["2026-10-26","2026-11-01"],["2026-11-02","2026-11-08"],["2026-11-09","2026-11-15"],
-  ["2026-11-16","2026-11-22"],["2026-11-23","2026-11-29"],["2026-11-30","2026-12-06"],
-  ["2026-12-07","2026-12-13"],["2026-12-14","2026-12-20"],["2026-12-21","2026-12-27"],
-  ["2026-12-28","2026-12-31"]
-];
-const N_WEEKS = WEEKS.length;
-
-const LEAD_GEN_PER_PERSON = 12; // Std./Woche pro Person (4 Std./Tag x 3 Tage)
-const TOTAL = { leadGen: LEAD_GEN_PER_PERSON * 2 * 25, termineGebucht: 167, termineShowup: 100, closes: 10, umsatz: 20000 };
-const WEEKLY_TARGET = {
-  leadGen: LEAD_GEN_PER_PERSON * 2, // kombiniert für beide Personen
-  termineGebucht: TOTAL.termineGebucht / N_WEEKS,
-  termineShowup: TOTAL.termineShowup / N_WEEKS,
-  closes: TOTAL.closes / N_WEEKS,
-  umsatz: TOTAL.umsatz / N_WEEKS,
-  hebel: 7 // Std./Woche pro Person
-};
-const LEVERS = [
-  ["callBreakdowns","Call-Breakdowns"],
-  ["coldCall","Cold-Call-Breakdowns"],
-  ["coachings","Coachings"],
-  ["offer","Offer-Verbesserung"],
-  ["zielgruppe","Zielgruppenverständnis"]
-];
-const PERSONS = [["tim","Tim"],["simon","Simon"]];
-const TOTAL_HEBEL = WEEKLY_TARGET.hebel * PERSONS.length * N_WEEKS; // 350 (7 Std. x 2 Personen x 25 Wochen)
-
-const SUPABASE_URL = "https://powtvdmtphudlnsffmtk.supabase.co";
-const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBvd3R2ZG10cGh1ZGxuc2ZmbXRrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQwNTAzNTgsImV4cCI6MjA5OTYyNjM1OH0.WHE73m7pXpD3MnzPQQn0FJ0HTGx_bq0cVBL6G3DkYuo";
-const SECRET_STORAGE_KEY = "xponext_kpi_secret";
-let db;
-
-function buildClient(secret){
-  return supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-    global: { headers: { "x-app-secret": secret } }
-  });
-}
-
-async function ensureAuthorized(){
-  let secret = localStorage.getItem(SECRET_STORAGE_KEY);
-  while(true){
-    if(!secret){
-      secret = window.prompt("Team-Passwort für den KPI-Tracker eingeben:");
-      if(secret === null){
-        document.body.innerHTML = "<p style='padding:2rem;font-family:sans-serif;'>Ohne Passwort kein Zugriff auf den Tracker.</p>";
-        throw new Error("Kein Passwort eingegeben");
-      }
-    }
-    db = buildClient(secret);
-    const { error } = await db.from("daily_team").upsert({ date: "2000-01-01", termine_gebucht: 0 });
-    if(!error){
-      localStorage.setItem(SECRET_STORAGE_KEY, secret);
-      return;
-    }
-    alert("Falsches Passwort, bitte erneut versuchen.");
-    secret = null;
-  }
-}
-
-function weekIndexForDate(dateStr){
-  for(let i=0;i<N_WEEKS;i++){
-    if(dateStr>=WEEKS[i][0] && dateStr<=WEEKS[i][1]) return i;
-  }
-  return -1;
-}
-
-async function fetchAllData(){
-  const [personalRes, teamRes, timeRes, tasksRes, goalsRes, commitRes, projRes, stepRes] = await Promise.all([
-    db.from("daily_personal").select("*"),
-    db.from("daily_team").select("*"),
-    db.from("time_entries").select("*"),
-    db.from("tasks").select("*").order("created_at", { ascending: true }),
-    db.from("weekly_goals").select("*"),
-    db.from("weekly_commitments").select("*").order("created_at", { ascending: true }),
-    db.from("projects").select("*").order("created_at", { ascending: true }),
-    db.from("project_steps").select("*").order("created_at", { ascending: true })
-  ]);
-  if(projRes.error){ console.error(projRes.error); PROJECTS = []; }
-  else{ PROJECTS = projRes.data; }
-  if(stepRes.error){ console.error(stepRes.error); PROJECT_STEPS = []; }
-  else{ PROJECT_STEPS = stepRes.data; }
-  if(timeRes.error){ console.error(timeRes.error); TIME_ENTRIES = []; }
-  else{ TIME_ENTRIES = timeRes.data; }
-  if(tasksRes.error){ console.error(tasksRes.error); TASKS = []; }
-  else{ TASKS = tasksRes.data; }
-  if(goalsRes.error){ console.error(goalsRes.error); GOALS = []; }
-  else{ GOALS = goalsRes.data; }
-  if(commitRes.error){ console.error(commitRes.error); COMMITMENTS = []; }
-  else{ COMMITMENTS = commitRes.data; }
-  const dp = {};
-  if(personalRes.error){ console.error(personalRes.error); alert("Daten konnten nicht geladen werden: "+personalRes.error.message); }
-  else{
-    personalRes.data.forEach(row=>{
-      if(!dp[row.date]) dp[row.date] = {};
-      dp[row.date][row.person] = { leadGenHours: Number(row.lead_gen_hours)||0, hebel: row.hebel || {} };
-    });
-  }
-
-  const dt = {};
-  if(teamRes.error){ console.error(teamRes.error); alert("Team-Daten konnten nicht geladen werden: "+teamRes.error.message); }
-  else{
-    teamRes.data.forEach(row=>{
-      dt[row.date] = {
-        termineGebucht: Number(row.termine_gebucht)||0,
-        termineShowup: Number(row.termine_showup)||0,
-        closes: Array.isArray(row.closes) ? row.closes.map(Number) : []
-      };
-    });
-  }
-
-  DAILY_PERSONAL = dp;
-  DAILY_TEAM = dt;
-  buildWeeklyAggregates();
-}
-
-function buildWeeklyAggregates(){
-  const data = {}, dataTeam = {};
-  for(let i=0;i<N_WEEKS;i++){
-    data[i] = { tim: {leadGenHours:0, hebel:{}}, simon: {leadGenHours:0, hebel:{}} };
-    dataTeam[i] = { termineGebucht:0, termineShowup:0, closesCount:0, closesSum:0 };
-  }
-  Object.entries(DAILY_PERSONAL).forEach(([date, persons])=>{
-    const wi = weekIndexForDate(date);
-    if(wi<0) return;
-    PERSONS.forEach(([key])=>{
-      const d = persons[key];
-      if(!d) return;
-      data[wi][key].leadGenHours += Number(d.leadGenHours)||0;
-      LEVERS.forEach(([lk])=>{
-        data[wi][key].hebel[lk] = (data[wi][key].hebel[lk]||0) + (Number(d.hebel[lk])||0);
-      });
-    });
-  });
-  Object.entries(DAILY_TEAM).forEach(([date, t])=>{
-    const wi = weekIndexForDate(date);
-    if(wi<0) return;
-    dataTeam[wi].termineGebucht += Number(t.termineGebucht)||0;
-    dataTeam[wi].termineShowup += Number(t.termineShowup)||0;
-    const closes = t.closes || [];
-    dataTeam[wi].closesCount += closes.length;
-    dataTeam[wi].closesSum += closes.reduce((s,v)=>s+(Number(v)||0),0);
-  });
-  DATA = data;
-  DATA_TEAM = dataTeam;
-}
-
-async function upsertDailyPersonal(date, person){
-  const e = (DAILY_PERSONAL[date] && DAILY_PERSONAL[date][person]) || {leadGenHours:0, hebel:{}};
-  const { error } = await db.from("daily_personal").upsert({
-    date, person, lead_gen_hours: e.leadGenHours, hebel: e.hebel, updated_at: new Date().toISOString()
-  });
-  if(error){ console.error(error); alert("Speichern fehlgeschlagen: "+error.message); }
-}
-
-async function upsertDailyTeam(date){
-  const e = DAILY_TEAM[date] || {termineGebucht:0, termineShowup:0, closes:[]};
-  const { error } = await db.from("daily_team").upsert({
-    date,
-    termine_gebucht: e.termineGebucht,
-    termine_showup: e.termineShowup,
-    closes: e.closes,
-    updated_at: new Date().toISOString()
-  });
-  if(error){ console.error(error); alert("Speichern fehlgeschlagen: "+error.message); }
-}
-
-let DAILY_PERSONAL = {}; // { "2026-07-14": { tim: {calls, hebel:{...}}, simon: {...} } }
-let DAILY_TEAM = {}; // { "2026-07-14": {termineGebucht, termineShowup, closes, umsatz} }
-let DATA = {}; // Wochen-Aggregate, aus DAILY_PERSONAL berechnet: { 1: { tim: {calls, hebel:{...}}, simon: {...} } }
-let DATA_TEAM = {}; // Wochen-Aggregate, aus DAILY_TEAM berechnet: { 1: {termineGebucht, termineShowup, closes, umsatz} }
-let TIME_ENTRIES = []; // Rohe Zeittracking-Einträge aus der Supabase-Tabelle "time_entries"
-let TASKS = []; // Rohe Aufgaben aus der Supabase-Tabelle "tasks"
-let GOALS = []; // Wochenfokus aus der Supabase-Tabelle "weekly_goals"
-let COMMITMENTS = []; // Wochen-Commitments aus der Supabase-Tabelle "weekly_commitments"
-let PROJECTS = [];    // Langzeitprojekte aus der Supabase-Tabelle "projects"
-let PROJECT_STEPS = []; // Zugehörige Schritte aus "project_steps"
-const PRIORITY_ORDER = { hoch: 0, mittel: 1, niedrig: 2 };
-
-// Kanban-Spalten: [status-key, Anzeigename]
-const STATUS_COLUMNS = [
-  ["backlog","Backlog"],
-  ["auswahl","Zur Auswahl"],
-  ["inarbeit","In Arbeit"],
-  ["review","In Review"],
-  ["done","Done"]
-];
-let boardWeekIdx = 0; // aktuell im Aufgaben-Board angezeigte Woche (Index in WEEKS)
-let ztWeekIdx = null; // aktuell im Zeittracking angezeigte Woche; null = noch nicht gesetzt, startet auf der laufenden
-// Status robust bestimmen — auch für Alt-Aufgaben ohne status-Feld
-function normStatus(t){
-  if(t.status && STATUS_COLUMNS.some(c=>c[0]===t.status)) return t.status;
-  return t.done ? "done" : "backlog";
-}
-const PERSON_STORAGE_KEY = "xponext_kpi_person";
-
-function escapeHtml(s){
-  return String(s).replace(/[&<>"']/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
-}
-
-function fmtDate(iso){
-  const d = new Date(iso+"T00:00:00");
-  return d.toLocaleDateString("de-DE",{day:"2-digit",month:"2-digit"});
-}
-function weekLabel(i){
-  return `KW ${i+1} (${fmtDate(WEEKS[i][0])}–${fmtDate(WEEKS[i][1])})`;
-}
-function euro(n){
-  return "€" + Math.round(n).toLocaleString("de-DE");
-}
-function num(n, digits){
-  return n.toLocaleString("de-DE",{maximumFractionDigits: digits===undefined?1:digits});
-}
-
-function findCurrentWeekIndex(){
-  const today = new Date(); today.setHours(0,0,0,0);
-  for(let i=0;i<WEEKS.length;i++){
-    const s = new Date(WEEKS[i][0]+"T00:00:00");
-    const e = new Date(WEEKS[i][1]+"T23:59:59");
-    if(today>=s && today<=e) return i;
-  }
-  if(today < new Date(WEEKS[0][0]+"T00:00:00")) return 0;
-  return WEEKS.length-1;
-}
-
-function personEntry(i, person){
-  const w = (DATA[i] && DATA[i][person]) || {};
-  return {
-    leadGenHours: Number(w.leadGenHours)||0,
-    hebel: w.hebel || {}
-  };
-}
-
-function teamEntry(i){
-  const w = DATA_TEAM[i] || {};
-  return {
-    termineGebucht: Number(w.termineGebucht)||0,
-    termineShowup: Number(w.termineShowup)||0,
-    closes: Number(w.closesCount)||0,
-    umsatz: Number(w.closesSum)||0
-  };
-}
-
-function hebelHours(entry){
-  return LEVERS.reduce((s,[k])=>s+(Number(entry.hebel[k])||0),0);
-}
-
-function combinedEntry(i){
-  const t = personEntry(i,"tim"), s = personEntry(i,"simon"), team = teamEntry(i);
-  return {
-    leadGenHours: t.leadGenHours+s.leadGenHours,
-    termineGebucht: team.termineGebucht,
-    termineShowup: team.termineShowup,
-    closes: team.closes,
-    umsatz: team.umsatz,
-    hebelHours: hebelHours(t)+hebelHours(s)
-  };
-}
-
-function cumulative(){
-  const c = {leadGenHours:0,termineGebucht:0,termineShowup:0,closes:0,umsatz:0,hebel:0};
-  let weeksLogged = 0, onTarget = 0, bestWeek = null, bestUmsatz = -1;
-  for(let i=0;i<N_WEEKS;i++){
-    const e = combinedEntry(i);
-    const hasAny = e.leadGenHours||e.termineGebucht||e.termineShowup||e.closes||e.umsatz||e.hebelHours>0;
-    if(!hasAny) continue;
-    weeksLogged++;
-    c.leadGenHours += e.leadGenHours; c.termineGebucht += e.termineGebucht; c.termineShowup += e.termineShowup;
-    c.closes += e.closes; c.umsatz += e.umsatz;
-    c.hebel += e.hebelHours;
-    if(e.umsatz >= WEEKLY_TARGET.umsatz) onTarget++;
-    if(e.umsatz > bestUmsatz){ bestUmsatz = e.umsatz; bestWeek = i; }
-  }
-  return {c, weeksLogged, onTarget, bestWeek, bestUmsatz};
-}
-
-function barClass(pct){
-  if(pct>=100) return "ok";
-  if(pct>=60) return "warn";
-  return "low";
-}
-
-/* ---------- Zeittracking ---------- */
-function localDateStr(tsIso){
-  const d = new Date(tsIso);
-  return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
-}
-
-function filterTimeEntries({dateFrom, dateTo, person}){
-  return TIME_ENTRIES.filter(e=>{
-    const d = localDateStr(e.ts);
-    if(dateFrom && d<dateFrom) return false;
-    if(dateTo && d>dateTo) return false;
-    if(person && e.person!==person) return false;
-    return true;
-  });
-}
-
-function sumMinutes(entries, excludePause){
-  return entries.filter(e=>!excludePause || e.state!=="Pause").reduce((s,e)=>s+(Number(e.duration_minutes)||0),0);
-}
-
-function renderTimeBreakdown(entries, field, containerId){
-  const workEntries = entries.filter(e=>e.state!=="Pause" && e[field]);
-  const totals = {};
-  let grandTotal = 0;
-  workEntries.forEach(e=>{
-    totals[e[field]] = (totals[e[field]]||0) + (Number(e.duration_minutes)||0);
-    grandTotal += Number(e.duration_minutes)||0;
-  });
-  const rows = Object.entries(totals).sort((a,b)=>b[1]-a[1]);
-  document.getElementById(containerId).innerHTML = rows.length ? rows.map(([key,minutes])=>{
-    const pct = grandTotal>0 ? (minutes/grandTotal)*100 : 0;
-    return `<div class="row-metric">
-      <div class="top"><span class="name">${key}</span><span class="vals">${num(minutes/60,1)} Std. (${num(pct,0)}%)</span></div>
-      <div class="bar-track"><div class="bar-fill ok" style="width:${pct}%"></div></div>
-    </div>`;
-  }).join("") : `<div class="pct">Keine Daten in dieser Woche.</div>`;
-}
-
-function renderZeittracking(){
-  const todayStr = localDateStr(new Date().toISOString());
-  const curIdx = findCurrentWeekIndex();
-  if(ztWeekIdx === null) ztWeekIdx = curIdx;
-  const isCurrentWeek = ztWeekIdx === curIdx;
-  const weekFrom = WEEKS[ztWeekIdx][0], weekTo = WEEKS[ztWeekIdx][1];
-
-  // Die "Heute"-Karte ergibt nur Sinn, solange man auf der laufenden Woche steht.
-  document.getElementById("ztTodayCard").style.display = isCurrentWeek ? "" : "none";
-  document.getElementById("ztWeekHeading").textContent = isCurrentWeek ? "Diese Woche" : "Ausgewählte Woche";
-  document.getElementById("ztWeekLabel").textContent = weekLabel(ztWeekIdx);
-  document.getElementById("ztPrevWeek").disabled = ztWeekIdx <= 0;
-  document.getElementById("ztNextWeek").disabled = ztWeekIdx >= N_WEEKS - 1;
-  document.querySelectorAll(".zt-week-sub").forEach(el=>{
-    el.textContent = isCurrentWeek ? "diese Woche" : weekLabel(ztWeekIdx);
-  });
-
-  const todayAll = filterTimeEntries({dateFrom: todayStr, dateTo: todayStr});
-  document.getElementById("ztTodayHours").textContent = num(sumMinutes(todayAll, true)/60, 1);
-  document.getElementById("ztTodayTim").textContent = num(sumMinutes(todayAll.filter(e=>e.person==="tim"), true)/60, 1);
-  document.getElementById("ztTodaySimon").textContent = num(sumMinutes(todayAll.filter(e=>e.person==="simon"), true)/60, 1);
-  document.getElementById("ztTodayPause").textContent = num(sumMinutes(todayAll.filter(e=>e.state==="Pause"), false)/60, 1);
-
-  const weekAll = filterTimeEntries({dateFrom: weekFrom, dateTo: weekTo});
-  document.getElementById("ztWeekHours").textContent = num(sumMinutes(weekAll, true)/60, 1);
-  document.getElementById("ztWeekTim").textContent = num(sumMinutes(weekAll.filter(e=>e.person==="tim"), true)/60, 1);
-  document.getElementById("ztWeekSimon").textContent = num(sumMinutes(weekAll.filter(e=>e.person==="simon"), true)/60, 1);
-
-  const byDay = {};
-  TIME_ENTRIES.filter(e=>e.state!=="Pause").forEach(e=>{
-    const d = localDateStr(e.ts);
-    byDay[d] = (byDay[d]||0) + (Number(e.duration_minutes)||0);
-  });
-  let bestDay = null, bestDayMinutes = -1;
-  Object.entries(byDay).forEach(([d,m])=>{ if(m>bestDayMinutes){ bestDayMinutes=m; bestDay=d; } });
-  document.getElementById("ztHighscoreDay").textContent = bestDay ? (fmtDate(bestDay)+" · "+num(bestDayMinutes/60,1)+" Std.") : "—";
-
-  renderTimeBreakdown(weekAll, "state", "ztByState");
-  renderTimeBreakdown(weekAll, "zuordnung", "ztByZuordnung");
-  renderTimeBreakdown(weekAll, "aktivitaet", "ztByAktivitaet");
-}
-
-/* ---------- Rendering ---------- */
-function renderDashboard(){
-  const {c, weeksLogged, onTarget, bestWeek, bestUmsatz} = cumulative();
-
-  document.getElementById("dashUmsatzIst").textContent = euro(c.umsatz);
-  const umsatzPct = Math.min(100, (c.umsatz/TOTAL.umsatz)*100);
-  document.getElementById("dashUmsatzBar").style.width = umsatzPct+"%";
-  document.getElementById("dashUmsatzMeta").textContent = num(umsatzPct,1)+"% des Jahresziels erreicht · noch "+euro(Math.max(0,TOTAL.umsatz-c.umsatz))+" bis €20.000";
-
-  const metrics = [
-    ["Lead-Gen (Std.)","statCalls","barCalls","pctCalls",c.leadGenHours,TOTAL.leadGen,1],
-    ["Termine gebucht","statTermineGebucht","barTermineGebucht","pctTermineGebucht",c.termineGebucht,TOTAL.termineGebucht,0],
-    ["Termine (Show-up)","statTermineShowup","barTermineShowup","pctTermineShowup",c.termineShowup,TOTAL.termineShowup,0],
-    ["Closes","statCloses","barCloses","pctCloses",c.closes,TOTAL.closes,0],
-  ];
-  metrics.forEach(([label, numId, barId, pctId, ist, soll, digits])=>{
-    const pct = soll>0 ? (ist/soll)*100 : 0;
-    document.getElementById(numId).innerHTML = num(ist,digits)+" <small>/ "+num(soll,digits)+"</small>";
-    const bar = document.getElementById(barId);
-    bar.style.width = Math.min(100,pct)+"%";
-    bar.className = "bar-fill "+barClass(pct);
-    document.getElementById(pctId).textContent = num(pct,1)+"% vom Gesamtziel";
-  });
-
-  const hebelPct = (c.hebel/TOTAL_HEBEL)*100;
-  const hb = document.getElementById("barHebelTotal");
-  hb.style.width = Math.min(100,hebelPct)+"%";
-  hb.className = "bar-fill "+barClass(hebelPct);
-  document.getElementById("pctHebelTotal").textContent = num(c.hebel,1)+" / "+TOTAL_HEBEL+" Std. ("+num(hebelPct,1)+"%)";
-
-  document.getElementById("streakWeeksLogged").textContent = weeksLogged;
-  document.getElementById("streakOnTarget").textContent = onTarget;
-
-  const curIdx = findCurrentWeekIndex();
-  document.getElementById("dashWeekLabel").textContent = weekLabel(curIdx);
-  const e = combinedEntry(curIdx);
-  const rows = [
-    ["Lead-Gen (Std.)", e.leadGenHours, WEEKLY_TARGET.leadGen],
-    ["Termine gebucht", e.termineGebucht, WEEKLY_TARGET.termineGebucht],
-    ["Termine (Show-up)", e.termineShowup, WEEKLY_TARGET.termineShowup],
-    ["Closes", e.closes, WEEKLY_TARGET.closes],
-    ["Umsatz", e.umsatz, WEEKLY_TARGET.umsatz],
-  ];
-  document.getElementById("dashCurrentWeekBody").innerHTML = rows.map(([label,ist,soll])=>{
-    const pct = soll>0 ? (ist/soll)*100 : 0;
-    const displayIst = label==="Umsatz" ? euro(ist) : num(ist,label==="Lead-Gen (Std.)"?1:0);
-    const displaySoll = label==="Umsatz" ? euro(soll) : num(soll,1);
-    return `<div class="row-metric">
-      <div class="top"><span class="name">${label}</span><span class="vals">${displayIst} / ${displaySoll}</span></div>
-      <div class="bar-track"><div class="bar-fill ${barClass(pct)}" style="width:${Math.min(100,pct)}%"></div></div>
-    </div>`;
-  }).join("");
-
-  document.getElementById("dashPersonSplit").innerHTML = PERSONS.map(([key,label])=>{
-    const pe = personEntry(curIdx, key);
-    const ph = hebelHours(pe);
-    return `<div class="row-metric">
-      <div class="top"><span class="name">${label}</span><span class="vals">${num(pe.leadGenHours,1)} Std. Lead-Gen (Ziel ${LEAD_GEN_PER_PERSON}) · ${num(ph,1)}/${WEEKLY_TARGET.hebel} Std. Hebel</span></div>
-    </div>`;
-  }).join("");
-
-  renderLeaderboard();
-}
-
-function bestWeekByMetric(getValue){
-  let bestIdx = null, bestVal = -Infinity;
-  for(let i=0;i<N_WEEKS;i++){
-    const v = getValue(i);
-    if(v>bestVal){ bestVal = v; bestIdx = i; }
-  }
-  return { idx: bestIdx, val: bestVal };
-}
-
-function renderLeaderboard(){
-  const metrics = [
-    ["Lead-Gen (Std.)", i=>combinedEntry(i).leadGenHours, v=>num(v,1)+" Std."],
-    ["Termine gebucht", i=>combinedEntry(i).termineGebucht, v=>num(v,0)],
-    ["Termine Show-up", i=>combinedEntry(i).termineShowup, v=>num(v,0)],
-    ["Closes", i=>combinedEntry(i).closes, v=>num(v,0)],
-    ["Umsatz", i=>combinedEntry(i).umsatz, v=>euro(v)],
-    ["Hebel-Stunden", i=>combinedEntry(i).hebelHours, v=>num(v,1)+" Std."],
-  ];
-  document.getElementById("dashLeaderboard").innerHTML = metrics.map(([label,getVal,fmt])=>{
-    const {idx,val} = bestWeekByMetric(getVal);
-    const display = (idx===null || val<=0) ? "—" : (weekLabel(idx)+" · "+fmt(val));
-    return `<div class="row-metric">
-      <div class="top"><span class="name">${label}</span><span class="vals">${display}</span></div>
-    </div>`;
-  }).join("");
-}
-
-const HEBEL_INPUT_IDS = {callBreakdowns:"hebelCallBreakdowns", coldCall:"hebelColdCall", coachings:"hebelCoachings", offer:"hebelOffer", zielgruppe:"hebelZielgruppe"};
-
-function todayIso(){
-  return new Date().toISOString().slice(0,10);
-}
-function clampDate(d){
-  if(d < WEEKS[0][0]) return WEEKS[0][0];
-  if(d > WEEKS[N_WEEKS-1][1]) return WEEKS[N_WEEKS-1][1];
-  return d;
-}
-
-function populateEntryControls(){
-  const minD = WEEKS[0][0], maxD = WEEKS[N_WEEKS-1][1];
-  ["entryDate","entryDateHebel"].forEach(id=>{
-    const el = document.getElementById(id);
-    el.min = minD; el.max = maxD;
-  });
-  const initial = clampDate(todayIso());
-  document.getElementById("entryDate").value = initial;
-  document.getElementById("entryDateHebel").value = initial;
-
-  const savedPerson = localStorage.getItem(PERSON_STORAGE_KEY) || "tim";
-  document.getElementById("personSelect").value = savedPerson;
-  document.getElementById("personSelectHebel").value = savedPerson;
-}
-
-let currentClosesDraft = [];
-
-function renderClosesList(){
-  const container = document.getElementById("closesList");
-  if(currentClosesDraft.length===0){
-    container.innerHTML = `<div class="pct">Noch keine Closes für diesen Tag.</div>`;
-    return;
-  }
-  container.innerHTML = currentClosesDraft.map((val, idx)=>`
-    <div style="display:flex;gap:0.5rem;margin-bottom:0.5rem;align-items:center;">
-      <input type="number" min="0" step="10" class="close-amount" data-idx="${idx}" value="${val}" style="flex:1;" placeholder="Auftragswert €">
-      <button type="button" class="btn-outline remove-close" data-idx="${idx}" style="padding:0.5rem 0.8rem;">✕</button>
-    </div>
-  `).join("");
-}
-
-document.getElementById("addCloseBtn").addEventListener("click", ()=>{
-  currentClosesDraft.push(0);
-  renderClosesList();
-});
-document.getElementById("closesList").addEventListener("click", (ev)=>{
-  if(ev.target.classList.contains("remove-close")){
-    currentClosesDraft.splice(Number(ev.target.dataset.idx), 1);
-    renderClosesList();
-  }
-});
-document.getElementById("closesList").addEventListener("input", (ev)=>{
-  if(ev.target.classList.contains("close-amount")){
-    currentClosesDraft[Number(ev.target.dataset.idx)] = Number(ev.target.value)||0;
-  }
-});
-
-function loadDayIntoForm(){
-  const date = document.getElementById("entryDate").value;
-  const person = document.getElementById("personSelect").value;
-  const dp = (DAILY_PERSONAL[date] && DAILY_PERSONAL[date][person]) || {leadGenHours:0};
-  document.getElementById("inLeadGen").value = dp.leadGenHours || 0;
-
-  const dt = DAILY_TEAM[date] || {termineGebucht:0, termineShowup:0, closes:[]};
-  document.getElementById("inTermineGebucht").value = dt.termineGebucht || 0;
-  document.getElementById("inTermineShowup").value = dt.termineShowup || 0;
-  currentClosesDraft = [...(dt.closes || [])];
-  renderClosesList();
-
-  const wi = weekIndexForDate(date);
-  document.getElementById("entryWeekInfo").textContent = wi>=0 ? ("gehört zu "+weekLabel(wi)) : "";
-  renderPreview(wi);
-  // Fokus und Commitments hängen an der Woche des gewählten Tages und müssen mitziehen.
-  renderGoal();
-  renderCommitments();
-}
-
-function renderPreview(i){
-  if(i<0) { document.getElementById("previewBody").innerHTML = ""; document.getElementById("previewWeekLabel").textContent = ""; return; }
-  const e = combinedEntry(i);
-  document.getElementById("previewWeekLabel").textContent = weekLabel(i);
-  const rows = [
-    ["Lead-Gen (Std.)", e.leadGenHours, WEEKLY_TARGET.leadGen, v=>num(v,1)],
-    ["Termine gebucht", e.termineGebucht, WEEKLY_TARGET.termineGebucht, v=>num(v,0)],
-    ["Termine (Show-up)", e.termineShowup, WEEKLY_TARGET.termineShowup, v=>num(v,0)],
-    ["Closes", e.closes, WEEKLY_TARGET.closes, v=>num(v,0)],
-    ["Umsatz", e.umsatz, WEEKLY_TARGET.umsatz, v=>euro(v)],
-  ];
-  document.getElementById("previewBody").innerHTML = rows.map(([label,ist,soll,f])=>{
-    const pct = soll>0 ? (ist/soll)*100 : 0;
-    return `<div class="row-metric">
-      <div class="top"><span class="name">${label}</span><span class="vals">${f(ist)} / ${f(soll)} (${num(pct,0)}%)</span></div>
-      <div class="bar-track"><div class="bar-fill ${barClass(pct)}" style="width:${Math.min(100,pct)}%"></div></div>
-    </div>`;
-  }).join("");
-}
-
-function loadDayIntoHebelForm(){
-  const date = document.getElementById("entryDateHebel").value;
-  const person = document.getElementById("personSelectHebel").value;
-  const dp = (DAILY_PERSONAL[date] && DAILY_PERSONAL[date][person]) || {hebel:{}};
-  LEVERS.forEach(([key])=>{
-    document.getElementById(HEBEL_INPUT_IDS[key]).value = Number((dp.hebel||{})[key])||0;
-  });
-  const wi = weekIndexForDate(date);
-  renderHebelPreview(wi, person);
-}
-
-function renderHebelPreview(i, person){
-  if(i<0){ document.getElementById("hebelPreview").innerHTML = ""; return; }
-  const e = personEntry(i, person);
-  document.getElementById("hebelPreview").innerHTML = LEVERS.map(([key,label])=>{
-    const ist = Number(e.hebel[key])||0;
-    const pct = (ist/1)*100;
-    return `<div class="row-metric">
-      <div class="top"><span class="name">${label}</span><span class="vals">${num(ist,2)} / 1 Std. (${num(pct,0)}%)</span></div>
-      <div class="bar-track"><div class="bar-fill ${barClass(pct)}" style="width:${Math.min(100,pct)}%"></div></div>
-    </div>`;
-  }).join("");
-}
-
-function renderHistory(){
-  const curIdx = findCurrentWeekIndex();
-
-  const teamRows = [];
-  for(let i=0;i<N_WEEKS;i++){
-    const team = teamEntry(i);
-    const hasAny = team.termineGebucht||team.termineShowup||team.closes||team.umsatz;
-    teamRows.push(`<tr class="${i===curIdx?'current-week':''}">
-      <td>${i+1}</td>
-      <td>${fmtDate(WEEKS[i][0])}–${fmtDate(WEEKS[i][1])}</td>
-      <td>${hasAny?num(team.termineGebucht,0):"–"}</td>
-      <td>${hasAny?num(team.termineShowup,0):"–"}</td>
-      <td>${hasAny?num(team.closes,0):"–"}</td>
-      <td>${hasAny?euro(team.umsatz):"–"}</td>
-    </tr>`);
-  }
-  document.getElementById("historyTeamBody").innerHTML = teamRows.join("");
-
-  const rows = [];
-  for(let i=0;i<N_WEEKS;i++){
-    let anyForWeek = false;
-    PERSONS.forEach(([key,label])=>{
-      const e = personEntry(i, key);
-      const hebelSum = hebelHours(e);
-      const hasAny = e.leadGenHours||hebelSum>0;
-      if(!hasAny) return;
-      anyForWeek = true;
-      rows.push(`<tr class="${i===curIdx?'current-week':''}">
-        <td>${i+1}</td>
-        <td>${fmtDate(WEEKS[i][0])}–${fmtDate(WEEKS[i][1])}</td>
-        <td>${label}</td>
-        <td>${num(e.leadGenHours,1)}</td>
-        <td>${num(hebelSum,2)}</td>
-      </tr>`);
-    });
-    if(!anyForWeek){
-      rows.push(`<tr class="${i===curIdx?'current-week':''}">
-        <td>${i+1}</td>
-        <td>${fmtDate(WEEKS[i][0])}–${fmtDate(WEEKS[i][1])}</td>
-        <td>–</td><td>–</td><td>–</td>
-      </tr>`);
-    }
-  }
-  document.getElementById("historyBody").innerHTML = rows.join("");
-}
-
-/* ---------- Wochenfokus & Commitments ----------
-   Beides hängt an der Woche des im Eingabe-Tab gewählten Tages — wer dort einen
-   anderen Tag wählt, sieht Fokus und Commitments der zugehörigen Woche. */
-function entryWeekIdx(){
-  const wi = weekIndexForDate(document.getElementById("entryDate").value);
-  return wi >= 0 ? wi : findCurrentWeekIndex();
-}
-
-function renderGoal(){
-  const wi = entryWeekIdx();
-  const weekStart = WEEKS[wi][0];
-  document.getElementById("goalWeekLabel").textContent = weekLabel(wi);
-  const goal = GOALS.find(g=>g.week_start===weekStart);
-  const disp = document.getElementById("goalDisplay");
-  if(goal && goal.goal && goal.goal.trim()){
-    disp.textContent = goal.goal;
-    disp.classList.remove("empty");
-  } else {
-    disp.textContent = "Noch kein Fokus für diese Woche gesetzt";
-    disp.classList.add("empty");
-  }
-}
-
-function renderCommitments(){
-  const wi = entryWeekIdx();
-  const weekStart = WEEKS[wi][0];
-  document.getElementById("commitmentsWeekLabel").textContent = "worauf ihr euch in "+weekLabel(wi)+" festlegt";
-
-  const rows = COMMITMENTS.filter(c=>c.week_start===weekStart);
-  const list = document.getElementById("commitmentsList");
-  if(!rows.length){
-    list.innerHTML = `<div class="commit-empty">Noch keine Commitments für diese Woche.</div>`;
-    return;
-  }
-  list.innerHTML = rows.map(c=>`
-    <div class="commit-row ${c.done?"is-done":""}" data-id="${c.id}">
-      <input type="checkbox" ${c.done?"checked":""} data-act="toggle" data-id="${c.id}">
-      <span class="commit-text">${escapeHtml(c.text)}</span>
-      <span class="task-badge person">${PERSON_LABEL[c.assignee]||c.assignee}</span>
-      <button type="button" class="commit-del" data-act="del" data-id="${c.id}" title="Commitment löschen">✕</button>
-    </div>`).join("");
-}
-
-/* ---------- Projekte ----------
-   Langzeitprojekte hängen bewusst an keiner Woche — sie laufen quer über den
-   ganzen Zeitraum. Jedes Projekt hat beliebig viele Schritte zum Abhaken. */
-const PROJECT_STATUS_LABEL = { aktiv:"Aktiv", pausiert:"Pausiert", fertig:"Abgeschlossen" };
-
-function stepsOf(projectId){
-  return PROJECT_STEPS.filter(s=>String(s.project_id)===String(projectId));
-}
-
-function renderProjects(){
-  const showDone = document.getElementById("showDoneProjects").checked;
-
-  // Kennzahlen immer über alle Projekte rechnen, unabhängig vom Anzeigefilter.
-  const activeProjects = PROJECTS.filter(p=>p.status==="aktiv");
-  const openSteps = PROJECT_STEPS.filter(s=>!s.done && PROJECTS.some(p=>String(p.id)===String(s.project_id) && p.status!=="fertig"));
-  document.getElementById("projStatActive").textContent = activeProjects.length;
-  document.getElementById("projStatOpen").textContent = openSteps.length;
-  document.getElementById("projStatDone").textContent = PROJECT_STEPS.filter(s=>s.done).length;
-
-  const todayStr = todayIso();
-  const upcoming = PROJECTS
-    .filter(p=>p.status!=="fertig" && p.due_date)
-    .sort((a,b)=>a.due_date.localeCompare(b.due_date))[0];
-  document.getElementById("projStatDeadline").textContent = upcoming ? (fmtDate(upcoming.due_date)+" · "+upcoming.title) : "—";
-
-  const visible = PROJECTS.filter(p=>showDone || p.status!=="fertig");
-  // Offene zuerst, innerhalb dessen die mit der nächsten Deadline oben.
-  visible.sort((a,b)=>{
-    const rank = s => s==="aktiv" ? 0 : (s==="pausiert" ? 1 : 2);
-    if(rank(a.status)!==rank(b.status)) return rank(a.status)-rank(b.status);
-    if(a.due_date && b.due_date) return a.due_date.localeCompare(b.due_date);
-    if(a.due_date) return -1;
-    if(b.due_date) return 1;
-    return new Date(a.created_at) - new Date(b.created_at);
-  });
-
-  const list = document.getElementById("projectsList");
-  if(!visible.length){
-    list.innerHTML = `<div class="projects-empty">${PROJECTS.length ? "Keine offenen Projekte — setz den Haken oben, um die abgeschlossenen zu sehen." : "Noch keine Projekte angelegt."}</div>`;
-    return;
-  }
-
-  list.innerHTML = visible.map(p=>{
-    const steps = stepsOf(p.id);
-    const doneCount = steps.filter(s=>s.done).length;
-    const pct = steps.length ? (doneCount/steps.length)*100 : 0;
-    const isLate = p.due_date && p.due_date < todayStr && p.status!=="fertig";
-
-    const stepRows = steps.length ? steps.map(s=>`
-      <div class="step-row ${s.done?"is-done":""}">
-        <input type="checkbox" ${s.done?"checked":""} data-pact="step-toggle" data-id="${s.id}">
-        <span class="step-text">${escapeHtml(s.text)}</span>
-        <span class="task-badge person">${PERSON_LABEL[s.assignee]||s.assignee}</span>
-        <button type="button" class="step-del" data-pact="step-del" data-id="${s.id}" title="Schritt löschen">✕</button>
-      </div>`).join("") : `<div class="step-empty">Noch keine Schritte — leg unten den ersten an.</div>`;
-
-    return `<div class="project-card ${p.status==="fertig"?"is-done":""}">
-      <div class="project-top">
-        <div class="project-title">${escapeHtml(p.title)}</div>
-        <button type="button" class="project-edit" data-pact="proj-edit" data-id="${p.id}" title="Projekt bearbeiten">Bearbeiten</button>
-      </div>
-      ${p.description ? `<div class="project-desc">${escapeHtml(p.description)}</div>` : ""}
-      <div class="project-badges">
-        <span class="status-badge st-${p.status}">${PROJECT_STATUS_LABEL[p.status]||p.status}</span>
-        <span class="task-badge person">${PERSON_LABEL[p.owner]||p.owner}</span>
-        ${p.due_date ? `<span class="due-badge ${isLate?"is-late":""}">${isLate?"überfällig seit ":"bis "}${fmtDate(p.due_date)}</span>` : ""}
-      </div>
-      <div class="project-progress">
-        <div class="bar-track"><div class="bar-fill ${pct>=100?"ok":(pct>=50?"warn":"low")}" style="width:${pct}%"></div></div>
-        <span class="ratio">${doneCount}/${steps.length}</span>
-      </div>
-      <div class="step-list">${stepRows}</div>
-      <button type="button" class="btn-outline step-add" data-pact="step-add" data-id="${p.id}">+ Schritt</button>
-    </div>`;
-  }).join("");
-}
-
-/* ---------- Aufgaben-Board ---------- */
-const PERSON_LABEL = { tim:"Tim", simon:"Simon", beide:"Beide" };
-const PRIO_LABEL = { hoch:"Hoch", mittel:"Mittel", niedrig:"Niedrig" };
-
-function renderTasks(){
-  const weekStart = WEEKS[boardWeekIdx][0];
-  document.getElementById("tasksWeekLabel").textContent = weekLabel(boardWeekIdx);
-  document.getElementById("taskPrevWeek").disabled = boardWeekIdx <= 0;
-  document.getElementById("taskNextWeek").disabled = boardWeekIdx >= N_WEEKS - 1;
-
-  const weekTasks = TASKS.filter(t=>t.week_start===weekStart);
-  const board = document.getElementById("kanbanBoard");
-  board.innerHTML = STATUS_COLUMNS.map(([key,label])=>{
-    const colTasks = weekTasks.filter(t=>normStatus(t)===key).slice().sort((a,b)=>{
-      const pa = PRIORITY_ORDER[a.priority] ?? 1, pb = PRIORITY_ORDER[b.priority] ?? 1;
-      if(pa !== pb) return pa - pb;
-      return new Date(a.created_at) - new Date(b.created_at);
-    });
-    const cards = colTasks.length
-      ? colTasks.map(t=>`
-        <div class="kanban-card ${key==="done"?"is-done":""}" data-id="${t.id}">
-          <div class="kanban-card-text">${escapeHtml(t.text)}</div>
-          <div class="kanban-card-badges">
-            <span class="task-badge person">${PERSON_LABEL[t.assignee]||t.assignee}</span>
-            <span class="task-badge prio-${t.priority}">${PRIO_LABEL[t.priority]||t.priority}</span>
-          </div>
-        </div>`).join("")
-      : `<div class="kanban-empty">–</div>`;
-    return `
-      <div class="kanban-col">
-        <div class="kanban-col-head">
-          <span class="kanban-col-title">${label}</span>
-          <span class="kanban-count">${colTasks.length}</span>
-        </div>
-        <div class="kanban-cards">${cards}</div>
-      </div>`;
-  }).join("");
-}
-
-function renderAll(){
-  renderDashboard();
-  renderHistory();
-  renderGoal();
-  renderCommitments();
-  renderTasks();
-  renderProjects();
-  const date = document.getElementById("entryDate").value;
-  renderPreview(weekIndexForDate(date));
-  const dateHebel = document.getElementById("entryDateHebel").value;
-  const personHebel = document.getElementById("personSelectHebel").value;
-  renderHebelPreview(weekIndexForDate(dateHebel), personHebel);
-  renderZeittracking();
-}
-
-/* ---------- Events ---------- */
-document.querySelectorAll(".tab-btn").forEach(btn=>{
-  btn.addEventListener("click", async ()=>{
-    document.querySelectorAll(".tab-btn").forEach(b=>b.classList.remove("active"));
-    document.querySelectorAll(".view").forEach(v=>v.classList.remove("active"));
-    btn.classList.add("active");
-    document.getElementById("view-"+btn.dataset.view).classList.add("active");
-    await fetchAllData();
-    loadDayIntoForm();
-    loadDayIntoHebelForm();
-    renderAll();
-  });
-});
-
-document.getElementById("entryDate").addEventListener("change", ()=>{
-  document.getElementById("entryDateHebel").value = document.getElementById("entryDate").value;
-  loadDayIntoForm();
-});
-document.getElementById("entryDateHebel").addEventListener("change", ()=>{
-  document.getElementById("entryDate").value = document.getElementById("entryDateHebel").value;
-  loadDayIntoHebelForm();
-});
-document.getElementById("personSelect").addEventListener("change", ()=>{
-  localStorage.setItem(PERSON_STORAGE_KEY, document.getElementById("personSelect").value);
-  document.getElementById("personSelectHebel").value = document.getElementById("personSelect").value;
-  loadDayIntoForm();
-});
-document.getElementById("personSelectHebel").addEventListener("change", ()=>{
-  localStorage.setItem(PERSON_STORAGE_KEY, document.getElementById("personSelectHebel").value);
-  document.getElementById("personSelect").value = document.getElementById("personSelectHebel").value;
-  loadDayIntoHebelForm();
-});
-
-document.getElementById("saveWeekBtn").addEventListener("click", async ()=>{
-  const date = document.getElementById("entryDate").value;
-  const person = document.getElementById("personSelect").value;
-  const existingHebel = (DAILY_PERSONAL[date] && DAILY_PERSONAL[date][person] && DAILY_PERSONAL[date][person].hebel) || {};
-  if(!DAILY_PERSONAL[date]) DAILY_PERSONAL[date] = {};
-  DAILY_PERSONAL[date][person] = {
-    leadGenHours: Number(document.getElementById("inLeadGen").value)||0,
-    hebel: existingHebel
-  };
-  await upsertDailyPersonal(date, person);
-  buildWeeklyAggregates();
-  const msg = document.getElementById("saveMsg");
-  msg.style.display = "block";
-  setTimeout(()=>msg.style.display="none", 1800);
-  renderAll();
-});
-
-document.getElementById("saveTeamBtn").addEventListener("click", async ()=>{
-  const date = document.getElementById("entryDate").value;
-  DAILY_TEAM[date] = {
-    termineGebucht: Number(document.getElementById("inTermineGebucht").value)||0,
-    termineShowup: Number(document.getElementById("inTermineShowup").value)||0,
-    closes: currentClosesDraft.filter(v=>v>0)
-  };
-  await upsertDailyTeam(date);
-  buildWeeklyAggregates();
-  const msg = document.getElementById("saveTeamMsg");
-  msg.style.display = "block";
-  setTimeout(()=>msg.style.display="none", 1800);
-  renderAll();
-});
-
-document.getElementById("saveHebelBtn").addEventListener("click", async ()=>{
-  const date = document.getElementById("entryDateHebel").value;
-  const person = document.getElementById("personSelectHebel").value;
-  const existingLeadGen = (DAILY_PERSONAL[date] && DAILY_PERSONAL[date][person] && DAILY_PERSONAL[date][person].leadGenHours) || 0;
-  const newHebel = {};
-  LEVERS.forEach(([key])=>{
-    newHebel[key] = Number(document.getElementById(HEBEL_INPUT_IDS[key]).value)||0;
-  });
-  if(!DAILY_PERSONAL[date]) DAILY_PERSONAL[date] = {};
-  DAILY_PERSONAL[date][person] = { leadGenHours: existingLeadGen, hebel: newHebel };
-  await upsertDailyPersonal(date, person);
-  buildWeeklyAggregates();
-  const msg = document.getElementById("saveHebelMsg");
-  msg.style.display = "block";
-  setTimeout(()=>msg.style.display="none", 1800);
-  renderAll();
-});
-
-/* ---------- Wochenfokus-Modal ---------- */
-function openGoalModal(){
-  const weekStart = WEEKS[entryWeekIdx()][0];
-  const goal = GOALS.find(g=>g.week_start===weekStart);
-  document.getElementById("inGoalText").value = goal ? goal.goal : "";
-  document.getElementById("goalModal").classList.add("open");
-  setTimeout(()=>document.getElementById("inGoalText").focus(), 0);
-}
-function closeGoalModal(){ document.getElementById("goalModal").classList.remove("open"); }
-
-document.getElementById("editGoalBtn").addEventListener("click", openGoalModal);
-document.getElementById("goalModalClose").addEventListener("click", closeGoalModal);
-document.getElementById("goalModal").addEventListener("click", (ev)=>{ if(ev.target.id==="goalModal") closeGoalModal(); });
-
-document.getElementById("goalModalSave").addEventListener("click", async ()=>{
-  const goal = document.getElementById("inGoalText").value.trim();
-  const weekStart = WEEKS[entryWeekIdx()][0];
-  const { data, error } = await db.from("weekly_goals").upsert({ week_start: weekStart, goal }, { onConflict: "week_start" }).select();
-  if(error){ console.error(error); alert("Wochenfokus konnte nicht gespeichert werden: "+error.message); return; }
-  const idx = GOALS.findIndex(g=>g.week_start===weekStart);
-  if(idx>=0) GOALS[idx] = data[0]; else GOALS.push(data[0]);
-  closeGoalModal();
-  renderGoal();
-});
-
-/* ---------- Projekte: Modals & Aktionen ---------- */
-let editingProjectId = null; // null = Anlegen, sonst Bearbeiten
-let stepForProjectId = null;
-
-function openProjectModal(id){
-  editingProjectId = id ?? null;
-  const p = id != null ? PROJECTS.find(x=>String(x.id)===String(id)) : null;
-  document.getElementById("projectModalTitle").textContent = p ? "Projekt bearbeiten" : "Neues Projekt";
-  document.getElementById("inProjectTitle").value = p ? p.title : "";
-  document.getElementById("inProjectDesc").value = p && p.description ? p.description : "";
-  document.getElementById("inProjectOwner").value = p ? p.owner : "beide";
-  document.getElementById("inProjectStatus").value = p ? p.status : "aktiv";
-  document.getElementById("inProjectDue").value = p && p.due_date ? p.due_date : "";
-  document.getElementById("projectDeleteBtn").style.display = p ? "inline-flex" : "none";
-  document.getElementById("projectModal").classList.add("open");
-  setTimeout(()=>document.getElementById("inProjectTitle").focus(), 0);
-}
-function closeProjectModal(){ document.getElementById("projectModal").classList.remove("open"); }
-
-document.getElementById("openAddProjectBtn").addEventListener("click", ()=>openProjectModal(null));
-document.getElementById("projectModalClose").addEventListener("click", closeProjectModal);
-document.getElementById("projectModal").addEventListener("click", (ev)=>{ if(ev.target.id==="projectModal") closeProjectModal(); });
-document.getElementById("showDoneProjects").addEventListener("change", renderProjects);
-
-document.getElementById("projectSaveBtn").addEventListener("click", async ()=>{
-  const title = document.getElementById("inProjectTitle").value.trim();
-  if(!title){ alert("Bitte einen Projektnamen eingeben."); return; }
-  const payload = {
-    title,
-    description: document.getElementById("inProjectDesc").value.trim() || null,
-    owner: document.getElementById("inProjectOwner").value,
-    status: document.getElementById("inProjectStatus").value,
-    due_date: document.getElementById("inProjectDue").value || null
-  };
-  if(editingProjectId != null){
-    const { data, error } = await db.from("projects").update(payload).eq("id", editingProjectId).select();
-    if(error){ console.error(error); alert("Projekt konnte nicht gespeichert werden: "+error.message); return; }
-    const idx = PROJECTS.findIndex(p=>String(p.id)===String(editingProjectId));
-    if(idx>=0) PROJECTS[idx] = data[0];
-  } else {
-    const { data, error } = await db.from("projects").insert(payload).select();
-    if(error){ console.error(error); alert("Projekt konnte nicht angelegt werden: "+error.message); return; }
-    PROJECTS.push(data[0]);
-  }
-  closeProjectModal();
-  renderProjects();
-});
-
-document.getElementById("projectDeleteBtn").addEventListener("click", async ()=>{
-  if(editingProjectId == null) return;
-  const p = PROJECTS.find(x=>String(x.id)===String(editingProjectId));
-  const n = stepsOf(editingProjectId).length;
-  if(!confirm(`Projekt "${p?p.title:""}" wirklich löschen?${n?`\n\nDie ${n} zugehörigen Schritte werden mitgelöscht.`:""}`)) return;
-  const { error } = await db.from("projects").delete().eq("id", editingProjectId);
-  if(error){ console.error(error); alert("Projekt konnte nicht gelöscht werden: "+error.message); return; }
-  PROJECTS = PROJECTS.filter(x=>String(x.id)!==String(editingProjectId));
-  PROJECT_STEPS = PROJECT_STEPS.filter(s=>String(s.project_id)!==String(editingProjectId));
-  closeProjectModal();
-  renderProjects();
-});
-
-function openStepModal(projectId){
-  stepForProjectId = projectId;
-  document.getElementById("inStepText").value = "";
-  document.getElementById("inStepAssignee").value = "tim";
-  document.getElementById("stepModal").classList.add("open");
-  setTimeout(()=>document.getElementById("inStepText").focus(), 0);
-}
-function closeStepModal(){ document.getElementById("stepModal").classList.remove("open"); }
-
-document.getElementById("stepModalClose").addEventListener("click", closeStepModal);
-document.getElementById("stepModal").addEventListener("click", (ev)=>{ if(ev.target.id==="stepModal") closeStepModal(); });
-document.getElementById("inStepText").addEventListener("keydown", (ev)=>{ if(ev.key==="Enter") document.getElementById("stepSaveBtn").click(); });
-
-document.getElementById("stepSaveBtn").addEventListener("click", async ()=>{
-  const text = document.getElementById("inStepText").value.trim();
-  if(!text){ alert("Bitte einen Schritt eingeben."); return; }
-  const { data, error } = await db.from("project_steps").insert({
-    project_id: stepForProjectId,
-    text,
-    assignee: document.getElementById("inStepAssignee").value,
-    done: false
-  }).select();
-  if(error){ console.error(error); alert("Schritt konnte nicht gespeichert werden: "+error.message); return; }
-  PROJECT_STEPS.push(data[0]);
-  closeStepModal();
-  renderProjects();
-});
-
-document.getElementById("projectsList").addEventListener("click", async (ev)=>{
-  const el = ev.target.closest("[data-pact]");
-  if(!el) return;
-  const act = el.dataset.pact, id = el.dataset.id;
-
-  if(act === "proj-edit"){ openProjectModal(id); return; }
-  if(act === "step-add"){ openStepModal(id); return; }
-
-  const s = PROJECT_STEPS.find(x=>String(x.id)===String(id));
-  if(!s) return;
-
-  if(act === "step-toggle"){
-    const done = el.checked;
-    const { error } = await db.from("project_steps").update({ done }).eq("id", s.id);
-    if(error){ console.error(error); alert("Konnte nicht gespeichert werden: "+error.message); el.checked = !done; return; }
-    s.done = done;
-    renderProjects();
-  } else if(act === "step-del"){
-    if(!confirm("Schritt \""+s.text+"\" löschen?")) return;
-    const { error } = await db.from("project_steps").delete().eq("id", s.id);
-    if(error){ console.error(error); alert("Konnte nicht gelöscht werden: "+error.message); return; }
-    PROJECT_STEPS = PROJECT_STEPS.filter(x=>String(x.id)!==String(id));
-    renderProjects();
-  }
-});
-
-/* ---------- Commitments ---------- */
-function openAddCommitmentModal(){
-  document.getElementById("inCommitmentText").value = "";
-  document.getElementById("inCommitmentAssignee").value = "tim";
-  document.getElementById("addCommitmentModal").classList.add("open");
-  setTimeout(()=>document.getElementById("inCommitmentText").focus(), 0);
-}
-function closeAddCommitmentModal(){ document.getElementById("addCommitmentModal").classList.remove("open"); }
-
-document.getElementById("openAddCommitmentBtn").addEventListener("click", openAddCommitmentModal);
-document.getElementById("addCommitmentModalClose").addEventListener("click", closeAddCommitmentModal);
-document.getElementById("addCommitmentModal").addEventListener("click", (ev)=>{ if(ev.target.id==="addCommitmentModal") closeAddCommitmentModal(); });
-document.getElementById("inCommitmentText").addEventListener("keydown", (ev)=>{ if(ev.key==="Enter") document.getElementById("addCommitmentBtn").click(); });
-
-document.getElementById("addCommitmentBtn").addEventListener("click", async ()=>{
-  const text = document.getElementById("inCommitmentText").value.trim();
-  if(!text){ alert("Bitte ein Commitment eingeben."); return; }
-  const assignee = document.getElementById("inCommitmentAssignee").value;
-  const { data, error } = await db.from("weekly_commitments").insert({
-    week_start: WEEKS[entryWeekIdx()][0], text, assignee, done: false
-  }).select();
-  if(error){ console.error(error); alert("Commitment konnte nicht gespeichert werden: "+error.message); return; }
-  COMMITMENTS.push(data[0]);
-  closeAddCommitmentModal();
-  renderCommitments();
-});
-
-document.getElementById("commitmentsList").addEventListener("click", async (ev)=>{
-  const el = ev.target.closest("[data-act]");
-  if(!el) return;
-  const id = el.dataset.id;
-  const c = COMMITMENTS.find(x=>String(x.id)===String(id));
-  if(!c) return;
-
-  if(el.dataset.act === "toggle"){
-    const done = el.checked;
-    const { error } = await db.from("weekly_commitments").update({ done }).eq("id", c.id);
-    if(error){ console.error(error); alert("Konnte nicht gespeichert werden: "+error.message); el.checked = !done; return; }
-    c.done = done;
-    renderCommitments();
-  } else if(el.dataset.act === "del"){
-    if(!confirm("Commitment \""+c.text+"\" löschen?")) return;
-    const { error } = await db.from("weekly_commitments").delete().eq("id", c.id);
-    if(error){ console.error(error); alert("Konnte nicht gelöscht werden: "+error.message); return; }
-    COMMITMENTS = COMMITMENTS.filter(x=>String(x.id)!==String(id));
-    renderCommitments();
-  }
-});
-
-/* ---------- Neue-Aufgabe-Modal ---------- */
-function openAddTaskModal(){
-  document.getElementById("inTaskText").value = "";
-  document.getElementById("inTaskAssignee").value = "tim";
-  document.getElementById("inTaskPriority").value = "mittel";
-  document.getElementById("addTaskModal").classList.add("open");
-  setTimeout(()=>document.getElementById("inTaskText").focus(), 0);
-}
-function closeAddTaskModal(){ document.getElementById("addTaskModal").classList.remove("open"); }
-
-document.getElementById("openAddTaskBtn").addEventListener("click", openAddTaskModal);
-document.getElementById("addTaskModalClose").addEventListener("click", closeAddTaskModal);
-document.getElementById("addTaskModal").addEventListener("click", (ev)=>{ if(ev.target.id==="addTaskModal") closeAddTaskModal(); });
-
-document.getElementById("addTaskBtn").addEventListener("click", async ()=>{
-  const textEl = document.getElementById("inTaskText");
-  const text = textEl.value.trim();
-  if(!text){ alert("Bitte eine Aufgabe eingeben."); return; }
-  const assignee = document.getElementById("inTaskAssignee").value;
-  const priority = document.getElementById("inTaskPriority").value;
-  const { data, error } = await db.from("tasks").insert({
-    week_start: WEEKS[boardWeekIdx][0], text, assignee, priority, done: false
-  }).select();
-  if(error){ console.error(error); alert("Aufgabe konnte nicht gespeichert werden: "+error.message); return; }
-  TASKS.push(data[0]);
-  closeAddTaskModal();
-  renderTasks();
-});
-
-/* ---------- Board: Wochen-Navigation ---------- */
-document.getElementById("taskPrevWeek").addEventListener("click", ()=>{
-  if(boardWeekIdx > 0){ boardWeekIdx--; renderTasks(); }
-});
-document.getElementById("taskNextWeek").addEventListener("click", ()=>{
-  if(boardWeekIdx < N_WEEKS - 1){ boardWeekIdx++; renderTasks(); }
-});
-
-/* ---------- Zeittracking: Wochen-Navigation ---------- */
-document.getElementById("ztPrevWeek").addEventListener("click", ()=>{
-  if(ztWeekIdx > 0){ ztWeekIdx--; renderZeittracking(); }
-});
-document.getElementById("ztNextWeek").addEventListener("click", ()=>{
-  if(ztWeekIdx < N_WEEKS - 1){ ztWeekIdx++; renderZeittracking(); }
-});
-
-/* ---------- Board: Karte anklicken -> Modal ---------- */
-let modalTaskId = null;
-function openTaskModal(id){
-  const t = TASKS.find(x=>String(x.id)===String(id));
-  if(!t) return;
-  modalTaskId = t.id;
-  document.getElementById("modalTaskText").value = t.text;
-  document.getElementById("modalStatus").value = normStatus(t);
-  document.getElementById("modalAssignee").value = t.assignee;
-  document.getElementById("modalPriority").value = t.priority;
-  // "Nächste Woche" nur anbieten, wenn es eine nächste Woche gibt
-  document.getElementById("modalPushWeek").style.display = (boardWeekIdx < N_WEEKS - 1) ? "inline-flex" : "none";
-  document.getElementById("taskModal").classList.add("open");
-}
-function closeTaskModal(){
-  document.getElementById("taskModal").classList.remove("open");
-  modalTaskId = null;
-}
-
-document.getElementById("kanbanBoard").addEventListener("click", (ev)=>{
-  const card = ev.target.closest(".kanban-card");
-  if(card) openTaskModal(card.dataset.id);
-});
-
-document.getElementById("modalClose").addEventListener("click", closeTaskModal);
-document.getElementById("taskModal").addEventListener("click", (ev)=>{
-  if(ev.target.id === "taskModal") closeTaskModal();
-});
-document.addEventListener("keydown", (ev)=>{
-  if(ev.key !== "Escape") return;
-  ["taskModal","goalModal","addTaskModal"].forEach(id=>document.getElementById(id).classList.remove("open"));
-  modalTaskId = null;
-});
-
-document.getElementById("modalSave").addEventListener("click", async ()=>{
-  if(modalTaskId == null) return;
-  const t = TASKS.find(x=>String(x.id)===String(modalTaskId));
-  if(!t) return;
-  const text = document.getElementById("modalTaskText").value.trim();
-  if(!text){ alert("Der Aufgabentext darf nicht leer sein."); return; }
-  const status = document.getElementById("modalStatus").value;
-  const assignee = document.getElementById("modalAssignee").value;
-  const priority = document.getElementById("modalPriority").value;
-  const done = status === "done";
-  const { error } = await db.from("tasks").update({ text, status, assignee, priority, done }).eq("id", t.id);
-  if(error){ console.error(error); alert("Speichern fehlgeschlagen: "+error.message); return; }
-  Object.assign(t, { text, status, assignee, priority, done });
-  closeTaskModal();
-  renderTasks();
-});
-
-document.getElementById("modalPushWeek").addEventListener("click", async ()=>{
-  if(modalTaskId == null || boardWeekIdx >= N_WEEKS - 1) return;
-  const t = TASKS.find(x=>String(x.id)===String(modalTaskId));
-  if(!t) return;
-  const nextWeekStart = WEEKS[boardWeekIdx + 1][0];
-  const { error } = await db.from("tasks").update({ week_start: nextWeekStart }).eq("id", t.id);
-  if(error){ console.error(error); alert("Verschieben fehlgeschlagen: "+error.message); return; }
-  t.week_start = nextWeekStart;
-  closeTaskModal();
-  renderTasks();
-});
-
-document.getElementById("modalDelete").addEventListener("click", async ()=>{
-  if(modalTaskId == null) return;
-  if(!confirm("Aufgabe wirklich löschen?")) return;
-  const id = modalTaskId;
-  const { error } = await db.from("tasks").delete().eq("id", id);
-  if(error){ console.error(error); alert("Löschen fehlgeschlagen: "+error.message); return; }
-  TASKS = TASKS.filter(t=>String(t.id)!==String(id));
-  closeTaskModal();
-  renderTasks();
-});
-
-/* ---------- Init ---------- */
-async function init(){
-  await ensureAuthorized();
-  populateEntryControls();
-  boardWeekIdx = findCurrentWeekIndex();
-  await fetchAllData();
-  loadDayIntoForm();
-  loadDayIntoHebelForm();
-  renderAll();
-}
-init();
-</script>
+<script type="module" src="js/main.js"></script>
 </body>
 </html>

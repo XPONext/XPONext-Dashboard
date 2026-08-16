@@ -1,0 +1,220 @@
+<div id="smokeResult" style="position:fixed;bottom:0;left:0;right:0;z-index:9999;background:#111;color:#0f0;font:12px monospace;padding:8px;white-space:pre-wrap;">SMOKE: laeuft…</div>
+<script>
+/* Rauchtest: ersetzt Supabase durch Fake-Daten und sammelt alle Fehler. */
+window.__errors = [];
+function rec(e){ window.__errors.push(String(e)); }
+window.addEventListener("error", e=>rec(e.message));
+window.addEventListener("unhandledrejection", e=>rec((e.reason&&e.reason.stack)||e.reason));
+console.error = (...a)=>{
+  // Waehrend des absichtlichen Fehlertests nicht als Fehler werten.
+  if(window.__schreibfehler) return;
+  rec("console.error: "+a.map(String).join(" "));
+};
+window.prompt = ()=> "TESTSECRET";
+window.alert = m=>rec("alert: "+m);
+window.confirm = ()=> true;
+
+const HEUTE = new Date(); const M = HEUTE.getFullYear()+"-"+String(HEUTE.getMonth()+1).padStart(2,"0");
+const FAKE = {
+  customers: [
+    {id:"k1", name:"Protours",   kind:"kunde",  status:"aktiv", active:true,  sort_order:10, note:null},
+    {id:"k2", name:"Chuong",     kind:"kunde",  status:"aktiv", active:true,  sort_order:20, note:null},
+    {id:"k3", name:"Altkunde",   kind:"kunde",  status:"beendet", active:false, sort_order:30, note:null},
+    {id:"i1", name:"XPO intern", kind:"intern", status:"aktiv", active:true,  sort_order:90, note:null}
+  ],
+  revenues: [
+    {id:"r1", customer_id:"k1", kind:"retainer", title:"Betreuung", amount:3000, period_start:M+"-01", period_end:null, note:null},
+    {id:"r2", customer_id:"k2", kind:"einmalig", title:"Relaunch",  amount:800,  period_start:M+"-01", period_end:M+"-28", note:null}
+  ],
+  revenue_months: [
+    // Protours: Retainer 3.000 EUR im laufenden Monat
+    {customer_id:"k1", revenue_id:"r1", kind:"retainer", month_start:M+"-01", amount:3000},
+    // Chuong: einmaliger Auftrag, auf den Monat verteilt
+    {customer_id:"k2", revenue_id:"r2", kind:"einmalig", month_start:M+"-01", amount:800}
+  ],
+  daily_personal: [
+    {date:"2026-08-10", person:"tim",   lead_gen_hours:8,  hebel:{callBreakdowns:1.5, coachings:0.5}},
+    {date:"2026-08-11", person:"simon", lead_gen_hours:6,  hebel:{offer:2, zielgruppe:1}},
+    {date:"2025-01-05", person:"tim",   lead_gen_hours:3,  hebel:{}}
+  ],
+  daily_team: [
+    {date:"2026-08-10", termine_gebucht:5, termine_showup:3, closes:[2500, 1800]},
+    {date:"2026-08-12", termine_gebucht:2, termine_showup:2, closes:[]}
+  ],
+  time_entries: [
+    // Protours: 3 x 30 Min = 1,5 Std. -> 3000/1,5 = 2000 EUR/Std. (gruen)
+    {id:1, person:"tim",   ts:new Date().toISOString(), duration_minutes:30, state:"Deepwork",      zuordnung:"Protours",   customer_id:"k1", aktivitaet:"Copywriting"},
+    {id:4, person:"tim",   ts:new Date().toISOString(), duration_minutes:30, state:"Deepwork",      zuordnung:"Protours",   customer_id:"k1", aktivitaet:"Copywriting"},
+    {id:5, person:"simon", ts:new Date().toISOString(), duration_minutes:30, state:"Abarbeiten",    zuordnung:"Protours",   customer_id:"k1", aktivitaet:"Admin"},
+    // Chuong: 40 x 30 Min = 20 Std. -> 800/20 = 40 EUR/Std. (rot)
+    ...Array.from({length:40},(_,i)=>({id:100+i, person:"simon", ts:new Date().toISOString(), duration_minutes:30, state:"Abarbeiten", zuordnung:"Chuong", customer_id:"k2", aktivitaet:"Beratung"})),
+    // Intern und Pause
+    {id:2, person:"simon", ts:new Date().toISOString(), duration_minutes:30, state:"Kommunikation", zuordnung:"XPO intern", customer_id:"i1", aktivitaet:"Vertrieb"},
+    {id:3, person:"tim",   ts:new Date().toISOString(), duration_minutes:30, state:"Pause",         zuordnung:null,         customer_id:null, aktivitaet:null},
+    // Ohne Zuordnung -> senkt den Abdeckungsgrad
+    {id:6, person:"tim",   ts:new Date().toISOString(), duration_minutes:30, state:"Planung",       zuordnung:null,         customer_id:null, aktivitaet:null}
+  ],
+  tasks: [
+    {id:"t1", text:"Angebot <b>schreiben</b>", status:"inarbeit", assignee:"tim", priority:"hoch", done:false, week_start:"2026-08-10", created_at:"2026-08-10T08:00:00Z"},
+    {id:"t2", text:"Landingpage", status:"done", assignee:"simon", priority:"niedrig", done:true, week_start:"2026-08-10", created_at:"2026-08-10T09:00:00Z"}
+  ],
+  weekly_goals: [{week_start:"2026-08-10", goal:"Fokus auf Neukunden"}],
+  weekly_commitments: [{id:"c1", week_start:"2026-08-10", text:"3x Cold Call", assignee:"simon", done:false, created_at:"2026-08-10T08:00:00Z"},
+    {id:"c2", week_start:"2026-08-10", text:"Altes Commitment ohne Zuweisung", done:true, created_at:"2026-08-10T09:00:00Z"}],
+  projects: [{id:"p1", title:"Website-Relaunch", description:"Neue Seite", status:"aktiv", owner:"tim", due_date:"2026-09-30", created_at:"2026-08-01T08:00:00Z"}],
+  project_steps: [
+    {id:"s1", project_id:"p1", text:"Konzept", assignee:"tim", done:true,  created_at:"2026-08-01T08:00:00Z"},
+    {id:"s2", project_id:"p1", text:"Umsetzung", done:false, created_at:"2026-08-02T08:00:00Z"}  // ohne assignee: Altbestand
+  ]
+};
+
+let idZaehler = 100;
+window.__schreibfehler = false;   // Schalter fuer den Fehlerfall im Test
+function result(table){
+  // Bei select kommen die Testdaten zurueck, bei insert/upsert der geschriebene
+  // Datensatz mit neuer id — so wie es echtes Supabase mit .select() tut.
+  let daten = FAKE[table] ? JSON.parse(JSON.stringify(FAKE[table])) : [];
+  let geschrieben = false;
+  const chain = {
+    select: ()=>chain, order: ()=>chain, eq: ()=>chain, limit: ()=>chain,
+    delete: ()=>{ daten = []; return chain; },
+    single: ()=>chain,
+    insert: (row)=>{ geschrieben = true; daten = [Object.assign({id:"neu"+(++idZaehler), created_at:new Date().toISOString()}, row)]; return chain; },
+    upsert: (row)=>{ geschrieben = true; daten = [Object.assign({id:"neu"+(++idZaehler)}, row)]; return chain; },
+    update: (row)=>{ geschrieben = true; daten = [Object.assign({id:"upd"+(++idZaehler)}, row)]; return chain; },
+    then: (res)=>Promise.resolve(
+      window.__schreibfehler && geschrieben
+        ? { data: null, error: { message: "Testfehler beim Schreiben", code: "42501" } }
+        : { data: daten, error: null }
+    ).then(res)
+  };
+  return chain;
+}
+window.supabase = { createClient: ()=>({ from: result }) };
+
+/* Dialoge pruefen: oeffnen, Pflichtfeld leer absenden, Werte setzen, speichern.
+   Ohne diesen Teil wuerde der Test den Modal-Helfer gar nicht anfassen. */
+window.__dialogChecks = [];
+function pruefeDialog(name, bedingung){ window.__dialogChecks.push(name + (bedingung ? ": ok" : ": FEHLGESCHLAGEN")); }
+
+setTimeout(async ()=>{
+  // Der visuelle Vergleich setzt dieses Flag: er will die Seite im Ruhestand
+  // fotografieren, nicht mit geoeffneten Dialogen und Fehlerbanner.
+  if(window.__nurAnsicht) return;
+  try{
+    document.getElementById("openAddTaskBtn").click();
+    await new Promise(r=>setTimeout(r, 60));
+    const dlg = document.querySelector("dialog.dlg[open]");
+    pruefeDialog("Dialog oeffnet", !!dlg && dlg.open);
+    pruefeDialog("Felder gebaut", !!dlg.querySelector('[name="text"]') && !!dlg.querySelector('[name="priority"]'));
+    pruefeDialog("Erstes Feld fokussiert", document.activeElement === dlg.querySelector('[name="text"]'));
+
+    // Pflichtfeld leer -> Meldung im Dialog, Dialog bleibt offen
+    dlg.querySelector('[data-dlg="submit"]').click();
+    await new Promise(r=>setTimeout(r, 60));
+    const fehler = dlg.querySelector(".dlg-error");
+    pruefeDialog("Pflichtfeld meldet sich", dlg.open && !fehler.hidden);
+
+    // Ausfuellen und speichern
+    dlg.querySelector('[name="text"]').value = "Testaufgabe";
+    dlg.querySelector('[data-dlg="submit"]').click();
+    await new Promise(r=>setTimeout(r, 120));
+    pruefeDialog("Dialog schliesst nach Speichern", document.querySelectorAll("dialog.dlg[open]").length === 0);
+
+    // Bearbeiten-Dialog mit vorbelegten Werten
+    document.querySelector(".kanban-card").click();
+    await new Promise(r=>setTimeout(r, 80));
+    const dlg2 = document.querySelector("dialog.dlg[open]");
+    pruefeDialog("Bearbeiten vorbelegt", !!dlg2 && dlg2.querySelector('[name="text"]').value.length > 0);
+    pruefeDialog("Loeschen wird angeboten", !!dlg2.querySelector('[data-dlg="delete"]'));
+    // Loeschen -> Rueckfrage. Kritischer Fall: beide Dialoge teilten sich
+    // frueher ein einziges <dialog>, wodurch die Rueckfrage den aeusseren
+    // Dialog zerstoert hat.
+    dlg2.querySelector('[data-dlg="delete"]').click();
+    await new Promise(r=>setTimeout(r, 80));
+    const offene = document.querySelectorAll("dialog.dlg[open]");
+    pruefeDialog("Rueckfrage oeffnet zusaetzlich", offene.length === 2);
+    const frage = offene[offene.length-1];
+    pruefeDialog("Rueckfrage zeigt den Text", /l\u00f6schen/i.test(frage.textContent));
+
+    // Abbrechen in der Rueckfrage: der Bearbeiten-Dialog muss offen bleiben
+    frage.querySelector('[data-dlg="nein"]').click();
+    await new Promise(r=>setTimeout(r, 120));
+    const nochOffen = document.querySelectorAll("dialog.dlg[open]");
+    pruefeDialog("Bearbeiten-Dialog ueberlebt die Rueckfrage", nochOffen.length === 1);
+    pruefeDialog("Eingaben bleiben erhalten", nochOffen.length === 1 && !!nochOffen[0].querySelector('[name="text"]'));
+
+    // Abbruch schliesst
+    if(nochOffen.length) nochOffen[0].querySelector('[data-dlg="abbruch"]').click();
+    await new Promise(r=>setTimeout(r, 80));
+    pruefeDialog("Abbruch schliesst", document.querySelectorAll("dialog.dlg[open]").length === 0);
+    // Fehlgeschlagenes Speichern: keine Bestaetigung, sichtbare Meldung.
+    window.__schreibfehler = true;
+    document.getElementById("saveWeekBtn").click();
+    await new Promise(r=>setTimeout(r, 250));
+    const bestaetigung = document.getElementById("saveMsg");
+    const banner = document.getElementById("errorBanner");
+    pruefeDialog("Fehlschlag zeigt keine Bestaetigung", bestaetigung.style.display !== "block");
+    pruefeDialog("Fehlschlag meldet sich sichtbar", !!banner && banner.style.display !== "none" && /fehlgeschlagen|Testfehler/i.test(banner.textContent));
+    window.__schreibfehler = false;
+
+    // ---- Kunden-Ansicht ----
+    document.querySelector('[data-view="kunden"]').click();
+    await new Promise(r=>setTimeout(r, 250));
+    const lohnBadges = [...document.querySelectorAll("#kdList .lohn-badge")].map(e=>e.textContent);
+    pruefeDialog("Kundenliste gefuellt", lohnBadges.length === 2);
+    // Protours 3000 EUR / 1,5 Std. = 2.000 EUR/Std. -> gruen
+    pruefeDialog("Stundenlohn Protours stimmt", /2\.000/.test(lohnBadges[0] || ""));
+    pruefeDialog("Bester Kunde steht oben", !!document.querySelector("#kdList .lohn-badge.lohn-ok"));
+    // Chuong 800 EUR / 20 Std. = 40 EUR/Std. -> rot
+    pruefeDialog("Schlechter Stundenlohn wird rot", !!document.querySelector("#kdList .lohn-badge.lohn-low"));
+    pruefeDialog("Abdeckungsgrad wird genannt", /getrackten Stunden/.test(document.getElementById("kdCoverage").textContent));
+    pruefeDialog("Zeitraum-Label ohne doppelten Punkt", !/\.\./.test(document.getElementById("kdZeitraumLabel").textContent));
+    pruefeDialog("Schnitt-Stundenlohn stimmt", /177/.test(document.getElementById("kdSchnitt").textContent));
+    pruefeDialog("Ampelschwellen werden genannt", /50/.test(document.getElementById("kdSchnittSub").textContent));
+    pruefeDialog("Umsatzeintraege sind aufgelistet", document.querySelectorAll('#kdRevenues [data-kd="rev-edit"]').length === 2);
+
+    // Umsatz bearbeiten — ohne diesen Weg waere ein Tippfehler beim Betrag
+    // nur noch im SQL-Editor zu beheben.
+    document.querySelector('#kdRevenues [data-kd="rev-edit"]').click();
+    await new Promise(r=>setTimeout(r, 120));
+    const revDlg = document.querySelector("dialog.dlg[open]");
+    pruefeDialog("Umsatz-Dialog oeffnet vorbelegt",
+      !!revDlg && Number(revDlg.querySelector('[name="amount"]').value) > 0);
+    pruefeDialog("Umsatz laesst sich loeschen", !!revDlg.querySelector('[data-dlg="delete"]'));
+
+    // Pflichtpruefung: einmaliger Auftrag ohne Enddatum
+    revDlg.querySelector('[name="kind"]').value = "einmalig";
+    revDlg.querySelector('[name="period_end"]').value = "";
+    revDlg.querySelector('[data-dlg="submit"]').click();
+    await new Promise(r=>setTimeout(r, 100));
+    pruefeDialog("Einmalauftrag ohne Enddatum wird abgelehnt",
+      revDlg.open && !revDlg.querySelector(".dlg-error").hidden);
+    revDlg.querySelector('[data-dlg="abbruch"]').click();
+    await new Promise(r=>setTimeout(r, 80));
+
+    // Kunde bearbeiten: der Sichtbarkeitsschalter muss da sein und darf sich
+    // beim Speichern nicht von selbst umstellen.
+    document.querySelector('#kdList [data-kd="edit"]').click();
+    await new Promise(r=>setTimeout(r, 120));
+    const kdDlg = document.querySelector("dialog.dlg[open]");
+    pruefeDialog("Kunden-Dialog hat den Popup-Schalter", !!kdDlg.querySelector('[name="active"]'));
+    kdDlg.querySelector('[data-dlg="abbruch"]').click();
+    await new Promise(r=>setTimeout(r, 80));
+  }catch(e){
+    window.__dialogChecks.push("Dialogpruefung abgebrochen: " + (e && e.message));
+  }
+}, 1200);
+
+/* Ergebnis nach dem Rendern ausgeben. */
+setTimeout(()=>{
+  const el = document.getElementById("smokeResult");
+  const errs = window.__errors;
+  const dlgFehler = (window.__dialogChecks||[]).filter(c=>!c.endsWith(": ok"));
+  const alle = errs.concat(dlgFehler);
+  el.textContent = alle.length
+    ? "SMOKE: " + alle.length + " FEHLER\n" + alle.join("\n")
+    : "SMOKE: OK — keine Fehler | Dialog: " + (window.__dialogChecks||[]).length + " Pruefungen bestanden";
+  el.style.color = errs.length ? "#f66" : "#0f0";
+}, 3000);
+</script>

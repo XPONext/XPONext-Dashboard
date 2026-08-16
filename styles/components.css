@@ -1,0 +1,341 @@
+/* ============================================================
+   Wiederverwendbare Bausteine: Karten, Kennzahlen, Balken,
+   Badges, Schaltflaechen, Leerzustaende, Modals, Meldungen.
+   ============================================================ */
+
+/* ---------- Karten ---------- */
+.card{
+  background:var(--bg);
+  border:1px solid var(--border);
+  border-radius:var(--r-lg);
+  padding:1.7rem;
+  margin-bottom:1.3rem;
+  box-shadow:var(--shadow-sm);
+  transition:box-shadow .2s var(--ease);
+}
+.card h2{
+  font-size:var(--fs-h2);
+  font-weight:var(--fw-black);
+  margin-bottom:1rem;
+  color:var(--text-primary);
+  letter-spacing:-0.01em;
+}
+.card h2 small{
+  display:block;
+  font-weight:var(--fw-normal);
+  font-size:var(--fs-label);
+  color:var(--text-muted);
+  margin-top:0.25rem;
+  letter-spacing:0;
+}
+
+/* ---------- Kennzahl-Karte ---------- */
+.stat{
+  background:var(--bg);
+  border:1px solid var(--border);
+  border-radius:13px;
+  padding:1.15rem 1.25rem;
+  box-shadow:var(--shadow-sm);
+}
+.stat .lbl{
+  font-size:var(--fs-xs);
+  color:var(--text-muted);
+  font-weight:var(--fw-bold);
+  text-transform:uppercase;
+  letter-spacing:0.055em;
+  margin-bottom:0.4rem;
+}
+.stat .num{
+  font-size:var(--fs-h1);
+  font-weight:var(--fw-black);
+  color:var(--text-primary);
+  margin-bottom:0.55rem;
+  letter-spacing:-0.015em;
+}
+.stat .num small{font-size:var(--fs-sm);font-weight:var(--fw-normal);color:var(--text-muted);letter-spacing:0;}
+.stat .pct{font-size:0.76rem;color:var(--text-muted);margin-top:0.35rem;}
+
+/* ---------- Fortschrittsbalken ---------- */
+.bar-track{
+  background:var(--bg-subtle);
+  border-radius:var(--r-pill);
+  height:8px;
+  overflow:hidden;
+  border:1px solid var(--border);
+}
+.bar-fill{height:100%;border-radius:var(--r-pill);transition:width .35s var(--ease);}
+.bar-fill.ok{background:var(--accent);}
+.bar-fill.warn{background:var(--amber-strong);}
+.bar-fill.low{background:var(--red-strong);}
+
+.row-metric{margin-bottom:0.9rem;}
+.row-metric .top{display:flex;justify-content:space-between;font-size:0.85rem;margin-bottom:0.35rem;}
+.row-metric .top .name{font-weight:var(--fw-semi);color:var(--text-primary);}
+.row-metric .top .vals{color:var(--text-muted);}
+
+/* ---------- Badges ---------- */
+.badge{
+  display:inline-flex;
+  align-items:center;
+  gap:5px;
+  background:var(--accent-light);
+  color:var(--accent-dark);
+  padding:0.25rem 0.7rem;
+  border-radius:var(--r-pill);
+  font-size:0.76rem;
+  font-weight:var(--fw-bold);
+}
+.badge.warn{background:var(--amber-bg);color:var(--amber);}
+.badge.low{background:var(--red-bg);color:var(--red);}
+
+.task-badge{
+  font-size:0.66rem;
+  font-weight:var(--fw-bold);
+  padding:0.18rem 0.52rem;
+  border-radius:var(--r-pill);
+  white-space:nowrap;
+}
+.task-badge.person{background:var(--accent-light);color:var(--accent-dark);}
+.task-badge.prio-hoch{background:var(--red-bg);color:var(--red);}
+.task-badge.prio-mittel{background:var(--amber-bg);color:var(--amber);}
+.task-badge.prio-niedrig{background:var(--bg);color:var(--text-muted);border:1px solid var(--border);}
+
+.status-badge{
+  font-size:0.66rem;
+  font-weight:var(--fw-bold);
+  padding:0.18rem 0.52rem;
+  border-radius:var(--r-pill);
+  white-space:nowrap;
+  text-transform:uppercase;
+  letter-spacing:0.04em;
+}
+.status-badge.st-aktiv{background:var(--accent-light);color:var(--accent-dark);}
+.status-badge.st-pausiert{background:var(--amber-bg);color:var(--amber);}
+.status-badge.st-fertig{background:var(--green-bg);color:var(--green);}
+.due-badge{font-size:0.7rem;font-weight:var(--fw-semi);color:var(--text-muted);white-space:nowrap;}
+.due-badge.is-late{color:var(--red);}
+
+/* ---------- Schaltflaechen ---------- */
+.btn{
+  background:var(--accent);
+  color:var(--text-on-dark);
+  padding:0.72rem 1.5rem;
+  border-radius:9px;
+  border:none;
+  font-weight:var(--fw-bold);
+  font-size:0.92rem;
+  cursor:pointer;
+  font-family:var(--font);
+  box-shadow:0 1px 2px rgba(46,61,40,0.25);
+  transition:transform .12s var(--ease), box-shadow .12s var(--ease), background .12s var(--ease);
+}
+.btn:hover{background:var(--accent-dark);transform:translateY(-1px);box-shadow:0 4px 10px rgba(46,61,40,0.28);}
+.btn:active{transform:translateY(0);}
+
+.btn-outline{
+  background:var(--bg);
+  color:var(--text-primary);
+  padding:0.72rem 1.5rem;
+  border-radius:9px;
+  border:1.5px solid var(--border-strong);
+  font-weight:var(--fw-semi);
+  font-size:0.92rem;
+  cursor:pointer;
+  font-family:var(--font);
+  transition:border-color .12s var(--ease), background .12s var(--ease);
+}
+.btn-outline:hover{border-color:var(--accent);background:var(--bg-subtle);}
+
+.wk-btn{
+  background:var(--bg);
+  border:1.5px solid var(--border);
+  border-radius:var(--r-sm);
+  width:30px;height:30px;
+  font-size:1.15rem;line-height:1;
+  color:var(--text-body);
+  cursor:pointer;
+  font-family:var(--font);
+  transition:border-color .12s var(--ease), background .12s var(--ease);
+}
+.wk-btn:hover:not(:disabled){border-color:var(--accent);background:var(--bg-subtle);}
+.wk-btn:disabled{opacity:0.35;cursor:not-allowed;}
+
+.toggle-inline{display:inline-flex;align-items:center;gap:0.45rem;font-size:var(--fs-sm);color:var(--text-muted);cursor:pointer;user-select:none;}
+.toggle-inline input{width:15px;height:15px;accent-color:var(--accent);cursor:pointer;margin:0;}
+
+/* ---------- Leerzustand ----------
+   Ersetzt nach und nach die fuenf verschiedenen Leerdarstellungen
+   (projects-empty, commit-empty, step-empty, kanban-empty, "Keine Daten"). */
+.empty-state{
+  text-align:center;
+  padding:var(--sp-6) var(--sp-4);
+  color:var(--text-muted);
+}
+.empty-state .es-title{
+  font-size:var(--fs-h3);
+  font-weight:var(--fw-bold);
+  color:var(--text-body);
+  margin-bottom:var(--sp-1);
+}
+.empty-state .es-hint{font-size:var(--fs-sm);line-height:var(--lh-normal);}
+.empty-state .es-action{margin-top:var(--sp-4);}
+
+/* Kompakte Variante innerhalb einer Karte oder Spalte */
+.empty-state.is-inline{padding:var(--sp-3) 0;text-align:left;}
+.empty-state.is-inline .es-hint{font-size:var(--fs-sm);}
+
+/* ---------- Meldungen ---------- */
+.save-msg{
+  display:none;
+  color:var(--accent-dark);
+  background:var(--accent-light);
+  padding:0.6rem 1rem;
+  border-radius:var(--r-sm);
+  font-size:0.84rem;
+  font-weight:var(--fw-semi);
+  margin-top:0.8rem;
+}
+
+.error-banner{
+  display:none;
+  position:sticky;
+  top:0;
+  z-index:200;
+  background:var(--red-bg);
+  color:var(--red);
+  border-bottom:1px solid var(--red);
+  padding:0.75rem 5%;
+  font-size:0.85rem;
+  font-weight:var(--fw-semi);
+  letter-spacing:-0.005em;
+}
+
+/* ---------- Dialog ----------
+   Ein einziges natives <dialog> fuer alle Popups (js/ui/modal.js).
+   ::backdrop liefert die Abdunklung, showModal() den Fokus-Trap. */
+.dlg{
+  border:none;
+  background:transparent;
+  padding:0;
+  max-width:min(520px, calc(100vw - var(--sp-5)));
+  width:100%;
+  /* margin:auto zentriert in beide Richtungen. Nicht auf die
+     Standardformatierung des Browsers verlassen — die faellt je nach
+     Version unterschiedlich aus. */
+  margin:auto;
+  max-height:calc(100vh - var(--sp-6));
+  overflow-y:auto;
+}
+.dlg::backdrop{background:rgba(13,13,13,0.45);}
+
+.dlg-box{
+  background:var(--bg);
+  border:1px solid var(--border);
+  border-radius:var(--r-lg);
+  padding:var(--sp-5);
+  box-shadow:var(--shadow-md);
+}
+.dlg-box.is-narrow{max-width:420px;}
+
+.dlg-head{display:flex;align-items:flex-start;justify-content:space-between;gap:var(--sp-4);margin-bottom:var(--sp-4);}
+.dlg-head h3{
+  font-size:var(--fs-xs);
+  font-weight:var(--fw-black);
+  color:var(--text-muted);
+  text-transform:uppercase;
+  letter-spacing:0.05em;
+}
+.dlg-close{
+  background:none;border:none;color:var(--text-muted);
+  cursor:pointer;font-size:1.2rem;line-height:1;
+  padding:0.1rem 0.3rem;border-radius:var(--r-sm);
+}
+.dlg-close:hover{color:var(--text-primary);}
+
+.dlg-body{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:var(--sp-4);}
+.dlg-body .field{margin-bottom:0;}
+.dlg-body .field.is-full{grid-column:1 / -1;}
+.dlg-body textarea{
+  font-family:var(--font);
+  border:1.5px solid var(--border);
+  border-radius:var(--r-sm);
+  padding:0.55rem 0.7rem;
+  font-size:0.93rem;
+  color:var(--text-primary);
+  width:100%;
+  background:var(--bg);
+  resize:vertical;
+}
+.dlg-body textarea:focus{outline:none;border-color:var(--accent);box-shadow:var(--focus-ring);}
+.dlg-frage{font-size:var(--fs-h3);font-weight:var(--fw-semi);color:var(--text-primary);line-height:var(--lh-normal);}
+.dlg-hint{font-size:var(--fs-sm);color:var(--text-muted);margin-top:var(--sp-1);line-height:var(--lh-normal);}
+
+/* Fehler stehen im Dialog, nicht in einem alert() — der Wert bleibt erhalten
+   und man sieht, worauf sich die Meldung bezieht. */
+.dlg-error{
+  margin-top:var(--sp-4);
+  background:var(--red-bg);
+  color:var(--red);
+  border-radius:var(--r-sm);
+  padding:var(--sp-3);
+  font-size:var(--fs-sm);
+  font-weight:var(--fw-semi);
+  line-height:var(--lh-normal);
+}
+
+.dlg-actions{display:flex;align-items:center;gap:var(--sp-3);margin-top:var(--sp-5);flex-wrap:wrap;}
+.dlg-del{
+  background:none;border:none;
+  color:var(--red);cursor:pointer;
+  font-weight:var(--fw-bold);font-size:0.85rem;
+  margin-left:auto;padding:var(--sp-1);
+  font-family:var(--font);border-radius:var(--r-sm);
+}
+.dlg-del:hover{text-decoration:underline;}
+.btn.is-danger{background:var(--red);box-shadow:0 1px 2px rgba(185,28,28,0.25);}
+.btn.is-danger:hover{background:var(--red-strong);box-shadow:0 4px 10px rgba(185,28,28,0.28);}
+
+/* ---------- Diagramme ----------
+   Zu js/ui/chart.js. Marken tragen die Serienfarbe, Text immer Texttoken. */
+.ch{margin:0 0 var(--sp-4);}
+.ch-svg{width:100%;height:auto;display:block;overflow:visible;}
+
+.ch-grid{stroke:var(--chart-grid);stroke-width:1;}
+.ch-base{stroke:var(--chart-axis);stroke-width:1;}
+.ch-axis{fill:var(--chart-ink);font-size:11px;font-family:var(--font);}
+.ch-wert{fill:var(--text-primary);font-size:12px;font-weight:var(--fw-bold);font-family:var(--font);}
+
+.ch-linie{stroke-width:2;stroke-linejoin:round;stroke-linecap:round;}
+/* Ziellinie ist Kontext, keine Datenreihe — deshalb grau und gestrichelt. */
+.ch-ziel{fill:none;stroke:var(--chart-axis);stroke-width:2;stroke-dasharray:5 4;}
+/* Der Ring in Flaechenfarbe haelt Punkte lesbar, wo sie Linien kreuzen. */
+.ch-dot{stroke:var(--bg);stroke-width:2;}
+
+.ch-legend{display:flex;flex-wrap:wrap;gap:var(--sp-4);margin-bottom:var(--sp-3);}
+.ch-legend-item{
+  display:inline-flex;align-items:center;gap:var(--sp-2);
+  font-size:var(--fs-sm);color:var(--text-body);font-weight:var(--fw-semi);
+}
+.ch-swatch{width:10px;height:10px;border-radius:3px;flex:0 0 auto;}
+
+.ch-spark{width:100%;height:40px;display:block;}
+
+.ch-table{margin-top:var(--sp-3);}
+.ch-table summary{
+  font-size:var(--fs-sm);color:var(--text-muted);cursor:pointer;
+  font-weight:var(--fw-semi);padding:var(--sp-1) 0;
+}
+.ch-table summary:hover{color:var(--text-primary);}
+.ch-table .table-wrap{margin-top:var(--sp-3);}
+
+/* Ansicht, die beim Zeichnen abgebrochen ist: sie zeigt womoeglich halb alte,
+   halb neue Zahlen. Lieber sichtbar ausgegraut als still falsch. */
+.view.is-stale{opacity:0.5;filter:grayscale(0.4);}
+
+.error-banner{align-items:center;gap:var(--sp-4);justify-content:space-between;}
+.banner-close{
+  background:none;border:none;color:inherit;cursor:pointer;
+  font-size:1rem;line-height:1;padding:var(--sp-1) var(--sp-2);
+  border-radius:var(--r-sm);flex:0 0 auto;
+}
+.banner-close:hover{background:rgba(185,28,28,0.12);}
