@@ -15,6 +15,11 @@
 --
 -- Ausführen: Supabase → SQL Editor → New query → alles einfügen → Run.
 -- Das Skript ist wiederholbar: ein zweiter Lauf ändert nichts kaputt.
+--
+-- Supabase warnt beim Ausführen vor "destructive operations". Das ist richtig
+-- und gewollt: Abschnitt 6 benennt zuordnung_optionen in
+-- zuordnung_optionen_alt um. Die alte Tabelle bleibt dabei vollständig
+-- erhalten, der Schritt ist also umkehrbar.
 -- ============================================================
 
 
@@ -80,6 +85,10 @@ create table if not exists public.customers (
 create index if not exists customers_aktiv_idx
   on public.customers (active, sort_order);
 
+-- RLS ausdruecklich hier einschalten, obwohl die Hilfsfunktion es ohnehin tut.
+-- Die Pruefung im Supabase-Editor sieht nicht in Funktionen hinein und warnt
+-- sonst bei jedem Durchlauf vor angeblich ungeschuetzten Tabellen.
+alter table public.customers enable row level security;
 select public.xpo_policy_uebernehmen('customers');
 
 
@@ -114,6 +123,7 @@ create table if not exists public.revenues (
 create index if not exists revenues_kunde_idx
   on public.revenues (customer_id, period_start);
 
+alter table public.revenues enable row level security;
 select public.xpo_policy_uebernehmen('revenues');
 
 
@@ -357,6 +367,7 @@ create table if not exists public.tracker_options (
   unique (kind, name)
 );
 
+alter table public.tracker_options enable row level security;
 select public.xpo_policy_uebernehmen('tracker_options');
 
 insert into public.tracker_options (kind, name, active, sort_order) values
