@@ -208,32 +208,61 @@
 <!-- HEBEL -->
 <section class="view" id="view-hebel">
   <div class="container">
+
+    <div class="grid4">
+      <div class="stat">
+        <div class="lbl">Diese Woche</div>
+        <div class="num" id="hebWeekNum">0 <small>/ 7 Std.</small></div>
+        <div class="bar-track"><div class="bar-fill" id="hebWeekBar" style="width:0%"></div></div>
+        <div class="pct" id="hebWeekPct">—</div>
+      </div>
+      <div class="stat">
+        <div class="lbl">Jahr gesamt</div>
+        <div class="num" id="hebYearNum">0 <small>/ 175 Std.</small></div>
+        <div class="bar-track"><div class="bar-fill" id="hebYearBar" style="width:0%"></div></div>
+        <div class="pct" id="hebYearPct">—</div>
+      </div>
+      <div class="stat">
+        <div class="lbl">Wochen mit Ziel erreicht</div>
+        <div class="num" id="hebWeeksHit">0</div>
+        <div class="pct" id="hebWeeksHitSub">von 0 erfassten Wochen</div>
+      </div>
+      <div class="stat">
+        <div class="lbl">Stärkster Hebel</div>
+        <div class="num" id="hebTopLever" style="font-size:1.05rem;line-height:1.3">—</div>
+        <div class="pct" id="hebTopLeverSub">bisher insgesamt</div>
+      </div>
+    </div>
+
     <div class="card">
-      <h2>Hebel-Stunden eintragen <small>Ziel: 7 Std./Woche pro Person — Stand für den gewählten Tag, jederzeit korrigierbar.</small></h2>
+      <h2>Verlauf <small id="hebChartSub">Hebel-Stunden je Woche gegen das Ziel von 7 Std.</small></h2>
+      <div id="hebChart"></div>
+      <div id="hebChartTable"></div>
+    </div>
+
+    <div class="card">
+      <h2>Hebel-Stunden eintragen <small>Für den gewählten Tag — jederzeit korrigierbar.</small></h2>
       <div class="form-grid" style="max-width:600px;">
         <div class="field">
-          <label>Wer trägt ein?</label>
+          <label for="personSelectHebel">Wer trägt ein?</label>
           <select id="personSelectHebel"><option value="tim">Tim</option><option value="simon">Simon</option></select>
         </div>
         <div class="field">
-          <label>Tag auswählen</label>
+          <label for="entryDateHebel">Tag auswählen</label>
           <input type="date" id="entryDateHebel">
         </div>
       </div>
-      <div class="lever-grid">
-        <div class="lever"><div class="name">Call-Breakdowns</div><input type="number" id="hebelCallBreakdowns" min="0" step="0.25"></div>
-        <div class="lever"><div class="name">Cold-Call-Breakdowns</div><input type="number" id="hebelColdCall" min="0" step="0.25"></div>
-        <div class="lever"><div class="name">Coachings</div><input type="number" id="hebelCoachings" min="0" step="0.25"></div>
-        <div class="lever"><div class="name">Offer-Verbesserung</div><input type="number" id="hebelOffer" min="0" step="0.25"></div>
-        <div class="lever"><div class="name">Zielgruppenverständnis</div><input type="number" id="hebelZielgruppe" min="0" step="0.25"></div>
-      </div>
+      <div class="lever-list" id="hebelInputs"></div>
+      <div class="lever-sum" id="hebelDaySum">Summe für diesen Tag: 0 Std.</div>
       <button class="btn" id="saveHebelBtn">Tag speichern</button>
       <div class="save-msg" id="saveHebelMsg">Gespeichert ✓</div>
     </div>
+
     <div class="card">
-      <h2>Hebel-Stunden diese Woche</h2>
+      <h2>Aufteilung <small id="hebSplitSub">Woher die Hebel-Stunden dieser Woche kommen</small></h2>
       <div id="hebelPreview"></div>
     </div>
+
   </div>
 </section>
 

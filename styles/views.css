@@ -119,10 +119,58 @@ section.view.active{display:block;}
 .streak .item .n{font-size:1.65rem;font-weight:900;color:var(--accent);letter-spacing:-0.01em;}
 .streak .item .l{font-size:0.73rem;color:var(--text-muted);font-weight:var(--fw-semi);text-transform:uppercase;letter-spacing:0.03em;}
 
-/* ---------- Hebel ---------- */
-.lever-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:0.9rem;margin-bottom:1rem;}
-.lever{border:1px solid var(--border);border-radius:var(--r-md);padding:0.95rem;background:var(--bg-subtle);}
-.lever .name{font-size:var(--fs-label);font-weight:var(--fw-bold);margin-bottom:0.55rem;color:var(--text-primary);}
+/* ---------- Hebel ----------
+   Eine Zeile je Hebel mit +/- in Viertelstunden. Vorher standen hier fuenf
+   Zahlenfelder nebeneinander, in die man tippen musste. */
+.lever-list{
+  border:1px solid var(--border);
+  border-radius:var(--r-md);
+  background:var(--bg-subtle);
+  margin-bottom:var(--sp-4);
+  overflow:hidden;
+}
+.lever-row{
+  display:flex;align-items:center;gap:var(--sp-4);
+  padding:var(--sp-3) var(--sp-4);
+  border-bottom:1px solid var(--border);
+}
+.lever-row:last-child{border-bottom:none;}
+.lever-name{
+  flex:1;margin-bottom:0;
+  font-size:var(--fs-body);font-weight:var(--fw-semi);
+  color:var(--text-primary);
+}
+.lever-stepper{display:flex;align-items:center;gap:var(--sp-2);flex:0 0 auto;}
+.lever-stepper input{
+  width:74px;text-align:center;
+  font-variant-numeric:tabular-nums;
+  /* Die Pfeilchen des Browsers sind winzig — die eigenen Knoepfe treffen besser. */
+  -moz-appearance:textfield;
+}
+.lever-stepper input::-webkit-outer-spin-button,
+.lever-stepper input::-webkit-inner-spin-button{-webkit-appearance:none;margin:0;}
+.step-btn{
+  width:34px;height:34px;flex:0 0 auto;
+  background:var(--bg);border:1.5px solid var(--border);border-radius:var(--r-sm);
+  font-size:1.15rem;line-height:1;color:var(--text-body);
+  cursor:pointer;font-family:var(--font);
+  transition:border-color .12s var(--ease), background .12s var(--ease), color .12s var(--ease);
+}
+.step-btn:hover{border-color:var(--accent);color:var(--accent-dark);background:var(--accent-light);}
+.step-btn:active{transform:translateY(1px);}
+.lever-unit{
+  flex:0 0 auto;width:34px;
+  font-size:var(--fs-sm);color:var(--text-muted);
+}
+.lever-sum{
+  font-size:var(--fs-sm);font-weight:var(--fw-semi);
+  color:var(--text-body);margin-bottom:var(--sp-4);
+}
+
+@media(max-width:600px){
+  .lever-row{flex-wrap:wrap;gap:var(--sp-2);}
+  .lever-name{flex:1 0 100%;}
+}
 
 /* ---------- Aufgaben-Board (Kanban) ---------- */
 #view-aufgaben .container{max-width:1120px;}
