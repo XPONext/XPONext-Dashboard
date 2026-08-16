@@ -353,3 +353,24 @@ section.view.active{display:block;}
   border-radius:var(--r-pill);padding:0.18rem 0.6rem;
   font-size:var(--fs-sm);color:var(--text-body);
 }
+
+/* ---------- Verlauf ---------- */
+.abw{
+  font-size:0.7rem;font-weight:var(--fw-bold);
+  padding:0.08rem 0.4rem;border-radius:var(--r-pill);
+  white-space:nowrap;margin-left:var(--sp-1);
+}
+.abw-ok{background:var(--green-bg);color:var(--green);}
+.abw-warn{background:var(--amber-bg);color:var(--amber);}
+.abw-low{background:var(--red-bg);color:var(--red);}
+
+/* Zusammengefasste Luecke statt 20 Zeilen mit Gedankenstrichen. */
+tr.leerzeile td{
+  text-align:center;font-size:var(--fs-sm);
+  color:var(--text-muted);font-style:italic;
+  background:var(--bg-subtle) !important;
+}
+.tabellen-hinweis{
+  font-size:var(--fs-sm);color:var(--text-muted);
+  margin-top:var(--sp-3);line-height:var(--lh-normal);
+}

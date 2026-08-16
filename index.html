@@ -270,28 +270,48 @@
 <!-- VERLAUF -->
 <section class="view" id="view-verlauf">
   <div class="container">
-    <div class="card">
-      <h2>Team-Zahlen <small>Termine, Closes & Umsatz — gemeinsam</small></h2>
-      <div class="table-wrap">
-      <table>
-        <thead>
-          <tr><th>Woche</th><th>Zeitraum</th><th>Termine geb.</th><th>Termine Show-up</th><th>Closes</th><th>Umsatz</th></tr>
-        </thead>
-        <tbody id="historyTeamBody"></tbody>
-      </table>
+
+    <div class="board-head">
+      <div class="period-nav">
+        <label for="vlPerson" class="t-label">Ansicht</label>
+        <select id="vlPerson">
+          <option value="team">Team gesamt</option>
+          <option value="tim">Nur Tim</option>
+          <option value="simon">Nur Simon</option>
+        </select>
+      </div>
+      <div class="board-actions" style="margin:0;">
+        <button class="btn-outline" id="vlExport">Als CSV herunterladen</button>
       </div>
     </div>
+
     <div class="card">
-      <h2>Personen-Zahlen <small>Calls & Hebel-Stunden — pro Person</small></h2>
-      <div class="table-wrap">
-      <table>
-        <thead>
-          <tr><th>Woche</th><th>Zeitraum</th><th>Person</th><th>Lead-Gen (Std.)</th><th>Hebel-Std.</th></tr>
-        </thead>
-        <tbody id="historyBody"></tbody>
-      </table>
-      </div>
+      <h2>Umsatz gegen das Jahresziel
+        <small>Realisierter Umsatz aus den Kundeneinträgen, kumuliert — nicht die Auftragswerte aus den Closes.</small></h2>
+      <div id="vlUmsatzChart"></div>
     </div>
+
+    <div class="card">
+      <h2>Vertrieb je Woche
+        <small>Termine, Show-ups und Abschlüsse. Der Auftragswert steht darunter in der Tabelle.</small></h2>
+      <div id="vlVertriebChart"></div>
+    </div>
+
+    <div class="card">
+      <h2>Stunden je Woche <small id="vlStundenSub">Lead-Gen und Hebel gegen die Wochenziele</small></h2>
+      <div id="vlStundenChart"></div>
+    </div>
+
+    <details class="card zt-details" id="vlTeamCard">
+      <summary><span class="zt-summary-title">Team-Zahlen je Woche</span><span class="zt-summary-hint"></span></summary>
+      <div id="vlTeamTable"></div>
+    </details>
+
+    <details class="card zt-details" id="vlPersonCard">
+      <summary><span class="zt-summary-title">Stunden je Person und Woche</span><span class="zt-summary-hint"></span></summary>
+      <div id="vlPersonTable"></div>
+    </details>
+
   </div>
 </section>
 

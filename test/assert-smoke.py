@@ -11,6 +11,7 @@ Die erwarteten Werte ergeben sich aus den Testdaten in test/stub.html:
             WEEKS und faellt bewusst heraus    = 1
   Zeit      45 x 30 Min, Pause zaehlt nicht    = 22,5 Std.
   Aufgaben  je eine in "In Arbeit" und "Done"
+  Verlauf   Diagramme gezeichnet, leere Wochen zusammengefasst
 
 Wenn sich Testdaten oder Logik aendern, gehoeren die Erwartungen hier mit
 angepasst — sonst prueft der Test nichts mehr.
@@ -94,8 +95,15 @@ if projects != 1:
 tasks = count(r'class="kanban-card["\s]')
 if tasks != 2:
     failures.append(f"Aufgabenkarten: erwartet 2 nach dem Neuladen, waren {tasks}")
-if count(r"<tr") < 25:
-    failures.append("Verlaufstabelle hat zu wenige Zeilen.")
+# Der Verlauf fasst Wochen ohne Eintrag zusammen, statt 25 Zeilen mit
+# Gedankenstrichen zu zeigen — geprueft wird deshalb die Faltung selbst.
+if count(r'class="leerzeile"') < 1:
+    failures.append("Verlauf faltet die leeren Wochen nicht zusammen.")
+if count(r"<tr") < 8:
+    failures.append("Verlaufstabellen sind leer.")
+# Die Diagramme muessen tatsaechlich gezeichnet worden sein
+if count(r'class="ch-svg"') < 2:
+    failures.append(f"Zu wenige Diagramme gezeichnet ({count(chr(39)+'class=.ch-svg'+chr(39))}) — erwartet mindestens 2.")
 
 # 4) Werden Nutzertexte maskiert? (Der Testtask enthaelt absichtlich HTML.)
 if "Angebot &lt;b&gt;schreiben&lt;/b&gt;" not in dom:

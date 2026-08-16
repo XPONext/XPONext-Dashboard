@@ -28,17 +28,37 @@ export function serienFarbe(i){
   return `var(--series-${(i % 8) + 1})`;
 }
 
-/* Achsenwerte auf runde Zahlen bringen (0 / 500 / 1.000 …). */
-function netteObergrenze(max){
-  if(max <= 0) return 1;
-  const stufe = Math.pow(10, Math.floor(Math.log10(max)));
-  const rest = max / stufe;
-  const faktor = rest <= 1 ? 1 : rest <= 2 ? 2 : rest <= 5 ? 5 : 10;
+/* Eine runde Schrittweite oberhalb des Rohwerts: 1, 2, 2,5 oder 5 mal
+   eine Zehnerpotenz. */
+function netteSchrittweite(roh){
+  if(!(roh > 0)) return 1;
+  const stufe = Math.pow(10, Math.floor(Math.log10(roh)));
+  const rest = roh / stufe;
+  const faktor = rest <= 1 ? 1 : rest <= 2 ? 2 : rest <= 2.5 ? 2.5 : rest <= 5 ? 5 : 10;
   return faktor * stufe;
 }
 
-function fmtAchse(n){
-  return Number(n).toLocaleString("de-DE", { maximumFractionDigits: n < 10 ? 1 : 0 });
+/* Y-Achse: runde Obergrenze, die sich glatt durch die Strichanzahl teilt.
+   Ohne das stehen dort Werte wie 13 / 25 / 38 / 50 — rechnerisch richtig,
+   aber unlesbar.
+
+   Die Strichanzahl wird mitgewaehlt: Bei 4 Strichen liefe die Achse fuer den
+   Hoechstwert 4.300 bis 8.000 und das halbe Diagramm bliebe leer; mit 5
+   Strichen sind es 5.000. Genommen wird, was am wenigsten Luft laesst. */
+function achse(max){
+  if(!(max > 0)) return { maxY: 1, yTicks: 4 };
+  let beste = null;
+  [4, 5].forEach(yTicks=>{
+    const maxY = netteSchrittweite(max / yTicks) * yTicks;
+    if(!beste || maxY < beste.maxY) beste = { maxY, yTicks };
+  });
+  return beste;
+}
+
+function fmtAchse(n, schritt){
+  // Nachkommastelle nur, wenn die Schrittweite selbst gebrochen ist
+  const stellen = schritt != null && Math.abs(schritt % 1) > 1e-9 ? 1 : (n < 10 && Math.abs(n % 1) > 1e-9 ? 1 : 0);
+  return Number(n).toLocaleString("de-DE", { maximumFractionDigits: stellen });
 }
 
 /* Gemeinsames Geruest: Rahmen, Hilfslinien, Y-Beschriftung, Grundlinie. */
@@ -50,7 +70,7 @@ function geruest({ breite, hoehe, padL, padR, padT, padB, maxY, yTicks = 4 }){
     const wert = (maxY / yTicks) * i;
     const y = padT + plotH - (plotH * i) / yTicks;
     g += `<line x1="${padL}" y1="${y}" x2="${padL + plotB}" y2="${y}" class="ch-grid"/>`;
-    g += `<text x="${padL - 8}" y="${y + 4}" class="ch-axis" text-anchor="end">${escapeHtml(fmtAchse(wert))}</text>`;
+    g += `<text x="${padL - 8}" y="${y + 4}" class="ch-axis" text-anchor="end">${escapeHtml(fmtAchse(wert, maxY / yTicks))}</text>`;
   }
   g += `<line x1="${padL}" y1="${padT + plotH}" x2="${padL + plotB}" y2="${padT + plotH}" class="ch-base"/>`;
   return { g, plotB, plotH };
@@ -80,9 +100,9 @@ function rahmen(inhalt, beschreibung, legendeHtml, hoehe){
    ------------------------------------------------------------ */
 export function linienChart({ reihen, labels, hoehe = 240, flaeche = false, beschreibung = "", einheit = "" }){
   const B = 720, padL = 56, padR = 16, padT = 12, padB = 28;
-  const alleWerte = reihen.flatMap(r=>r.werte).filter(v=>v != null);
-  const maxY = netteObergrenze(Math.max(1, ...alleWerte));
-  const { g, plotB, plotH } = geruest({ breite:B, hoehe, padL, padR, padT, padB, maxY });
+  const alleWerte = reihen.flatMap(r=>r.werte).filter(v=>Number.isFinite(v));
+  const { maxY, yTicks } = achse(Math.max(1, ...alleWerte));
+  const { g, plotB, plotH } = geruest({ breite:B, hoehe, padL, padR, padT, padB, maxY, yTicks });
 
   const n = Math.max(1, labels.length - 1);
   const x = i => padL + (plotB * i) / n;
@@ -119,8 +139,11 @@ export function linienChart({ reihen, labels, hoehe = 240, flaeche = false, besc
     const letzterWert = [...r.werte].reverse().find(v=>v != null);
     inhalt += `<circle cx="${letzter[0].toFixed(1)}" cy="${letzter[1].toFixed(1)}" r="4"
                 fill="${serienFarbe(si)}" class="ch-dot"/>`;
-    inhalt += `<text x="${(letzter[0] - 8).toFixed(1)}" y="${(letzter[1] - 10).toFixed(1)}"
-                class="ch-wert" text-anchor="end">${escapeHtml(fmtAchse(letzterWert) + einheit)}</text>`;
+    // Liegt der letzte Punkt weit links, wuerde eine rechtsbuendige
+    // Beschriftung aus der Zeichenflaeche laufen — dann links ausrichten.
+    const nahAmRand = letzter[0] < padL + 90;
+    inhalt += `<text x="${(letzter[0] + (nahAmRand ? 8 : -8)).toFixed(1)}" y="${(letzter[1] - 10).toFixed(1)}"
+                class="ch-wert" text-anchor="${nahAmRand ? "start" : "end"}">${escapeHtml(fmtAchse(letzterWert) + einheit)}</text>`;
   });
 
   return rahmen(inhalt, beschreibung, legende(reihen.filter(r=>!r.ziel)), hoehe);
@@ -132,8 +155,9 @@ export function linienChart({ reihen, labels, hoehe = 240, flaeche = false, besc
    ------------------------------------------------------------ */
 export function balkenChart({ reihen, labels, hoehe = 240, beschreibung = "", einheit = "" }){
   const B = 720, padL = 56, padR = 16, padT = 12, padB = 28;
-  const maxY = netteObergrenze(Math.max(1, ...reihen.flatMap(r=>r.werte)));
-  const { g, plotB, plotH } = geruest({ breite:B, hoehe, padL, padR, padT, padB, maxY });
+  const alleWerte = reihen.flatMap(r=>r.werte).filter(v=>Number.isFinite(v));
+  const { maxY, yTicks } = achse(Math.max(1, ...alleWerte));
+  const { g, plotB, plotH } = geruest({ breite:B, hoehe, padL, padR, padT, padB, maxY, yTicks });
 
   const gruppen = labels.length;
   const gruppenB = plotB / gruppen;
