@@ -4,10 +4,19 @@
    localStorage des jeweiligen Rechners. */
 
 import { SUPABASE_URL, SUPABASE_ANON_KEY, SECRET_STORAGE_KEY } from "./config.js";
+import { escapeHtml } from "./utils/format.js";
 
 /* Live-Binding: importierende Module sehen die Zuweisung aus ensureAuthorized().
    Nur dieses Modul darf db zuweisen. */
 export let db;
+
+/* 42501 ist der Postgres-Code fuer "insufficient privilege" — das meldet
+   Supabase, wenn eine RLS-Policy den Schreibvorgang ablehnt. */
+function istRechteFehler(error){
+  const code = String(error.code || "");
+  const status = Number(error.status || 0);
+  return code === "42501" || code === "PGRST301" || status === 401 || status === 403;
+}
 
 function buildClient(secret){
   return supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
@@ -48,6 +57,22 @@ export async function ensureAuthorized(){
       localStorage.setItem(SECRET_STORAGE_KEY, secret);
       return;
     }
+
+    // Nur ein Rechteproblem heisst "falsches Passwort". Netzwerkausfall,
+    // umbenannte Tabelle oder pausiertes Projekt haben frueher genauso
+    // gemeldet — mit einem richtigen Passwort kam man dann nie weiter.
+    if(!istRechteFehler(error)){
+      console.error(error);
+      document.body.innerHTML =
+        "<p style='padding:2rem;font-family:sans-serif;line-height:1.6'>" +
+        "Die Verbindung zur Datenbank hat nicht geklappt.<br><br>" +
+        "<b>" + escapeHtml(error.message || "Unbekannter Fehler") + "</b><br><br>" +
+        "Das liegt nicht am Passwort. Internetverbindung prüfen und die Seite neu laden." +
+        "</p>";
+      throw new Error("Supabase nicht erreichbar: " + error.message);
+    }
+
+    forgetSecret();
     alert("Falsches Passwort, bitte erneut versuchen.");
     secret = null;
   }

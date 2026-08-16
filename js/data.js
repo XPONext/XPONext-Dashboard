@@ -3,6 +3,7 @@
 
 import { db } from "./supabase.js";
 import { state, buildWeeklyAggregates } from "./state.js";
+import { showErrorBanner } from "./ui/bus.js";
 
 export async function fetchAllData(){
   const [personalRes, teamRes, timeRes, tasksRes, goalsRes, commitRes, projRes, stepRes] = await Promise.all([
@@ -29,7 +30,7 @@ export async function fetchAllData(){
   else{ state.commitments = commitRes.data; }
 
   const dp = {};
-  if(personalRes.error){ console.error(personalRes.error); alert("Daten konnten nicht geladen werden: "+personalRes.error.message); }
+  if(personalRes.error){ console.error(personalRes.error); showErrorBanner("Daten konnten nicht geladen werden: "+personalRes.error.message); }
   else{
     personalRes.data.forEach(row=>{
       if(!dp[row.date]) dp[row.date] = {};
@@ -38,7 +39,7 @@ export async function fetchAllData(){
   }
 
   const dt = {};
-  if(teamRes.error){ console.error(teamRes.error); alert("Team-Daten konnten nicht geladen werden: "+teamRes.error.message); }
+  if(teamRes.error){ console.error(teamRes.error); showErrorBanner("Team-Daten konnten nicht geladen werden: "+teamRes.error.message); }
   else{
     teamRes.data.forEach(row=>{
       dt[row.date] = {
@@ -54,12 +55,16 @@ export async function fetchAllData(){
   buildWeeklyAggregates();
 }
 
+/* Wirft bei Fehlern. Vorher wurde nur ein alert() gezeigt und der Aufrufer
+   machte weiter — der Nutzer sah danach "Gespeichert", obwohl nichts
+   gespeichert war, und der Speicher behauptete einen Wert, den die Datenbank
+   nicht hatte. */
 export async function upsertDailyPersonal(date, person){
   const e = (state.dailyPersonal[date] && state.dailyPersonal[date][person]) || {leadGenHours:0, hebel:{}};
   const { error } = await db.from("daily_personal").upsert({
     date, person, lead_gen_hours: e.leadGenHours, hebel: e.hebel, updated_at: new Date().toISOString()
   });
-  if(error){ console.error(error); alert("Speichern fehlgeschlagen: "+error.message); }
+  if(error){ console.error(error); throw new Error("Speichern fehlgeschlagen: "+error.message); }
 }
 
 export async function upsertDailyTeam(date){
@@ -71,5 +76,5 @@ export async function upsertDailyTeam(date){
     closes: e.closes,
     updated_at: new Date().toISOString()
   });
-  if(error){ console.error(error); alert("Speichern fehlgeschlagen: "+error.message); }
+  if(error){ console.error(error); throw new Error("Speichern fehlgeschlagen: "+error.message); }
 }

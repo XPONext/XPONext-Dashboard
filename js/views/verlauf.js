@@ -51,4 +51,4 @@ function renderHistory(){
   }
   document.getElementById("historyBody").innerHTML = rows.join("");
 }
-onRender(renderHistory);
+onRender("verlauf", renderHistory);

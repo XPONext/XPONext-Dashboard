@@ -28,22 +28,30 @@
 
 import { escapeHtml } from "../utils/format.js";
 
-let dialog = null;
+/* Jeder Aufruf bekommt sein EIGENES <dialog>-Element.
 
-function ensureDialog(){
-  if(dialog) return dialog;
-  dialog = document.createElement("dialog");
-  dialog.className = "dlg";
-  dialog.id = "appDialog";
-  document.body.appendChild(dialog);
+   Ein geteiltes Element waere kuerzer, ist aber falsch: Wird aus einem offenen
+   Dialog heraus eine Rueckfrage geoeffnet (Projekt loeschen, Aufgabe loeschen),
+   ueberschreibt die Rueckfrage sonst den Inhalt des aeusseren Dialogs. Dessen
+   Formular haengt dann nicht mehr im Dokument, Fehlermeldungen laufen ins
+   Leere, und ein einziges close-Ereignis loest beide Zusagen auf — der
+   Bearbeiten-Dialog verschwindet, obwohl niemand ihn geschlossen hat.
+
+   Mit einem Element je Aufruf stapeln sich die Dialoge korrekt. Beim
+   Schliessen wird das Element wieder entfernt, es bleibt nichts liegen. */
+function neuerDialog(){
+  const dlg = document.createElement("dialog");
+  dlg.className = "dlg";
+  document.body.appendChild(dlg);
 
   // Klick auf den Hintergrund schliesst — das Einzige, was <dialog>
   // nicht selbst mitbringt. Der Klick trifft das dialog-Element selbst,
   // sobald er ausserhalb des Inhalts landet.
-  dialog.addEventListener("click", ev=>{
-    if(ev.target === dialog) dialog.close("abbruch");
+  dlg.addEventListener("click", ev=>{
+    if(ev.target === dlg) dlg.close("abbruch");
   });
-  return dialog;
+  dlg.addEventListener("close", ()=>dlg.remove(), { once: true });
+  return dlg;
 }
 
 function fieldMarkup(f, initial){
@@ -107,7 +115,7 @@ export function openModal(opts){
     validate = null
   } = opts;
 
-  const dlg = ensureDialog();
+  const dlg = neuerDialog();
 
   dlg.innerHTML = `
     <form method="dialog" class="dlg-box">
@@ -196,7 +204,9 @@ export function openModal(opts){
 
     // Enter im Textfeld speichert — vorher nur bei zwei der sechs Dialoge.
     form.addEventListener("keydown", ev=>{
-      if(ev.key === "Enter" && ev.target.tagName !== "TEXTAREA"){
+      // Nicht ausloesen, wenn ein Knopf den Fokus hat — wer sich per Tab zu
+      // "Abbrechen" oder "Loeschen" bewegt, will mit Enter genau das.
+      if(ev.key === "Enter" && ev.target.tagName !== "TEXTAREA" && ev.target.tagName !== "BUTTON"){
         ev.preventDefault();
         absenden();
       }
@@ -214,7 +224,7 @@ export function openModal(opts){
    liest sich als Satz statt als nackte Systemmeldung. */
 export function confirmDialog(frage, opts = {}){
   const { confirmLabel = "Ja, löschen", danger = true, detail = "" } = opts;
-  const dlg = ensureDialog();
+  const dlg = neuerDialog();
 
   dlg.innerHTML = `
     <form method="dialog" class="dlg-box is-narrow">

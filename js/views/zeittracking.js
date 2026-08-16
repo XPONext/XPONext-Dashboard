@@ -1,7 +1,7 @@
 /* Ansicht: Zeittracking — Auswertung der Eintraege aus dem Popup. */
 
 import { WEEKS, N_WEEKS } from "../config.js";
-import { num, fmtDate, weekLabel, localDateStr } from "../utils/format.js";
+import { num, fmtDate, weekLabel, localDateStr, escapeHtml } from "../utils/format.js";
 import { findCurrentWeekIndex } from "../utils/weeks.js";
 import { state } from "../state.js";
 import { onRender } from "../ui/bus.js";
@@ -34,7 +34,7 @@ function renderTimeBreakdown(entries, field, containerId){
   document.getElementById(containerId).innerHTML = rows.length ? rows.map(([key,minutes])=>{
     const pct = grandTotal>0 ? (minutes/grandTotal)*100 : 0;
     return `<div class="row-metric">
-      <div class="top"><span class="name">${key}</span><span class="vals">${num(minutes/60,1)} Std. (${num(pct,0)}%)</span></div>
+      <div class="top"><span class="name">${escapeHtml(key)}</span><span class="vals">${num(minutes/60,1)} Std. (${num(pct,0)}%)</span></div>
       <div class="bar-track"><div class="bar-fill ok" style="width:${pct}%"></div></div>
     </div>`;
   }).join("") : `<div class="pct">Keine Daten in dieser Woche.</div>`;
@@ -88,4 +88,4 @@ document.getElementById("ztPrevWeek").addEventListener("click", ()=>{
 document.getElementById("ztNextWeek").addEventListener("click", ()=>{
   if(state.ztWeekIdx < N_WEEKS - 1){ state.ztWeekIdx++; renderZeittracking(); }
 });
-onRender(renderZeittracking);
+onRender("zeittracking", renderZeittracking);

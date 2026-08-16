@@ -31,7 +31,7 @@ function renderTasks(){
           <div class="kanban-card-text">${escapeHtml(t.text)}</div>
           <div class="kanban-card-badges">
             ${personBadge(t.assignee)}
-            <span class="task-badge prio-${t.priority}">${PRIO_LABEL[t.priority]||t.priority}</span>
+            <span class="task-badge prio-${escapeHtml(t.priority)}">${escapeHtml(PRIO_LABEL[t.priority]||t.priority)}</span>
           </div>
         </div>`).join("")
       : `<div class="kanban-empty">–</div>`;
@@ -122,4 +122,4 @@ async function openTaskModal(id){
     renderTasks();
   }
 }
-onRender(renderTasks);
+onRender("aufgaben", renderTasks);

@@ -70,7 +70,7 @@ function renderProjects(){
       </div>
       ${p.description ? `<div class="project-desc">${escapeHtml(p.description)}</div>` : ""}
       <div class="project-badges">
-        <span class="status-badge st-${p.status}">${PROJECT_STATUS_LABEL[p.status]||p.status}</span>
+        <span class="status-badge st-${escapeHtml(p.status)}">${escapeHtml(PROJECT_STATUS_LABEL[p.status]||p.status)}</span>
         ${personBadge(p.owner)}
         ${p.due_date ? `<span class="due-badge ${isLate?"is-late":""}">${isLate?"überfällig seit ":"bis "}${fmtDate(p.due_date)}</span>` : ""}
       </div>
@@ -179,4 +179,4 @@ document.getElementById("projectsList").addEventListener("click", async (ev)=>{
     renderProjects();
   }
 });
-onRender(renderProjects);
+onRender("projekte", renderProjects);

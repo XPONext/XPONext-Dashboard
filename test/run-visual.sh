@@ -27,6 +27,8 @@ python3 - <<'PY' || exit 3
 stub = open('test/stub.html', encoding='utf-8').read()
 # Alle Ansichten gleichzeitig sichtbar machen, damit ein Bild alles zeigt
 stub += '\n<style>section.view{display:block !important;} #smokeResult{display:none;}</style>\n'
+# Dialogpruefungen ueberspringen — hier geht es nur um das Aussehen im Ruhestand
+stub += '\n<script>window.__nurAnsicht = true;</script>\n'
 html = open('index.html', encoding='utf-8').read()
 marker = '<script type="module" src="js/main.js"></script>'
 open('_visualtest.html', 'w', encoding='utf-8').write(html.replace(marker, stub + '\n' + marker))

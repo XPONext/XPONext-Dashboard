@@ -73,9 +73,6 @@
 .row-metric .top .name{font-weight:var(--fw-semi);color:var(--text-primary);}
 .row-metric .top .vals{color:var(--text-muted);}
 
-.cell-bar{display:flex;align-items:center;gap:0.5rem;min-width:110px;}
-.cell-bar .bar-track{flex:1;}
-
 /* ---------- Badges ---------- */
 .badge{
   display:inline-flex;
@@ -148,9 +145,6 @@
   transition:border-color .12s var(--ease), background .12s var(--ease);
 }
 .btn-outline:hover{border-color:var(--accent);background:var(--bg-subtle);}
-
-.btn-danger{color:var(--red);border-color:var(--red-bg);}
-.btn-danger:hover{background:var(--red-bg);border-color:var(--red);}
 
 .wk-btn{
   background:var(--bg);
@@ -333,3 +327,15 @@
 }
 .ch-table summary:hover{color:var(--text-primary);}
 .ch-table .table-wrap{margin-top:var(--sp-3);}
+
+/* Ansicht, die beim Zeichnen abgebrochen ist: sie zeigt womoeglich halb alte,
+   halb neue Zahlen. Lieber sichtbar ausgegraut als still falsch. */
+.view.is-stale{opacity:0.5;filter:grayscale(0.4);}
+
+.error-banner{align-items:center;gap:var(--sp-4);justify-content:space-between;}
+.banner-close{
+  background:none;border:none;color:inherit;cursor:pointer;
+  font-size:1rem;line-height:1;padding:var(--sp-1) var(--sp-2);
+  border-radius:var(--r-sm);flex:0 0 auto;
+}
+.banner-close:hover{background:rgba(185,28,28,0.12);}

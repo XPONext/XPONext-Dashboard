@@ -95,4 +95,4 @@ function renderLeaderboard(){
     </div>`;
   }).join("");
 }
-onRender(renderDashboard);
+onRender("dashboard", renderDashboard);

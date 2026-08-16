@@ -4,8 +4,8 @@ import { LEVERS } from "../config.js";
 import { num, barClass } from "../utils/format.js";
 import { weekIndexForDate } from "../utils/weeks.js";
 import { state, personEntry, buildWeeklyAggregates } from "../state.js";
-import { upsertDailyPersonal } from "../data.js";
-import { onRender, renderAll, flashSaved } from "../ui/bus.js";
+import { upsertDailyPersonal, fetchAllData } from "../data.js";
+import { onRender, speichern } from "../ui/bus.js";
 
 export const HEBEL_INPUT_IDS = {
   callBreakdowns:"hebelCallBreakdowns", coldCall:"hebelColdCall",
@@ -45,12 +45,12 @@ document.getElementById("saveHebelBtn").addEventListener("click", async ()=>{
   });
   if(!state.dailyPersonal[date]) state.dailyPersonal[date] = {};
   state.dailyPersonal[date][person] = { leadGenHours: existingLeadGen, hebel: newHebel };
-  await upsertDailyPersonal(date, person);
-  buildWeeklyAggregates();
-  flashSaved("saveHebelMsg");
-  renderAll();
+  await speichern(async ()=>{
+    await upsertDailyPersonal(date, person);
+    buildWeeklyAggregates();
+  }, "saveHebelMsg", fetchAllData);
 });
-onRender(()=>{
+onRender("hebel", ()=>{
   const date = document.getElementById("entryDateHebel").value;
   const person = document.getElementById("personSelectHebel").value;
   renderHebelPreview(weekIndexForDate(date), person);

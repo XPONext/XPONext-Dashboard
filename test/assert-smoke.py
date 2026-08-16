@@ -53,7 +53,7 @@ if banner is None:
     sys.exit(1)
 # Der Dialogteil muss wirklich gelaufen sein — sonst prueft der Test die
 # Popups gar nicht und meldet trotzdem "bestanden".
-ERWARTETE_DIALOGPRUEFUNGEN = 8
+ERWARTETE_DIALOGPRUEFUNGEN = 14
 
 if not banner.startswith("SMOKE: OK"):
     m = re.search(r'id="smokeResult"[^>]*>(.*?)</div>', dom, re.S)
@@ -86,10 +86,14 @@ if count(r'class="bar-fill') < 10:
 projects = count(r'class="project-card["\s]')
 if projects != 1:
     failures.append(f"Projektkarten: erwartet 1, waren {projects}")
-# 3, nicht 2: die Dialogpruefung weiter unten legt selbst eine Aufgabe an.
+# Wieder 2: Die Dialogpruefung legt zwar eine dritte Aufgabe an, danach
+# erzwingt sie aber einen Speicherfehler. Der laedt den Stand aus der
+# Datenbank neu — und damit verschwindet die nur lokal gehaltene Aufgabe.
+# Genau das soll passieren: nach einem Fehlschlag darf im Speicher nichts
+# stehen, was die Datenbank nicht hat.
 tasks = count(r'class="kanban-card["\s]')
-if tasks != 3:
-    failures.append(f"Aufgabenkarten: erwartet 3 (2 aus den Testdaten + 1 aus der Dialogpruefung), waren {tasks}")
+if tasks != 2:
+    failures.append(f"Aufgabenkarten: erwartet 2 nach dem Neuladen, waren {tasks}")
 if count(r"<tr") < 25:
     failures.append("Verlaufstabelle hat zu wenige Zeilen.")
 

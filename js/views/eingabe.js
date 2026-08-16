@@ -2,12 +2,12 @@
 
 import { WEEKS, N_WEEKS, WEEKLY_TARGET, PERSON_STORAGE_KEY } from "../config.js";
 import { num, euro, weekLabel, barClass, escapeHtml, todayIso } from "../utils/format.js";
-import { weekIndexForDate } from "../utils/weeks.js";
+import { weekIndexForDate, findCurrentWeekIndex } from "../utils/weeks.js";
 import { db } from "../supabase.js";
 import { state, combinedEntry, buildWeeklyAggregates } from "../state.js";
-import { upsertDailyPersonal, upsertDailyTeam } from "../data.js";
+import { upsertDailyPersonal, upsertDailyTeam, fetchAllData } from "../data.js";
 import { openModal, confirmDialog } from "../ui/modal.js";
-import { onRender, renderAll, flashSaved, showErrorBanner } from "../ui/bus.js";
+import { onRender, renderAll, showErrorBanner, speichern } from "../ui/bus.js";
 import { personBadge, pruefe, PERSON_OPTIONS } from "../ui/components.js";
 import { loadDayIntoHebelForm } from "./hebel.js";
 
@@ -173,10 +173,10 @@ document.getElementById("saveWeekBtn").addEventListener("click", async ()=>{
     leadGenHours: Number(document.getElementById("inLeadGen").value)||0,
     hebel: existingHebel
   };
-  await upsertDailyPersonal(date, person);
-  buildWeeklyAggregates();
-  flashSaved("saveMsg");
-  renderAll();
+  await speichern(async ()=>{
+    await upsertDailyPersonal(date, person);
+    buildWeeklyAggregates();
+  }, "saveMsg", fetchAllData);
 });
 
 document.getElementById("saveTeamBtn").addEventListener("click", async ()=>{
@@ -186,10 +186,10 @@ document.getElementById("saveTeamBtn").addEventListener("click", async ()=>{
     termineShowup: Number(document.getElementById("inTermineShowup").value)||0,
     closes: currentClosesDraft.filter(v=>v>0)
   };
-  await upsertDailyTeam(date);
-  buildWeeklyAggregates();
-  flashSaved("saveTeamMsg");
-  renderAll();
+  await speichern(async ()=>{
+    await upsertDailyTeam(date);
+    buildWeeklyAggregates();
+  }, "saveTeamMsg", fetchAllData);
 });
 /* ---------- Wochenfokus ---------- */
 document.getElementById("editGoalBtn").addEventListener("click", async ()=>{
@@ -252,7 +252,7 @@ document.getElementById("commitmentsList").addEventListener("click", async (ev)=
     renderCommitments();
   }
 });
-onRender(()=>{
+onRender("eingabe", ()=>{
   renderGoal();
   renderCommitments();
   renderPreview(weekIndexForDate(document.getElementById("entryDate").value));

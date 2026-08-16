@@ -5,7 +5,11 @@ window.__errors = [];
 function rec(e){ window.__errors.push(String(e)); }
 window.addEventListener("error", e=>rec(e.message));
 window.addEventListener("unhandledrejection", e=>rec((e.reason&&e.reason.stack)||e.reason));
-console.error = (...a)=>rec("console.error: "+a.map(String).join(" "));
+console.error = (...a)=>{
+  // Waehrend des absichtlichen Fehlertests nicht als Fehler werten.
+  if(window.__schreibfehler) return;
+  rec("console.error: "+a.map(String).join(" "));
+};
 window.prompt = ()=> "TESTSECRET";
 window.alert = m=>rec("alert: "+m);
 window.confirm = ()=> true;
@@ -40,18 +44,24 @@ const FAKE = {
 };
 
 let idZaehler = 100;
+window.__schreibfehler = false;   // Schalter fuer den Fehlerfall im Test
 function result(table){
   // Bei select kommen die Testdaten zurueck, bei insert/upsert der geschriebene
   // Datensatz mit neuer id — so wie es echtes Supabase mit .select() tut.
   let daten = FAKE[table] ? JSON.parse(JSON.stringify(FAKE[table])) : [];
+  let geschrieben = false;
   const chain = {
     select: ()=>chain, order: ()=>chain, eq: ()=>chain, limit: ()=>chain,
     delete: ()=>{ daten = []; return chain; },
     single: ()=>chain,
-    insert: (row)=>{ daten = [Object.assign({id:"neu"+(++idZaehler), created_at:new Date().toISOString()}, row)]; return chain; },
-    upsert: (row)=>{ daten = [Object.assign({id:"neu"+(++idZaehler)}, row)]; return chain; },
-    update: (row)=>{ daten = [Object.assign({id:"upd"+(++idZaehler)}, row)]; return chain; },
-    then: (res)=>Promise.resolve({ data: daten, error: null }).then(res)
+    insert: (row)=>{ geschrieben = true; daten = [Object.assign({id:"neu"+(++idZaehler), created_at:new Date().toISOString()}, row)]; return chain; },
+    upsert: (row)=>{ geschrieben = true; daten = [Object.assign({id:"neu"+(++idZaehler)}, row)]; return chain; },
+    update: (row)=>{ geschrieben = true; daten = [Object.assign({id:"upd"+(++idZaehler)}, row)]; return chain; },
+    then: (res)=>Promise.resolve(
+      window.__schreibfehler && geschrieben
+        ? { data: null, error: { message: "Testfehler beim Schreiben", code: "42501" } }
+        : { data: daten, error: null }
+    ).then(res)
   };
   return chain;
 }
@@ -63,11 +73,14 @@ window.__dialogChecks = [];
 function pruefeDialog(name, bedingung){ window.__dialogChecks.push(name + (bedingung ? ": ok" : ": FEHLGESCHLAGEN")); }
 
 setTimeout(async ()=>{
+  // Der visuelle Vergleich setzt dieses Flag: er will die Seite im Ruhestand
+  // fotografieren, nicht mit geoeffneten Dialogen und Fehlerbanner.
+  if(window.__nurAnsicht) return;
   try{
     document.getElementById("openAddTaskBtn").click();
     await new Promise(r=>setTimeout(r, 60));
-    const dlg = document.getElementById("appDialog");
-    pruefeDialog("Dialog oeffnet", dlg && dlg.open);
+    const dlg = document.querySelector("dialog.dlg[open]");
+    pruefeDialog("Dialog oeffnet", !!dlg && dlg.open);
     pruefeDialog("Felder gebaut", !!dlg.querySelector('[name="text"]') && !!dlg.querySelector('[name="priority"]'));
     pruefeDialog("Erstes Feld fokussiert", document.activeElement === dlg.querySelector('[name="text"]'));
 
@@ -81,19 +94,44 @@ setTimeout(async ()=>{
     dlg.querySelector('[name="text"]').value = "Testaufgabe";
     dlg.querySelector('[data-dlg="submit"]').click();
     await new Promise(r=>setTimeout(r, 120));
-    pruefeDialog("Dialog schliesst nach Speichern", !dlg.open);
+    pruefeDialog("Dialog schliesst nach Speichern", document.querySelectorAll("dialog.dlg[open]").length === 0);
 
     // Bearbeiten-Dialog mit vorbelegten Werten
-    const karte = document.querySelector(".kanban-card");
-    karte.click();
-    await new Promise(r=>setTimeout(r, 60));
-    pruefeDialog("Bearbeiten vorbelegt", dlg.open && dlg.querySelector('[name="text"]').value.length > 0);
-    pruefeDialog("Loeschen wird angeboten", !!dlg.querySelector('[data-dlg="delete"]'));
-    // Escape schliesst
-    dlg.dispatchEvent(new KeyboardEvent("keydown", {key:"Escape", bubbles:true}));
-    dlg.close("abbruch");
-    await new Promise(r=>setTimeout(r, 60));
-    pruefeDialog("Abbruch schliesst", !dlg.open);
+    document.querySelector(".kanban-card").click();
+    await new Promise(r=>setTimeout(r, 80));
+    const dlg2 = document.querySelector("dialog.dlg[open]");
+    pruefeDialog("Bearbeiten vorbelegt", !!dlg2 && dlg2.querySelector('[name="text"]').value.length > 0);
+    pruefeDialog("Loeschen wird angeboten", !!dlg2.querySelector('[data-dlg="delete"]'));
+    // Loeschen -> Rueckfrage. Kritischer Fall: beide Dialoge teilten sich
+    // frueher ein einziges <dialog>, wodurch die Rueckfrage den aeusseren
+    // Dialog zerstoert hat.
+    dlg2.querySelector('[data-dlg="delete"]').click();
+    await new Promise(r=>setTimeout(r, 80));
+    const offene = document.querySelectorAll("dialog.dlg[open]");
+    pruefeDialog("Rueckfrage oeffnet zusaetzlich", offene.length === 2);
+    const frage = offene[offene.length-1];
+    pruefeDialog("Rueckfrage zeigt den Text", /l\u00f6schen/i.test(frage.textContent));
+
+    // Abbrechen in der Rueckfrage: der Bearbeiten-Dialog muss offen bleiben
+    frage.querySelector('[data-dlg="nein"]').click();
+    await new Promise(r=>setTimeout(r, 120));
+    const nochOffen = document.querySelectorAll("dialog.dlg[open]");
+    pruefeDialog("Bearbeiten-Dialog ueberlebt die Rueckfrage", nochOffen.length === 1);
+    pruefeDialog("Eingaben bleiben erhalten", nochOffen.length === 1 && !!nochOffen[0].querySelector('[name="text"]'));
+
+    // Abbruch schliesst
+    if(nochOffen.length) nochOffen[0].querySelector('[data-dlg="abbruch"]').click();
+    await new Promise(r=>setTimeout(r, 80));
+    pruefeDialog("Abbruch schliesst", document.querySelectorAll("dialog.dlg[open]").length === 0);
+    // Fehlgeschlagenes Speichern: keine Bestaetigung, sichtbare Meldung.
+    window.__schreibfehler = true;
+    document.getElementById("saveWeekBtn").click();
+    await new Promise(r=>setTimeout(r, 250));
+    const bestaetigung = document.getElementById("saveMsg");
+    const banner = document.getElementById("errorBanner");
+    pruefeDialog("Fehlschlag zeigt keine Bestaetigung", bestaetigung.style.display !== "block");
+    pruefeDialog("Fehlschlag meldet sich sichtbar", !!banner && banner.style.display !== "none" && /fehlgeschlagen|Testfehler/i.test(banner.textContent));
+    window.__schreibfehler = false;
   }catch(e){
     window.__dialogChecks.push("Dialogpruefung abgebrochen: " + (e && e.message));
   }
