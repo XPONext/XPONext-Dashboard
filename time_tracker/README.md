@@ -33,6 +33,34 @@ Aktivität, das Dashboard zeigt sie unter „Nach Art der Arbeit" weiterhin an.
 Es kann immer nur ein Fenster gleichzeitig offen sein — bist du länger weg, stapeln
 sich keine verpassten Popups, die Zeit bleibt einfach ungetrackt.
 
+## Update auf die neue Version (August 2026)
+
+Für Simon — Schritt für Schritt, im Terminal:
+
+```bash
+cd ~/Desktop/XPONext/XPONext-Dashboard
+git pull
+cd time_tracker
+./install.sh
+```
+
+Dann einmal testen, ohne auf das nächste Fenster zu warten:
+
+```bash
+python3 ~/.xpo-time-tracker/popup.py
+```
+
+Es müssen **drei** Fenster kommen statt vier:
+Start → „Für wen?" → „Was für Arbeit war das?".
+Bei „Für wen?" stehen die echten Kunden.
+
+Falls `cd` nicht klappt, weil der Ordner woanders liegt: In den Ordner
+`XPONext-Dashboard` im Finder gehen, rechte Maustaste → „Neues Terminal
+beim Ordner" — und dort weitermachen.
+
+Bis du das gemacht hast, läuft deine alte Version einfach weiter. Es geht
+nichts verloren, die Einträge sehen nur noch nach dem alten Muster aus.
+
 ## Einrichtung (einmalig, pro Person)
 
 1. `cp .env.example .env` und ausfüllen:

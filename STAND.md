@@ -1,62 +1,44 @@
-# Stand — 16.08.2026
+# Stand
 
-Kurzer Zettel zum Wiedereinsteigen. Alles ist committet, nichts liegt lose herum.
+Kurzer Zettel zum Wiedereinsteigen.
 
-## Wo wir stehen
+## Erledigt
 
-Branch **`refactor/module-split`**, 13 Commits, Arbeitsverzeichnis sauber.
-`main` ist unverändert — der Merge wartet auf deine Freigabe.
+**Fundament.** `index.html` von 1911 auf ~330 Zeilen, 20 Module unter `js/` und
+`styles/`. Design-Tokens, ein nativer `<dialog>` statt sechs handgebauter
+Modals, Diagramm-Modul, Rauchtest (27 Fälle) und Popup-Test.
 
-Rücksprungpunkt, falls etwas grundlegend schiefgeht: `git checkout vor-modul-split`
+**Von den fünf ursprünglichen Punkten:**
 
-### Fertig
+| | |
+|---|---|
+| ✅ Zeittracker → Kunden + Stundenlohn | Kunden-Reiter, `sql/001` ausgeführt |
+| ✅ Zeittracking übersichtlicher, Popup entrümpelt | drei Fenster statt vier |
+| ✅ Hebel-Modul | Wochenverlauf, Eingabe in Viertelstunden |
+| ⬜ Verlauf ansehnlicher | offen |
+| ⬜ Projektmodul ausbauen | offen |
 
-- **Phase 0 (Fundament).** `index.html` von 1911 auf 324 Zeilen; 20 Module unter
-  `js/` und `styles/`. Design-Token-System, ein nativer `<dialog>` statt sechs
-  handgebauter Modals, Diagramm-Modul, zwei Testskripte.
-- **Review-Durchgang** und alle Befunde behoben.
-- **Schritt 1: Hebel-Modul** überarbeitet.
+**Zustand der Datenbank:** `customers`, `revenues`, `tracker_options` stehen
+und sind abgesichert (ohne Team-Passwort liefert keine Tabelle Daten).
+`zuordnung_optionen` ist jetzt eine Sicht auf `customers` — Kunden pflegst du
+im Dashboard, das Popup zieht sie automatisch.
 
-### Nebenbei behobene Fehler
+`main` ist aktuell und gepusht. Rücksprungpunkt: `git checkout vor-modul-split`.
 
-- Rückfrage beim Löschen zerstörte den Bearbeiten-Dialog darunter; ein
-  fehlgeschlagenes Löschen sah aus wie ein erfolgreiches
-- Speichern konnte fehlschlagen, während „Gespeichert ✓" erschien
-- Schritte und Commitments ohne Zuweisung zeigten wörtlich „undefined"
-- Bei Netzwerkproblemen kam man mit richtigem Passwort nie durch die Anmeldung
-- Tracker-Kategorien gingen unmaskiert ins Markup
+## Offen
 
-## Was du noch prüfen wolltest
-
-`./serve.sh` → [http://localhost:8000](http://localhost:8000) → [CHECKLIST.md](CHECKLIST.md)
-durchgehen. Besonders: Projekt bearbeiten → „Löschen" → **„Abbrechen"**.
-Der Bearbeiten-Dialog muss offen bleiben und die Eingaben behalten.
-
-## Wie es weitergeht
-
-Nächster Schritt laut Plan ist **Schritt 2: Kunden-Datenbasis**. Dafür brauche
-ich von dir zwei Dinge, sobald du wieder Zeit hast:
-
-1. Das Ergebnis dieser Inventur-Abfrage aus dem Supabase-SQL-Editor — damit ich
-   weiß, welche Zuordnungswerte real existieren:
-
-   ```sql
-   select zuordnung, count(*), min(ts)::date as erster, max(ts)::date as letzter
-   from time_entries group by zuordnung order by count(*) desc;
-
-   select policyname, cmd, qual, with_check
-   from pg_policies where tablename in ('time_entries','daily_team');
-   ```
-
-2. Die Bestätigung, ob die Policy auf `daily_team` ein `with_check` hat. Davon
-   hängt ab, ob die Passwortprüfung beim Anmelden wirklich schützt.
-
-Danach liefere ich das vollständige SQL-Skript für `customers` und `revenues`,
-das du im Editor ausführst.
+1. **Simon:** `git pull` und `./install.sh` — Anleitung in
+   [time_tracker/README.md](time_tracker/README.md).
+2. **Kundennamen aufräumen:** `chuong`, `protours`, `wotka`,
+   `kkk_architektur` stehen klein geschrieben in der Liste. Umbenennen im
+   Kunden-Reiter ist gefahrlos — die Zeiteinträge hängen an der ID.
+3. **Umsätze eintragen**, sonst bleibt der Stundenlohn leer.
+4. **Durchklicken:** [CHECKLIST.md](CHECKLIST.md).
 
 ## Kurzbefehle
 
 ```bash
-./serve.sh            # lokal öffnen (Doppelklick geht nicht mehr)
-./test/run-smoke.sh   # laden alle Module? stimmen die Zahlen?
+./serve.sh              # lokal öffnen (Doppelklick geht nicht mehr)
+./test/run-smoke.sh     # laden alle Module? stimmen die Zahlen?
+python3 test/test-popup.py
 ```
