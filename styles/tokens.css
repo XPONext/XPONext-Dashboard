@@ -1,0 +1,98 @@
+/* ============================================================
+   Design-Tokens — die einzige Quelle fuer Farben, Abstaende,
+   Radien und Schriftgroessen.
+
+   Regel: In allen anderen CSS-Dateien stehen keine rohen Farbwerte
+   und keine neuen Abstandswerte mehr. Wer eine Komponente anfasst,
+   stellt sie dabei auf Tokens um.
+   ============================================================ */
+
+:root{
+  /* ---------- Marke ---------- */
+  --accent:#3F5137;
+  --accent-dark:#2E3D28;
+  --accent-light:#E8EDE6;
+  --accent-hover:#35452D;
+
+  /* ---------- Text ---------- */
+  --text-primary:#0D0D0D;
+  --text-body:#4B5563;
+  --text-muted:#9CA3AF;
+
+  /* Text auf dunklem Grund (Hero, Wochenfokus) */
+  --text-on-dark:#FFFFFF;
+  --text-on-dark-muted:#9CA6B4;
+  --text-on-dark-soft:#8A94A3;
+  --text-on-dark-faint:#6B7280;
+
+  /* ---------- Flaechen ---------- */
+  --bg:#FFFFFF;
+  --bg-subtle:#F9FAFB;
+  --bg-dark:#0D0D0D;
+  --border:#E5E7EB;
+  --border-strong:#D1D5DB;
+
+  /* ---------- Status (Ampel) ----------
+     Nur fuer Bewertungen: gut / kritisch / schlecht.
+     NIEMALS zum Einfaerben von Kategorien verwenden — sonst liest
+     man eine Wertung hinein, die gar nicht gemeint ist. */
+  --amber:#B45309;        --amber-bg:#FEF3C7;   --amber-strong:#D97706;
+  --red:#B91C1C;          --red-bg:#FEE2E2;     --red-strong:#DC2626;
+  --green:#1B7F4C;        --green-bg:#E6F4EC;
+
+  /* ---------- Serienfarben ----------
+     Fuer Kategorien in Diagrammen und Aufteilungen: Kunden, States,
+     Aktivitaeten. Bewusst getrennt von der Ampel oben. */
+  --series-1:#3F5137;
+  --series-2:#7A8B6F;
+  --series-3:#4A6C8C;
+  --series-4:#8C6A4A;
+  --series-5:#6B5B8C;
+  --series-6:#B0B7AB;
+
+  /* ---------- Diagramme ---------- */
+  --chart-grid:#EDEFF2;
+  --chart-axis:#9CA3AF;
+  --chart-h-sm:120px;
+  --chart-h-md:200px;
+  --chart-h-lg:300px;
+
+  /* ---------- Abstaende ----------
+     Verbindliche Skala fuer alles Neue. */
+  --sp-1:4px;  --sp-2:8px;   --sp-3:12px;  --sp-4:16px;
+  --sp-5:24px; --sp-6:32px;  --sp-7:48px;  --sp-8:64px;
+
+  /* ---------- Radien ---------- */
+  --r-sm:8px;
+  --r-md:11px;
+  --r-lg:14px;
+  --r-pill:99px;
+
+  /* ---------- Schrift ---------- */
+  /* Stack unveraendert lassen: Zeichen, die Inter nicht hat (z. B. ≥),
+     kommen aus dem Fallback — jede Ergaenzung aendert deren Breite. */
+  --font:'Inter',-apple-system,sans-serif;
+
+  --fs-display:2.1rem;   /* grosse Kennzahl im Hero */
+  --fs-h1:1.55rem;       /* Kennzahl in einer Statistik-Karte */
+  --fs-h2:1.08rem;       /* Kartenueberschrift */
+  --fs-h3:0.9rem;
+  --fs-body:0.88rem;
+  --fs-sm:0.82rem;
+  --fs-label:0.8rem;    /* Feldbeschriftung, Unterzeile einer Karte */
+  --fs-xs:0.72rem;       /* Micro-Label, immer Uppercase */
+
+  --fw-normal:500;
+  --fw-semi:600;
+  --fw-bold:700;
+  --fw-black:800;
+
+  --lh-tight:1.2;
+  --lh-normal:1.45;
+
+  /* ---------- Erhebung und Bewegung ---------- */
+  --shadow-sm:0 1px 2px rgba(13,13,13,0.045), 0 1px 1px rgba(13,13,13,0.03);
+  --shadow-md:0 8px 20px -6px rgba(13,13,13,0.09), 0 2px 6px rgba(13,13,13,0.05);
+  --ease:cubic-bezier(.2,.7,.2,1);
+  --focus-ring:0 0 0 3px var(--accent-light);
+}

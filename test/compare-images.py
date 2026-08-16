@@ -5,9 +5,10 @@ Aufruf: compare-images.py <referenz> <neu> <name> [<referenz> <neu> <name> ...]
 
 Ausgabe ist bewusst grob: es geht nicht um einzelne Pixel, sondern um die
 Frage "hat sich das Layout verschoben?". Bei Unterschieden wird ein Bild mit
-den markierten Stellen unter .tmp-visual/diff-*.png abgelegt.
+den markierten Stellen unter test/diff/*.png abgelegt.
 """
 
+import os
 import sys
 from PIL import Image, ImageChops
 
@@ -47,7 +48,8 @@ for i in range(0, len(args), 3):
 
     if abweichend > TOLERANZ_PIXEL:
         kasten = maske.getbbox()
-        out = f".tmp-visual/diff-{name.split()[0].lower()}.png"
+        os.makedirs("test/diff", exist_ok=True)
+        out = f"test/diff/{name.split()[0].lower()}.png"
         try:
             ueberlagert = new.copy()
             rot = Image.new("RGB", new.size, (255, 0, 0))

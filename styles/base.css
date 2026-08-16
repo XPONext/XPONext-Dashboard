@@ -1,0 +1,92 @@
+/* ============================================================
+   Grundlagen: Reset, Typografie, Formularelemente, Tabellen.
+   ============================================================ */
+
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+
+body{
+  font-family:var(--font);
+  background:var(--bg-subtle);
+  color:var(--text-primary);
+  -webkit-font-smoothing:antialiased;
+  letter-spacing:-0.006em;
+}
+
+a{color:inherit;}
+
+.container{max-width:900px;margin:0 auto;padding:0 5%;}
+
+/* ---------- Tastaturbedienung ----------
+   Sichtbarer Fokus auf allem Bedienbaren, nicht nur auf Eingabefeldern.
+   :focus-visible zeigt den Ring nur bei Tastatur, nicht bei Mausklick. */
+:focus-visible{
+  outline:2px solid var(--accent);
+  outline-offset:2px;
+}
+
+/* ---------- Micro-Label ----------
+   Das Uppercase-Label ueber Kennzahlen. War vorher ein gutes Dutzend Mal
+   kopiert; hier steht es einmal. */
+.t-label{
+  font-size:var(--fs-xs);
+  font-weight:var(--fw-bold);
+  color:var(--text-muted);
+  text-transform:uppercase;
+  letter-spacing:0.055em;
+}
+
+.t-muted{color:var(--text-muted);}
+
+/* ---------- Formulare ---------- */
+select, input[type=number], input[type=date], input[type=text]{
+  font-family:var(--font);
+  border:1.5px solid var(--border);
+  border-radius:var(--r-sm);
+  padding:0.55rem 0.7rem;
+  font-size:0.93rem;
+  color:var(--text-primary);
+  width:100%;
+  background:var(--bg);
+  transition:border-color .15s var(--ease), box-shadow .15s var(--ease);
+}
+select:focus,input:focus{
+  outline:none;
+  border-color:var(--accent);
+  box-shadow:var(--focus-ring);
+}
+
+label{
+  display:block;
+  font-size:var(--fs-label);
+  font-weight:var(--fw-semi);
+  color:var(--text-body);
+  margin-bottom:0.35rem;
+}
+.field{margin-bottom:1rem;}
+.form-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:1rem;}
+
+/* ---------- Tabellen ---------- */
+table{width:100%;border-collapse:collapse;font-size:0.85rem;}
+th{
+  background:var(--accent-dark);
+  color:var(--text-on-dark);
+  text-align:left;
+  padding:0.65rem 0.8rem;
+  font-weight:var(--fw-bold);
+  font-size:0.74rem;
+  text-transform:uppercase;
+  letter-spacing:0.04em;
+}
+td{padding:0.6rem 0.8rem;border-bottom:1px solid var(--border);color:var(--text-body);}
+tr:nth-child(even) td{background:var(--bg-subtle);}
+tr.current-week td{background:var(--accent-light) !important;}
+.table-wrap{overflow-x:auto;border-radius:var(--r-md);border:1px solid var(--border);}
+.table-wrap table{border-radius:var(--r-md);}
+
+footer{
+  text-align:center;
+  color:var(--text-muted);
+  font-size:0.78rem;
+  padding:2.2rem 5% 0;
+  letter-spacing:0.01em;
+}

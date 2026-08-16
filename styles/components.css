@@ -1,0 +1,261 @@
+/* ============================================================
+   Wiederverwendbare Bausteine: Karten, Kennzahlen, Balken,
+   Badges, Schaltflaechen, Leerzustaende, Modals, Meldungen.
+   ============================================================ */
+
+/* ---------- Karten ---------- */
+.card{
+  background:var(--bg);
+  border:1px solid var(--border);
+  border-radius:var(--r-lg);
+  padding:1.7rem;
+  margin-bottom:1.3rem;
+  box-shadow:var(--shadow-sm);
+  transition:box-shadow .2s var(--ease);
+}
+.card h2{
+  font-size:var(--fs-h2);
+  font-weight:var(--fw-black);
+  margin-bottom:1rem;
+  color:var(--text-primary);
+  letter-spacing:-0.01em;
+}
+.card h2 small{
+  display:block;
+  font-weight:var(--fw-normal);
+  font-size:var(--fs-label);
+  color:var(--text-muted);
+  margin-top:0.25rem;
+  letter-spacing:0;
+}
+
+/* ---------- Kennzahl-Karte ---------- */
+.stat{
+  background:var(--bg);
+  border:1px solid var(--border);
+  border-radius:13px;
+  padding:1.15rem 1.25rem;
+  box-shadow:var(--shadow-sm);
+}
+.stat .lbl{
+  font-size:var(--fs-xs);
+  color:var(--text-muted);
+  font-weight:var(--fw-bold);
+  text-transform:uppercase;
+  letter-spacing:0.055em;
+  margin-bottom:0.4rem;
+}
+.stat .num{
+  font-size:var(--fs-h1);
+  font-weight:var(--fw-black);
+  color:var(--text-primary);
+  margin-bottom:0.55rem;
+  letter-spacing:-0.015em;
+}
+.stat .num small{font-size:var(--fs-sm);font-weight:var(--fw-normal);color:var(--text-muted);letter-spacing:0;}
+.stat .pct{font-size:0.76rem;color:var(--text-muted);margin-top:0.35rem;}
+
+/* ---------- Fortschrittsbalken ---------- */
+.bar-track{
+  background:var(--bg-subtle);
+  border-radius:var(--r-pill);
+  height:8px;
+  overflow:hidden;
+  border:1px solid var(--border);
+}
+.bar-fill{height:100%;border-radius:var(--r-pill);transition:width .35s var(--ease);}
+.bar-fill.ok{background:var(--accent);}
+.bar-fill.warn{background:var(--amber-strong);}
+.bar-fill.low{background:var(--red-strong);}
+
+.row-metric{margin-bottom:0.9rem;}
+.row-metric .top{display:flex;justify-content:space-between;font-size:0.85rem;margin-bottom:0.35rem;}
+.row-metric .top .name{font-weight:var(--fw-semi);color:var(--text-primary);}
+.row-metric .top .vals{color:var(--text-muted);}
+
+.cell-bar{display:flex;align-items:center;gap:0.5rem;min-width:110px;}
+.cell-bar .bar-track{flex:1;}
+
+/* ---------- Badges ---------- */
+.badge{
+  display:inline-flex;
+  align-items:center;
+  gap:5px;
+  background:var(--accent-light);
+  color:var(--accent-dark);
+  padding:0.25rem 0.7rem;
+  border-radius:var(--r-pill);
+  font-size:0.76rem;
+  font-weight:var(--fw-bold);
+}
+.badge.warn{background:var(--amber-bg);color:var(--amber);}
+.badge.low{background:var(--red-bg);color:var(--red);}
+
+.task-badge{
+  font-size:0.66rem;
+  font-weight:var(--fw-bold);
+  padding:0.18rem 0.52rem;
+  border-radius:var(--r-pill);
+  white-space:nowrap;
+}
+.task-badge.person{background:var(--accent-light);color:var(--accent-dark);}
+.task-badge.prio-hoch{background:var(--red-bg);color:var(--red);}
+.task-badge.prio-mittel{background:var(--amber-bg);color:var(--amber);}
+.task-badge.prio-niedrig{background:var(--bg);color:var(--text-muted);border:1px solid var(--border);}
+
+.status-badge{
+  font-size:0.66rem;
+  font-weight:var(--fw-bold);
+  padding:0.18rem 0.52rem;
+  border-radius:var(--r-pill);
+  white-space:nowrap;
+  text-transform:uppercase;
+  letter-spacing:0.04em;
+}
+.status-badge.st-aktiv{background:var(--accent-light);color:var(--accent-dark);}
+.status-badge.st-pausiert{background:var(--amber-bg);color:var(--amber);}
+.status-badge.st-fertig{background:var(--green-bg);color:var(--green);}
+.due-badge{font-size:0.7rem;font-weight:var(--fw-semi);color:var(--text-muted);white-space:nowrap;}
+.due-badge.is-late{color:var(--red);}
+
+/* ---------- Schaltflaechen ---------- */
+.btn{
+  background:var(--accent);
+  color:var(--text-on-dark);
+  padding:0.72rem 1.5rem;
+  border-radius:9px;
+  border:none;
+  font-weight:var(--fw-bold);
+  font-size:0.92rem;
+  cursor:pointer;
+  font-family:var(--font);
+  box-shadow:0 1px 2px rgba(46,61,40,0.25);
+  transition:transform .12s var(--ease), box-shadow .12s var(--ease), background .12s var(--ease);
+}
+.btn:hover{background:var(--accent-dark);transform:translateY(-1px);box-shadow:0 4px 10px rgba(46,61,40,0.28);}
+.btn:active{transform:translateY(0);}
+
+.btn-outline{
+  background:var(--bg);
+  color:var(--text-primary);
+  padding:0.72rem 1.5rem;
+  border-radius:9px;
+  border:1.5px solid var(--border-strong);
+  font-weight:var(--fw-semi);
+  font-size:0.92rem;
+  cursor:pointer;
+  font-family:var(--font);
+  transition:border-color .12s var(--ease), background .12s var(--ease);
+}
+.btn-outline:hover{border-color:var(--accent);background:var(--bg-subtle);}
+
+.btn-danger{color:var(--red);border-color:var(--red-bg);}
+.btn-danger:hover{background:var(--red-bg);border-color:var(--red);}
+
+.wk-btn{
+  background:var(--bg);
+  border:1.5px solid var(--border);
+  border-radius:var(--r-sm);
+  width:30px;height:30px;
+  font-size:1.15rem;line-height:1;
+  color:var(--text-body);
+  cursor:pointer;
+  font-family:var(--font);
+  transition:border-color .12s var(--ease), background .12s var(--ease);
+}
+.wk-btn:hover:not(:disabled){border-color:var(--accent);background:var(--bg-subtle);}
+.wk-btn:disabled{opacity:0.35;cursor:not-allowed;}
+
+.toggle-inline{display:inline-flex;align-items:center;gap:0.45rem;font-size:var(--fs-sm);color:var(--text-muted);cursor:pointer;user-select:none;}
+.toggle-inline input{width:15px;height:15px;accent-color:var(--accent);cursor:pointer;margin:0;}
+
+/* ---------- Leerzustand ----------
+   Ersetzt nach und nach die fuenf verschiedenen Leerdarstellungen
+   (projects-empty, commit-empty, step-empty, kanban-empty, "Keine Daten"). */
+.empty-state{
+  text-align:center;
+  padding:var(--sp-6) var(--sp-4);
+  color:var(--text-muted);
+}
+.empty-state .es-title{
+  font-size:var(--fs-h3);
+  font-weight:var(--fw-bold);
+  color:var(--text-body);
+  margin-bottom:var(--sp-1);
+}
+.empty-state .es-hint{font-size:var(--fs-sm);line-height:var(--lh-normal);}
+.empty-state .es-action{margin-top:var(--sp-4);}
+
+/* Kompakte Variante innerhalb einer Karte oder Spalte */
+.empty-state.is-inline{padding:var(--sp-3) 0;text-align:left;}
+.empty-state.is-inline .es-hint{font-size:var(--fs-sm);}
+
+/* ---------- Meldungen ---------- */
+.save-msg{
+  display:none;
+  color:var(--accent-dark);
+  background:var(--accent-light);
+  padding:0.6rem 1rem;
+  border-radius:var(--r-sm);
+  font-size:0.84rem;
+  font-weight:var(--fw-semi);
+  margin-top:0.8rem;
+}
+
+.error-banner{
+  display:none;
+  position:sticky;
+  top:0;
+  z-index:200;
+  background:var(--red-bg);
+  color:var(--red);
+  border-bottom:1px solid var(--red);
+  padding:0.75rem 5%;
+  font-size:0.85rem;
+  font-weight:var(--fw-semi);
+  letter-spacing:-0.005em;
+}
+
+/* ---------- Modals ---------- */
+.modal-overlay{
+  position:fixed;
+  inset:0;
+  background:rgba(13,13,13,0.45);
+  display:none;
+  align-items:center;
+  justify-content:center;
+  z-index:1000;
+  padding:1rem;
+}
+.modal-overlay.open{display:flex;}
+.modal{
+  background:var(--bg);
+  border:1px solid var(--border);
+  border-radius:var(--r-lg);
+  padding:1.6rem;
+  max-width:460px;
+  width:100%;
+  box-shadow:var(--shadow-md);
+}
+.modal-head{display:flex;align-items:flex-start;justify-content:space-between;gap:1rem;margin-bottom:1.1rem;}
+.modal-head h3{
+  font-size:var(--fs-xs);
+  font-weight:var(--fw-black);
+  color:var(--text-muted);
+  text-transform:uppercase;
+  letter-spacing:0.05em;
+}
+.modal-close{background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:1.2rem;line-height:1;padding:0.1rem 0.3rem;}
+.modal-close:hover{color:var(--text-primary);}
+.modal-actions{display:flex;align-items:center;gap:0.7rem;margin-top:1.3rem;flex-wrap:wrap;}
+.modal-del{
+  background:none;border:none;
+  color:var(--red);
+  cursor:pointer;
+  font-weight:var(--fw-bold);
+  font-size:0.85rem;
+  margin-left:auto;
+  padding:0.4rem;
+  font-family:var(--font);
+}
+.modal-del:hover{text-decoration:underline;}
