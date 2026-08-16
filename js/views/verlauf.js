@@ -10,13 +10,13 @@
 
    Beides zusammenzuzählen würde doppelt zählen. Deshalb steht der
    Auftragswert bei den Vertriebszahlen und der realisierte Umsatz im
-   Jahresziel-Diagramm. */
+   Ziel-Diagramm. */
 
 import { WEEKS, N_WEEKS, PERSONS, TOTAL, WEEKLY_TARGET } from "../config.js";
-import { num, euro, fmtDate, escapeHtml } from "../utils/format.js";
+import { num, euro, fmtDate, escapeHtml, todayIso } from "../utils/format.js";
 import { findCurrentWeekIndex } from "../utils/weeks.js";
 import { state, personEntry, teamEntry, hebelHours } from "../state.js";
-import { onRender, showErrorBanner } from "../ui/bus.js";
+import { onRender, showErrorBanner, flashSaved } from "../ui/bus.js";
 import { linienChart, balkenChart } from "../ui/chart.js";
 import { emptyState } from "../ui/components.js";
 
@@ -39,7 +39,7 @@ function letzteWocheMitDaten(){
   return letzte;
 }
 
-/* ---------- Umsatz gegen das Jahresziel ---------- */
+/* ---------- Umsatz gegen das Ziel ---------- */
 
 function monatsUmsaetze(){
   const proMonat = {};
@@ -56,29 +56,44 @@ function renderUmsatz(){
   if(!monate.length){
     el.innerHTML = emptyState(
       "Noch kein Umsatz erfasst",
-      "Trag im Reiter „Kunden“ Retainer und Aufträge ein — danach siehst du hier, wie der Umsatz gegen das Jahresziel von " +
-      euro(TOTAL.umsatz) + " läuft."
+      "Trag im Reiter „Kunden“ Retainer und Aufträge ein — danach siehst du hier, wie der Umsatz gegen das Ziel von " +
+      euro(TOTAL.umsatz) + " für diesen Zeitraum läuft."
     );
     return;
   }
 
-  // Vom ersten Monat mit Umsatz bis Jahresende, damit die Zielgerade sichtbar ist
-  const ersterMonat = monate[0][0];
-  const labels = [], istKumuliert = [], ziel = [];
-  let summe = 0;
-  let [j, m] = ersterMonat.split("-").map(Number);
+  // Der Zeitraum steht FEST: erster bis letzter Monat aus WEEKS. Vorher lief
+  // die Achse vom ersten Monat mit Umsatz bis Jahresende und die Zielgerade
+  // wurde durch die Anzahl der angezeigten Monate geteilt — dadurch aenderte
+  // sich ihre Steigung, sobald ein Umsatz frueher oder spaeter erfasst wurde.
+  // Ein Bezugspunkt, der sich mit den Daten verschiebt, ist keiner.
+  const vonMonat = WEEKS[0][0].slice(0,7);
+  const bisMonat = WEEKS[N_WEEKS-1][1].slice(0,7);
+
   const gesamtMonate = [];
-  while(j < 2026 || (j === 2026 && m <= 12)){
+  let [j, m] = vonMonat.split("-").map(Number);
+  const [jb, mb] = bisMonat.split("-").map(Number);
+  while(j < jb || (j === jb && m <= mb)){
     gesamtMonate.push(j + "-" + String(m).padStart(2,"0") + "-01");
     m++; if(m > 12){ m = 1; j++; }
-    if(gesamtMonate.length > 36) break;   // Sicherheitsnetz
   }
+
+  const labels = [], istKumuliert = [], ziel = [];
+  let summe = 0;
+  // Umsatz vor dem Zeitraum zaehlt in den ersten Monat hinein, damit nichts
+  // aus der Kumulierung faellt.
+  const vorher = monate.filter(([k])=>k < gesamtMonate[0]).reduce((s,[,v])=>s+v, 0);
+  const nachher = monate.filter(([k])=>k > gesamtMonate[gesamtMonate.length-1]).reduce((s,[,v])=>s+v, 0);
+  summe = vorher;
 
   const heute = new Date();
   const heutigerMonat = heute.getFullYear() + "-" + String(heute.getMonth()+1).padStart(2,"0") + "-01";
 
+  // Jahr nur ans Label, wenn der Zeitraum ueber ein Jahr hinausgeht — sonst
+  // stehen dort mehrfach "Jan" ohne Unterscheidung.
+  const mehrereJahre = gesamtMonate[0].slice(0,4) !== gesamtMonate[gesamtMonate.length-1].slice(0,4);
   gesamtMonate.forEach((mon, i)=>{
-    labels.push(MONATE[Number(mon.slice(5,7)) - 1]);
+    labels.push(MONATE[Number(mon.slice(5,7)) - 1] + (mehrereJahre ? " " + mon.slice(2,4) : ""));
     const treffer = monate.find(([k])=>k === mon);
     if(treffer) summe += treffer[1];
     // Nach dem laufenden Monat keine Ist-Linie mehr zeichnen
@@ -96,8 +111,20 @@ function renderUmsatz(){
     flaeche: true,
     einheit: " €",
     beschreibung: "Kumulierter realisierter Umsatz je Monat gegen die Zielgerade auf " +
-                  euro(TOTAL.umsatz) + " bis Jahresende"
-  });
+                  euro(TOTAL.umsatz) + " bis " + fmtDate(WEEKS[N_WEEKS-1][1])
+  }) + `<p class="chart-hinweis">Die graue gestrichelte Linie ist der gleichmäßig verteilte Zielverlauf${
+      nachher > 0 ? ` · ${escapeHtml(euro(nachher))} liegen nach dem Zeitraum und sind hier nicht enthalten` : ""}.</p>`;
+
+  // Kennzahl oben, damit die Antwort nicht nur im Diagramm steckt
+  const erreicht = summe;
+  const anteilZeit = Math.min(1, Math.max(0,
+    (new Date(todayIso()) - new Date(WEEKS[0][0])) /
+    (new Date(WEEKS[N_WEEKS-1][1]) - new Date(WEEKS[0][0]))));
+  document.getElementById("vlUmsatzKennzahl").innerHTML =
+    escapeHtml(euro(erreicht)) + ` <small>von ${escapeHtml(euro(TOTAL.umsatz))}</small>`;
+  document.getElementById("vlUmsatzKennzahlSub").textContent =
+    num((erreicht / TOTAL.umsatz) * 100, 1) + "% erreicht · " +
+    num(anteilZeit * 100, 0) + "% des Zeitraums vorbei";
 }
 
 /* ---------- Vertrieb je Woche ---------- */
@@ -131,8 +158,19 @@ function renderStunden(){
   const labels = WEEKS.slice(0, bis + 1).map((_, i)=> "KW " + (i + 1));
 
   const personen = person === "team" ? PERSONS.map(([k])=>k) : [person];
-  const leadGen = labels.map((_,i)=> personen.reduce((s,k)=> s + personEntry(i,k).leadGenHours, 0));
-  const hebel   = labels.map((_,i)=> personen.reduce((s,k)=> s + hebelHours(personEntry(i,k)), 0));
+  // Eine Woche ganz ohne Eintrag ist keine Null, sondern eine Luecke — sonst
+  // stuerzt die Linie auf die Grundlinie und widerspricht der Tabelle
+  // darunter, die dort "Woche ohne Eintrag" schreibt.
+  const werteFuer = (fn)=> labels.map((_,i)=>{
+    const summe = personen.reduce((s,k)=> s + fn(personEntry(i,k)), 0);
+    const garNichts = personen.every(k=>{
+      const e = personEntry(i,k);
+      return !e.leadGenHours && !hebelHours(e);
+    });
+    return garNichts ? null : summe;
+  });
+  const leadGen = werteFuer(e=>e.leadGenHours);
+  const hebel   = werteFuer(e=>hebelHours(e));
 
   // Das Ziel skaliert mit der Auswahl: Team = beide Personen
   const faktor = personen.length;
@@ -141,7 +179,8 @@ function renderStunden(){
   document.getElementById("vlStundenSub").textContent =
     person === "team"
       ? `Lead-Gen und Hebel für beide zusammen — Ziel ${num(WEEKLY_TARGET.leadGen,0)} Std. Lead-Gen je Woche`
-      : `Lead-Gen und Hebel — Ziel ${num(WEEKLY_TARGET.leadGen/2,0)} Std. Lead-Gen je Woche`;
+      : `Lead-Gen und Hebel — Ziel ${num(WEEKLY_TARGET.leadGen/2,0)} Std. Lead-Gen je Woche. ` +
+        `Termine, Abschlüsse und Umsatz oben bleiben Teamzahlen.`;
 
   const el = document.getElementById("vlStundenChart");
   if(!leadGen.some(v=>v>0) && !hebel.some(v=>v>0)){
@@ -261,8 +300,14 @@ function renderPersonTabelle(){
 
 function csvZeile(felder){
   return felder.map(f=>{
-    const t = String(f ?? "");
-    return /[";\n]/.test(t) ? '"' + t.replace(/"/g, '""') + '"' : t;
+    // Zahlen mit Komma statt Punkt — die Datei ist mit Semikolon und BOM
+    // ausdruecklich fuer Excel in deutscher Einstellung gebaut, und dort wird
+    // "22.5" als Text oder Datum gelesen. Float-Reste wie 2.0000000000000004
+    // werden dabei gleich mit abgeschnitten.
+    const t = typeof f === "number"
+      ? Number(f.toFixed(2)).toString().replace(".", ",")
+      : String(f ?? "");
+    return /[";\r\n]/.test(t) ? '"' + t.replace(/"/g, '""') + '"' : t;
   }).join(";");
 }
 
@@ -289,12 +334,18 @@ function exportiere(){
   document.body.appendChild(a);
   a.click();
   a.remove();
-  URL.revokeObjectURL(a.href);
+  // Nicht sofort widerrufen: Safari reicht den Blob nach dem Klick asynchron
+  // weiter, ein sofortiges revoke bricht den Download ab — ohne Fehlermeldung.
+  const url = a.href;
+  setTimeout(()=>URL.revokeObjectURL(url), 10000);
 }
 
 /* ---------- Zusammenbau ---------- */
 
 function renderHistory(){
+  document.getElementById("vlZeitraum").textContent =
+    fmtDate(WEEKS[0][0]) + WEEKS[0][0].slice(0,4) + " – " +
+    fmtDate(WEEKS[N_WEEKS-1][1]) + WEEKS[N_WEEKS-1][1].slice(0,4);
   renderUmsatz();
   renderVertrieb();
   renderStunden();
@@ -306,6 +357,7 @@ document.getElementById("vlPerson").addEventListener("change", renderHistory);
 document.getElementById("vlExport").addEventListener("click", ()=>{
   try{
     exportiere();
+    flashSaved("vlExportMsg");
   }catch(e){
     showErrorBanner("Der Export hat nicht geklappt: " + ((e && e.message) || e));
   }

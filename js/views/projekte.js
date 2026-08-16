@@ -16,6 +16,13 @@ import { personBadge, pruefe, PERSON_OPTIONS, PERSON_LABEL, emptyState } from ".
 const PROJECT_STATUS_LABEL = { aktiv:"Aktiv", pausiert:"Pausiert", fertig:"Abgeschlossen" };
 const STATUS_OPTIONS = [["aktiv","Aktiv"],["pausiert","Pausiert"],["fertig","Abgeschlossen"]];
 
+/* Supabase meldet keinen Fehler, wenn eine Policy die Zeile verwirft — es
+   kommt einfach nichts zurueck. Ohne diese Pruefung landete undefined im
+   Speicher und die naechste Zeichnung brach ab. */
+function pruefeZeile(data, was){
+  if(!data || !data.length) throw new Error(was + " — bitte die Seite neu laden.");
+}
+
 function stepsOf(projectId){
   return state.projectSteps.filter(s=>String(s.project_id)===String(projectId));
 }
@@ -29,7 +36,9 @@ function tageBis(datum){
   if(!datum) return null;
   const heute = new Date(todayIso()+"T00:00:00");
   const ziel  = new Date(datum+"T00:00:00");
-  return Math.round((ziel - heute) / 86400000);
+  const tage = Math.round((ziel - heute) / 86400000);
+  // Ein unbrauchbares Datum soll nicht still als "nicht faellig" durchgehen
+  return Number.isFinite(tage) ? tage : null;
 }
 
 function fristText(tage){
@@ -98,11 +107,13 @@ async function openProjectModal(id){
       if(p){
         const { data, error } = await db.from("projects").update(nutzlast).eq("id", p.id).select();
         pruefe(error, "Projekt konnte nicht gespeichert werden");
+        pruefeZeile(data, "Das Projekt wurde von der Datenbank nicht übernommen");
         const idx = state.projects.findIndex(x=>String(x.id)===String(p.id));
         if(idx>=0) state.projects[idx] = data[0];
       } else {
         const { data, error } = await db.from("projects").insert(nutzlast).select();
         pruefe(error, "Projekt konnte nicht angelegt werden");
+        pruefeZeile(data, "Das Projekt wurde von der Datenbank nicht übernommen");
         state.projects.push(data[0]);
       }
     },
@@ -146,12 +157,19 @@ async function openStepModal(projectId, vorhandener){
         due_date: werte.due_date || null
       };
       if(vorhandener){
-        const { error } = await db.from("project_steps").update(nutzlast).eq("id", vorhandener.id);
+        const { data, error } = await db.from("project_steps")
+          .update(nutzlast).eq("id", vorhandener.id).select();
         pruefe(error, "Schritt konnte nicht gespeichert werden");
+        pruefeZeile(data, "Der Schritt wurde von der Datenbank nicht übernommen");
+        // Auch im Speicher nachziehen: Scheitert danach das Neuladen, zeigte
+        // die Ansicht sonst weiter den alten Text, obwohl gespeichert wurde.
+        const idx = state.projectSteps.findIndex(x=>String(x.id)===String(vorhandener.id));
+        if(idx>=0) state.projectSteps[idx] = data[0];
       } else {
         const { data, error } = await db.from("project_steps")
           .insert({ ...nutzlast, done:false }).select();
         pruefe(error, "Schritt konnte nicht gespeichert werden");
+        pruefeZeile(data, "Der Schritt wurde von der Datenbank nicht übernommen");
         state.projectSteps.push(data[0]);
       }
     },
@@ -167,7 +185,7 @@ async function openStepModal(projectId, vorhandener){
 
 /* ---------- Übersicht ---------- */
 
-function renderKopf(sichtbare){
+function renderKopf(){
   const offene = state.projects.filter(istOffen);
   const alleSchritte = state.projectSteps.filter(s=>
     offene.some(p=>String(p.id)===String(s.project_id)));
@@ -187,11 +205,20 @@ function renderKopf(sichtbare){
   document.getElementById("projStatProgressSub").textContent =
     alleSchritte.length ? erledigt + " von " + alleSchritte.length + " Schritten" : "noch keine Schritte";
 
-  const ueberfaellig = alleSchritte.filter(s=>!s.done && s.due_date && tageBis(s.due_date) < 0);
-  document.getElementById("projStatLate").textContent = ueberfaellig.length;
-  document.getElementById("projStatLateSub").textContent =
-    ueberfaellig.length ? "ältester: " + fristText(tageBis(
-      ueberfaellig.map(s=>s.due_date).sort()[0])) : "nichts über der Frist";
+  // Ueberfaellig zaehlt Schritte UND Projekte, deren eigene Frist verstrichen
+  // ist. Vorher zaehlten nur Schritte — ein Projekt konnte seine Deadline
+  // reissen, ohne hier jemals aufzutauchen.
+  const spaeteSchritte = alleSchritte.filter(s=>!s.done && s.due_date && tageBis(s.due_date) < 0);
+  const spaeteProjekte = offene.filter(p=>p.due_date && tageBis(p.due_date) < 0);
+  const ueberfaellig = spaeteSchritte.length + spaeteProjekte.length;
+  const aeltestes = spaeteSchritte.map(s=>s.due_date)
+    .concat(spaeteProjekte.map(p=>p.due_date))
+    .sort((a,b)=>a.localeCompare(b))[0];
+
+  document.getElementById("projStatLate").textContent = ueberfaellig;
+  document.getElementById("projStatLateSub").textContent = ueberfaellig
+    ? "Schritte und Fristen · längster Rückstand " + fristText(tageBis(aeltestes))
+    : "Schritte und Fristen im Plan";
 
   // Nächste Deadline über Projekte UND Schritte
   const fristen = offene.filter(p=>p.due_date).map(p=>({ datum:p.due_date, was:p.title }))
@@ -228,7 +255,7 @@ function renderAuslastung(offene){
       .sort((a,b)=>b[1].gesamt-a[1].gesamt)
       .map(([wer, z])=>`
         <span class="workload-chip${z.spaet ? " is-late" : ""}">
-          ${escapeHtml(PERSON_LABEL[wer] || "ohne Zuweisung")}
+          ${escapeHtml(wer === "offen" ? "ohne Zuweisung" : (PERSON_LABEL[wer] || wer))}
           <b>${z.gesamt}</b>${z.spaet ? `<span class="wl-late">${z.spaet} überfällig</span>` : ""}
         </span>`).join("")}</div>`;
 }
@@ -247,7 +274,7 @@ function gefilterteProjekte(){
 
 function renderProjects(){
   const sichtbare = gefilterteProjekte();
-  renderKopf(sichtbare);
+  renderKopf();
 
   const list = document.getElementById("projectsList");
   if(!state.projects.length){
@@ -344,8 +371,20 @@ document.getElementById("projectsList").addEventListener("click", async (ev)=>{
 
   if(act === "step-toggle"){
     const done = el.checked;
-    const { error } = await db.from("project_steps").update({ done }).eq("id", s.id);
-    if(error){ console.error(error); showErrorBanner("Konnte nicht gespeichert werden: "+error.message); el.checked = !done; return; }
+    // .select() ist hier nicht optional: Verwirft eine RLS-Policy die Zeile,
+    // meldet Supabase KEINEN Fehler, sondern schreibt einfach nichts. Ohne die
+    // Rueckgabe stand der Haken gesetzt da, waehrend in der Datenbank nichts
+    // passiert war — und das faellt erst beim naechsten Neuladen auf.
+    const { data, error } = await db.from("project_steps")
+      .update({ done }).eq("id", s.id).select();
+    if(error || !data || !data.length){
+      if(error) console.error(error);
+      showErrorBanner(error
+        ? "Konnte nicht gespeichert werden: " + error.message
+        : "Der Schritt konnte nicht gespeichert werden — er wurde von der Datenbank nicht übernommen. Bitte die Seite neu laden.");
+      el.checked = !done;
+      return;
+    }
     s.done = done;
     renderProjects();
   }

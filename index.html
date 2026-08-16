@@ -312,11 +312,25 @@
       </div>
       <div class="board-actions" style="margin:0;">
         <button class="btn-outline" id="vlExport">Als CSV herunterladen</button>
+        <div class="save-msg" id="vlExportMsg" style="margin-top:0;">Heruntergeladen ✓</div>
+      </div>
+    </div>
+
+    <div class="grid2">
+      <div class="stat">
+        <div class="lbl">Umsatz im Zeitraum</div>
+        <div class="num" id="vlUmsatzKennzahl">—</div>
+        <div class="pct" id="vlUmsatzKennzahlSub">—</div>
+      </div>
+      <div class="stat">
+        <div class="lbl">Zeitraum</div>
+        <div class="num" id="vlZeitraum" style="font-size:1.05rem;line-height:1.4">—</div>
+        <div class="pct">Das Ziel gilt für diesen Zeitraum, nicht für das Kalenderjahr.</div>
       </div>
     </div>
 
     <div class="card">
-      <h2>Umsatz gegen das Jahresziel
+      <h2>Umsatz gegen das Ziel
         <small>Realisierter Umsatz aus den Kundeneinträgen, kumuliert — nicht die Auftragswerte aus den Closes.</small></h2>
       <div id="vlUmsatzChart"></div>
     </div>

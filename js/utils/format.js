@@ -38,7 +38,9 @@ export function barClass(pct){
   return "low";
 }
 
-/* Heutiges Datum als YYYY-MM-DD. */
+/* Heutiges Datum als YYYY-MM-DD, in LOKALER Zeit.
+   toISOString() rechnet in UTC — zwischen Mitternacht und 2 Uhr lieferte das
+   den Vortag, und damit galten Fristen einen Tag zu spaet als ueberfaellig. */
 export function todayIso(){
-  return new Date().toISOString().slice(0,10);
+  return localDateStr(new Date());
 }

@@ -251,17 +251,8 @@ section.view.active{display:block;}
 .step-row input[type=checkbox]{width:16px;height:16px;flex:0 0 auto;accent-color:var(--accent);cursor:pointer;margin:0;}
 .step-text{flex:1;font-size:0.87rem;color:var(--text-primary);line-height:1.4;word-break:break-word;}
 .step-row.is-done .step-text{text-decoration:line-through;color:var(--text-muted);}
-.step-del{
-  background:none;border:none;color:var(--text-muted);
-  font-size:0.95rem;line-height:1;cursor:pointer;
-  padding:0.2rem 0.3rem;border-radius:6px;opacity:0;
-  transition:opacity .12s var(--ease), color .12s var(--ease);
-}
-.step-row:hover .step-del{opacity:1;}
-.step-del:hover{color:var(--red);}
-.step-empty{font-size:var(--fs-sm);color:var(--text-muted);padding:0.55rem 0;}
+.step-row:hover .step-empty{font-size:var(--fs-sm);color:var(--text-muted);padding:0.55rem 0;}
 .step-add{margin-top:0.6rem;}
-.projects-empty{text-align:center;padding:2.6rem 1rem;color:var(--text-muted);font-size:0.9rem;}
 
 /* ---------- Commitments ---------- */
 .commit-row{display:flex;align-items:center;gap:0.7rem;padding:0.65rem 0;border-bottom:1px solid var(--border);}
@@ -404,3 +395,18 @@ tr.leerzeile td{
 .step-edit:hover{color:var(--accent);background:var(--accent-light);}
 .step-row .due-badge{flex:0 0 auto;}
 .task-badge.kunde{background:var(--bg-subtle);color:var(--text-body);border:1px solid var(--border);}
+
+.chart-hinweis{
+  font-size:var(--fs-sm);color:var(--text-muted);
+  margin-top:var(--sp-2);line-height:var(--lh-normal);
+}
+.th-sub{
+  font-weight:var(--fw-normal);text-transform:none;
+  letter-spacing:0;opacity:0.75;font-size:0.68rem;
+}
+/* Bearbeiten-Knopf muss beim Durchtabben sichtbar werden — sonst verliert man
+   die Fokusposition an einem Element mit Deckkraft 0. */
+.step-edit:focus-visible,
+.step-row:focus-within .step-edit,
+.commit-del:focus-visible,
+.commit-row:focus-within .commit-del{opacity:1;}

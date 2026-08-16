@@ -50,15 +50,24 @@ function achse(max){
   let beste = null;
   [4, 5].forEach(yTicks=>{
     const maxY = netteSchrittweite(max / yTicks) * yTicks;
-    if(!beste || maxY < beste.maxY) beste = { maxY, yTicks };
+    // Bei gleicher Obergrenze die feinere Teilung: 0 / 0,2 / 0,4 …
+    // liest sich besser als 0 / 0,25 / 0,5, das als "0,3" beschriftet wuerde.
+    if(!beste || maxY <= beste.maxY) beste = { maxY, yTicks };
   });
   return beste;
 }
 
+/* Achsenbeschriftung: Nachkommastelle nur, wenn die Schrittweite sie braucht. */
 function fmtAchse(n, schritt){
-  // Nachkommastelle nur, wenn die Schrittweite selbst gebrochen ist
-  const stellen = schritt != null && Math.abs(schritt % 1) > 1e-9 ? 1 : (n < 10 && Math.abs(n % 1) > 1e-9 ? 1 : 0);
+  const stellen = schritt != null && Math.abs(schritt % 1) > 1e-9 ? 1 : 0;
   return Number(n).toLocaleString("de-DE", { maximumFractionDigits: stellen });
+}
+
+/* Einzelwerte (Endpunktbeschriftung, Tabelle) behalten ihre Nachkommastelle.
+   Vorher lief das ueber fmtAchse ohne Schrittweite — aus 22,5 Std. wurde
+   dort "23", und die Tabelle widersprach damit dem Diagramm. */
+function fmtWert(n){
+  return Number(n).toLocaleString("de-DE", { maximumFractionDigits: 1 });
 }
 
 /* Gemeinsames Geruest: Rahmen, Hilfslinien, Y-Beschriftung, Grundlinie. */
@@ -120,7 +129,18 @@ export function linienChart({ reihen, labels, hoehe = 240, flaeche = false, besc
   reihen.forEach((r, si)=>{
     const punkte = r.werte.map((v,i)=> v == null ? null : [x(i), y(v)]).filter(Boolean);
     if(!punkte.length) return;
-    const d = punkte.map((p,i)=> (i ? "L" : "M") + p[0].toFixed(1) + " " + p[1].toFixed(1)).join(" ");
+
+    // Luecken bleiben Luecken: Bei jedem fehlenden Wert beginnt ein neues
+    // Teilstueck (M statt L). Vorher wurden die Nullwerte nur herausgefiltert
+    // und die Linie lief durch — eine Woche ohne Eintrag sah dann aus wie eine
+    // erfasste Woche mit demselben Verlauf.
+    let d = "", offen = false;
+    r.werte.forEach((v, i)=>{
+      if(v == null){ offen = false; return; }
+      d += (offen ? " L" : " M") + x(i).toFixed(1) + " " + y(v).toFixed(1);
+      offen = true;
+    });
+    d = d.trim();
 
     if(r.ziel){
       // Ziellinie: gestrichelt und in Grau — sie ist Kontext, keine Datenreihe
@@ -128,9 +148,16 @@ export function linienChart({ reihen, labels, hoehe = 240, flaeche = false, besc
       return;
     }
     if(flaeche && si === 0){
-      const unten = padT + plotH;
-      inhalt += `<path d="${d} L ${punkte[punkte.length-1][0].toFixed(1)} ${unten} L ${punkte[0][0].toFixed(1)} ${unten} Z"
-                  fill="${serienFarbe(si)}" opacity="0.1"/>`;
+      // Nur fuellen, wenn die Reihe keine Luecke hat — sonst wuerde die
+      // Flaeche ueber die Luecke hinweg suggerieren, dort seien Daten.
+      const ersterWert = r.werte.findIndex(v=>v != null);
+      const letzterIdx = r.werte.length - 1 - [...r.werte].reverse().findIndex(v=>v != null);
+      const luecke = r.werte.slice(ersterWert, letzterIdx + 1).some(v=>v == null);
+      if(!luecke){
+        const unten = padT + plotH;
+        inhalt += `<path d="${d} L ${punkte[punkte.length-1][0].toFixed(1)} ${unten} L ${punkte[0][0].toFixed(1)} ${unten} Z"
+                    fill="${serienFarbe(si)}" opacity="0.1"/>`;
+      }
     }
     inhalt += `<path d="${d}" fill="none" stroke="${serienFarbe(si)}" class="ch-linie"/>`;
 
@@ -143,7 +170,7 @@ export function linienChart({ reihen, labels, hoehe = 240, flaeche = false, besc
     // Beschriftung aus der Zeichenflaeche laufen — dann links ausrichten.
     const nahAmRand = letzter[0] < padL + 90;
     inhalt += `<text x="${(letzter[0] + (nahAmRand ? 8 : -8)).toFixed(1)}" y="${(letzter[1] - 10).toFixed(1)}"
-                class="ch-wert" text-anchor="${nahAmRand ? "start" : "end"}">${escapeHtml(fmtAchse(letzterWert) + einheit)}</text>`;
+                class="ch-wert" text-anchor="${nahAmRand ? "start" : "end"}">${escapeHtml(fmtWert(letzterWert) + einheit)}</text>`;
   });
 
   return rahmen(inhalt, beschreibung, legende(reihen.filter(r=>!r.ziel)), hoehe);
@@ -226,7 +253,7 @@ export function chartTabelle({ reihen, labels, spaltenTitel = "Woche" }){
     <div class="table-wrap"><table>
       <thead><tr><th>${escapeHtml(spaltenTitel)}</th>${reihen.map(r=>`<th>${escapeHtml(r.name)}</th>`).join("")}</tr></thead>
       <tbody>${labels.map((l,i)=>
-        `<tr><td>${escapeHtml(l)}</td>${reihen.map(r=>`<td>${r.werte[i] == null ? "–" : escapeHtml(fmtAchse(r.werte[i]))}</td>`).join("")}</tr>`
+        `<tr><td>${escapeHtml(l)}</td>${reihen.map(r=>`<td>${r.werte[i] == null ? "–" : escapeHtml(fmtWert(r.werte[i]))}</td>`).join("")}</tr>`
       ).join("")}</tbody>
     </table></div>
   </details>`;

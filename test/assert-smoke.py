@@ -54,7 +54,7 @@ if banner is None:
     sys.exit(1)
 # Der Dialogteil muss wirklich gelaufen sein — sonst prueft der Test die
 # Popups gar nicht und meldet trotzdem "bestanden".
-ERWARTETE_DIALOGPRUEFUNGEN = 34
+ERWARTETE_DIALOGPRUEFUNGEN = 42
 
 if not banner.startswith("SMOKE: OK"):
     m = re.search(r'id="smokeResult"[^>]*>(.*?)</div>', dom, re.S)
@@ -102,8 +102,9 @@ if count(r'class="leerzeile"') < 1:
 if count(r"<tr") < 8:
     failures.append("Verlaufstabellen sind leer.")
 # Die Diagramme muessen tatsaechlich gezeichnet worden sein
-if count(r'class="ch-svg"') < 2:
-    failures.append(f"Zu wenige Diagramme gezeichnet ({count(chr(39)+'class=.ch-svg'+chr(39))}) — erwartet mindestens 2.")
+gezeichnet = count(r'class="ch-svg"')
+if gezeichnet < 3:
+    failures.append(f"Zu wenige Diagramme gezeichnet ({gezeichnet}) — erwartet mindestens 3.")
 
 # 4) Werden Nutzertexte maskiert? (Der Testtask enthaelt absichtlich HTML.)
 if "Angebot &lt;b&gt;schreiben&lt;/b&gt;" not in dom:
