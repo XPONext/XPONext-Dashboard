@@ -6,6 +6,7 @@ import { escapeHtml, fmtDate, weekLabel, euro, num, localDateStr, barClass } fro
 import { weekIndexForDate, findCurrentWeekIndex } from "./utils/weeks.js";
 import { db, ensureAuthorized } from "./supabase.js";
 import { fetchAllData, upsertDailyPersonal, upsertDailyTeam } from "./data.js";
+import { openModal, confirmDialog } from "./ui/modal.js";
 import {
   state, buildWeeklyAggregates, personEntry, teamEntry, hebelHours,
   combinedEntry, cumulative, normStatus
@@ -633,119 +634,116 @@ document.getElementById("saveHebelBtn").addEventListener("click", async ()=>{
   renderAll();
 });
 
-/* ---------- Wochenfokus-Modal ---------- */
-function openGoalModal(){
-  const weekStart = WEEKS[entryWeekIdx()][0];
-  const goal = state.goals.find(g=>g.week_start===weekStart);
-  document.getElementById("inGoalText").value = goal ? goal.goal : "";
-  document.getElementById("goalModal").classList.add("open");
-  setTimeout(()=>document.getElementById("inGoalText").focus(), 0);
+/* ---------- Dialoge ----------
+   Alle Popups laufen ueber openModal() aus js/ui/modal.js. Bearbeiten und
+   Anlegen unterscheiden sich nur durch die uebergebenen Daten — die frueheren
+   Merkvariablen editingProjectId, stepForProjectId und modalTaskId entfallen. */
+
+const PERSON_OPTIONS = [["tim","Tim"],["simon","Simon"],["beide","Beide"]];
+const PRIO_OPTIONS   = [["hoch","Hoch"],["mittel","Mittel"],["niedrig","Niedrig"]];
+
+/* Wirft bei Fehlern, damit der Dialog offen bleibt und die Meldung dort steht. */
+function pruefe(error, was){
+  if(error){
+    console.error(error);
+    throw new Error(was + ": " + error.message);
+  }
 }
-function closeGoalModal(){ document.getElementById("goalModal").classList.remove("open"); }
 
-document.getElementById("editGoalBtn").addEventListener("click", openGoalModal);
-document.getElementById("goalModalClose").addEventListener("click", closeGoalModal);
-document.getElementById("goalModal").addEventListener("click", (ev)=>{ if(ev.target.id==="goalModal") closeGoalModal(); });
-
-document.getElementById("goalModalSave").addEventListener("click", async ()=>{
-  const goal = document.getElementById("inGoalText").value.trim();
+/* ---------- Wochenfokus ---------- */
+document.getElementById("editGoalBtn").addEventListener("click", async ()=>{
   const weekStart = WEEKS[entryWeekIdx()][0];
-  const { data, error } = await db.from("weekly_goals").upsert({ week_start: weekStart, goal }, { onConflict: "week_start" }).select();
-  if(error){ console.error(error); alert("Wochenfokus konnte nicht gespeichert werden: "+error.message); return; }
-  const idx = state.goals.findIndex(g=>g.week_start===weekStart);
-  if(idx>=0) state.goals[idx] = data[0]; else state.goals.push(data[0]);
-  closeGoalModal();
-  renderGoal();
+  const vorhanden = state.goals.find(g=>g.week_start===weekStart);
+  await openModal({
+    title: "Wochenfokus",
+    submitLabel: "Fokus speichern",
+    fields: [{
+      name:"goal", label:"Worauf liegt der Fokus in "+weekLabel(entryWeekIdx())+"?",
+      type:"text", width:"full", placeholder:"z.B. 20 Erstgespräche führen"
+    }],
+    initial: vorhanden ? { goal: vorhanden.goal } : null,
+    onSubmit: async werte=>{
+      const { data, error } = await db.from("weekly_goals")
+        .upsert({ week_start: weekStart, goal: werte.goal }, { onConflict: "week_start" }).select();
+      pruefe(error, "Wochenfokus konnte nicht gespeichert werden");
+      const idx = state.goals.findIndex(g=>g.week_start===weekStart);
+      if(idx>=0) state.goals[idx] = data[0]; else state.goals.push(data[0]);
+      renderGoal();
+    }
+  });
 });
 
-/* ---------- Projekte: Modals & Aktionen ---------- */
-let editingProjectId = null; // null = Anlegen, sonst Bearbeiten
-let stepForProjectId = null;
-
-function openProjectModal(id){
-  editingProjectId = id ?? null;
+/* ---------- Projekte ---------- */
+async function openProjectModal(id){
   const p = id != null ? state.projects.find(x=>String(x.id)===String(id)) : null;
-  document.getElementById("projectModalTitle").textContent = p ? "Projekt bearbeiten" : "Neues Projekt";
-  document.getElementById("inProjectTitle").value = p ? p.title : "";
-  document.getElementById("inProjectDesc").value = p && p.description ? p.description : "";
-  document.getElementById("inProjectOwner").value = p ? p.owner : "beide";
-  document.getElementById("inProjectStatus").value = p ? p.status : "aktiv";
-  document.getElementById("inProjectDue").value = p && p.due_date ? p.due_date : "";
-  document.getElementById("projectDeleteBtn").style.display = p ? "inline-flex" : "none";
-  document.getElementById("projectModal").classList.add("open");
-  setTimeout(()=>document.getElementById("inProjectTitle").focus(), 0);
+
+  await openModal({
+    title: p ? "Projekt bearbeiten" : "Neues Projekt",
+    submitLabel: p ? "Änderungen speichern" : "Projekt anlegen",
+    fields: [
+      {name:"title",       label:"Projektname",  type:"text",     required:true, width:"full", placeholder:"z.B. Website-Relaunch"},
+      {name:"description", label:"Beschreibung", type:"textarea", width:"full", placeholder:"Worum geht es? (optional)"},
+      {name:"owner",       label:"Verantwortlich", type:"select", options:PERSON_OPTIONS, value:"beide"},
+      {name:"status",      label:"Status",       type:"select",   options:[["aktiv","Aktiv"],["pausiert","Pausiert"],["fertig","Fertig"]], value:"aktiv"},
+      {name:"due_date",    label:"Deadline",     type:"date"}
+    ],
+    initial: p,
+    onSubmit: async werte=>{
+      const payload = {
+        title: werte.title,
+        description: werte.description || null,
+        owner: werte.owner,
+        status: werte.status,
+        due_date: werte.due_date || null
+      };
+      if(p){
+        const { data, error } = await db.from("projects").update(payload).eq("id", p.id).select();
+        pruefe(error, "Projekt konnte nicht gespeichert werden");
+        const idx = state.projects.findIndex(x=>String(x.id)===String(p.id));
+        if(idx>=0) state.projects[idx] = data[0];
+      } else {
+        const { data, error } = await db.from("projects").insert(payload).select();
+        pruefe(error, "Projekt konnte nicht angelegt werden");
+        state.projects.push(data[0]);
+      }
+      renderProjects();
+    },
+    onDelete: p ? async ()=>{
+      const n = stepsOf(p.id).length;
+      const ok = await confirmDialog(
+        `Projekt „${p.title}" löschen?`,
+        { detail: n ? `Die ${n} zugehörigen Schritte werden mitgelöscht.` : "" }
+      );
+      if(!ok) return false;   // Dialog bleibt offen
+      const { error } = await db.from("projects").delete().eq("id", p.id);
+      pruefe(error, "Projekt konnte nicht gelöscht werden");
+      state.projects = state.projects.filter(x=>String(x.id)!==String(p.id));
+      state.projectSteps = state.projectSteps.filter(s=>String(s.project_id)!==String(p.id));
+      renderProjects();
+    } : null
+  });
 }
-function closeProjectModal(){ document.getElementById("projectModal").classList.remove("open"); }
+
+async function openStepModal(projectId){
+  await openModal({
+    title: "Neuer Schritt",
+    submitLabel: "Schritt hinzufügen",
+    fields: [
+      {name:"text",     label:"Was ist zu tun?", type:"text", required:true, width:"full", placeholder:"z.B. Struktur der Startseite festlegen"},
+      {name:"assignee", label:"Zugewiesen an",   type:"select", options:PERSON_OPTIONS, value:"tim"}
+    ],
+    onSubmit: async werte=>{
+      const { data, error } = await db.from("project_steps")
+        .insert({ project_id: projectId, text: werte.text, assignee: werte.assignee, done: false }).select();
+      pruefe(error, "Schritt konnte nicht gespeichert werden");
+      state.projectSteps.push(data[0]);
+      renderProjects();
+    }
+  });
+}
 
 document.getElementById("openAddProjectBtn").addEventListener("click", ()=>openProjectModal(null));
-document.getElementById("projectModalClose").addEventListener("click", closeProjectModal);
-document.getElementById("projectModal").addEventListener("click", (ev)=>{ if(ev.target.id==="projectModal") closeProjectModal(); });
 document.getElementById("showDoneProjects").addEventListener("change", renderProjects);
-
-document.getElementById("projectSaveBtn").addEventListener("click", async ()=>{
-  const title = document.getElementById("inProjectTitle").value.trim();
-  if(!title){ alert("Bitte einen Projektnamen eingeben."); return; }
-  const payload = {
-    title,
-    description: document.getElementById("inProjectDesc").value.trim() || null,
-    owner: document.getElementById("inProjectOwner").value,
-    status: document.getElementById("inProjectStatus").value,
-    due_date: document.getElementById("inProjectDue").value || null
-  };
-  if(editingProjectId != null){
-    const { data, error } = await db.from("projects").update(payload).eq("id", editingProjectId).select();
-    if(error){ console.error(error); alert("Projekt konnte nicht gespeichert werden: "+error.message); return; }
-    const idx = state.projects.findIndex(p=>String(p.id)===String(editingProjectId));
-    if(idx>=0) state.projects[idx] = data[0];
-  } else {
-    const { data, error } = await db.from("projects").insert(payload).select();
-    if(error){ console.error(error); alert("Projekt konnte nicht angelegt werden: "+error.message); return; }
-    state.projects.push(data[0]);
-  }
-  closeProjectModal();
-  renderProjects();
-});
-
-document.getElementById("projectDeleteBtn").addEventListener("click", async ()=>{
-  if(editingProjectId == null) return;
-  const p = state.projects.find(x=>String(x.id)===String(editingProjectId));
-  const n = stepsOf(editingProjectId).length;
-  if(!confirm(`Projekt "${p?p.title:""}" wirklich löschen?${n?`\n\nDie ${n} zugehörigen Schritte werden mitgelöscht.`:""}`)) return;
-  const { error } = await db.from("projects").delete().eq("id", editingProjectId);
-  if(error){ console.error(error); alert("Projekt konnte nicht gelöscht werden: "+error.message); return; }
-  state.projects = state.projects.filter(x=>String(x.id)!==String(editingProjectId));
-  state.projectSteps = state.projectSteps.filter(s=>String(s.project_id)!==String(editingProjectId));
-  closeProjectModal();
-  renderProjects();
-});
-
-function openStepModal(projectId){
-  stepForProjectId = projectId;
-  document.getElementById("inStepText").value = "";
-  document.getElementById("inStepAssignee").value = "tim";
-  document.getElementById("stepModal").classList.add("open");
-  setTimeout(()=>document.getElementById("inStepText").focus(), 0);
-}
-function closeStepModal(){ document.getElementById("stepModal").classList.remove("open"); }
-
-document.getElementById("stepModalClose").addEventListener("click", closeStepModal);
-document.getElementById("stepModal").addEventListener("click", (ev)=>{ if(ev.target.id==="stepModal") closeStepModal(); });
-document.getElementById("inStepText").addEventListener("keydown", (ev)=>{ if(ev.key==="Enter") document.getElementById("stepSaveBtn").click(); });
-
-document.getElementById("stepSaveBtn").addEventListener("click", async ()=>{
-  const text = document.getElementById("inStepText").value.trim();
-  if(!text){ alert("Bitte einen Schritt eingeben."); return; }
-  const { data, error } = await db.from("project_steps").insert({
-    project_id: stepForProjectId,
-    text,
-    assignee: document.getElementById("inStepAssignee").value,
-    done: false
-  }).select();
-  if(error){ console.error(error); alert("Schritt konnte nicht gespeichert werden: "+error.message); return; }
-  state.projectSteps.push(data[0]);
-  closeStepModal();
-  renderProjects();
-});
 
 document.getElementById("projectsList").addEventListener("click", async (ev)=>{
   const el = ev.target.closest("[data-pact]");
@@ -761,94 +759,78 @@ document.getElementById("projectsList").addEventListener("click", async (ev)=>{
   if(act === "step-toggle"){
     const done = el.checked;
     const { error } = await db.from("project_steps").update({ done }).eq("id", s.id);
-    if(error){ console.error(error); alert("Konnte nicht gespeichert werden: "+error.message); el.checked = !done; return; }
+    if(error){ console.error(error); showErrorBanner("Konnte nicht gespeichert werden: "+error.message); el.checked = !done; return; }
     s.done = done;
     renderProjects();
   } else if(act === "step-del"){
-    if(!confirm("Schritt \""+s.text+"\" löschen?")) return;
+    if(!await confirmDialog(`Schritt „${s.text}" löschen?`)) return;
     const { error } = await db.from("project_steps").delete().eq("id", s.id);
-    if(error){ console.error(error); alert("Konnte nicht gelöscht werden: "+error.message); return; }
+    if(error){ console.error(error); showErrorBanner("Konnte nicht gelöscht werden: "+error.message); return; }
     state.projectSteps = state.projectSteps.filter(x=>String(x.id)!==String(id));
     renderProjects();
   }
 });
 
 /* ---------- Commitments ---------- */
-function openAddCommitmentModal(){
-  document.getElementById("inCommitmentText").value = "";
-  document.getElementById("inCommitmentAssignee").value = "tim";
-  document.getElementById("addCommitmentModal").classList.add("open");
-  setTimeout(()=>document.getElementById("inCommitmentText").focus(), 0);
-}
-function closeAddCommitmentModal(){ document.getElementById("addCommitmentModal").classList.remove("open"); }
-
-document.getElementById("openAddCommitmentBtn").addEventListener("click", openAddCommitmentModal);
-document.getElementById("addCommitmentModalClose").addEventListener("click", closeAddCommitmentModal);
-document.getElementById("addCommitmentModal").addEventListener("click", (ev)=>{ if(ev.target.id==="addCommitmentModal") closeAddCommitmentModal(); });
-document.getElementById("inCommitmentText").addEventListener("keydown", (ev)=>{ if(ev.key==="Enter") document.getElementById("addCommitmentBtn").click(); });
-
-document.getElementById("addCommitmentBtn").addEventListener("click", async ()=>{
-  const text = document.getElementById("inCommitmentText").value.trim();
-  if(!text){ alert("Bitte ein Commitment eingeben."); return; }
-  const assignee = document.getElementById("inCommitmentAssignee").value;
-  const { data, error } = await db.from("weekly_commitments").insert({
-    week_start: WEEKS[entryWeekIdx()][0], text, assignee, done: false
-  }).select();
-  if(error){ console.error(error); alert("Commitment konnte nicht gespeichert werden: "+error.message); return; }
-  state.commitments.push(data[0]);
-  closeAddCommitmentModal();
-  renderCommitments();
+document.getElementById("openAddCommitmentBtn").addEventListener("click", async ()=>{
+  await openModal({
+    title: "Neues Commitment",
+    submitLabel: "Commitment hinzufügen",
+    fields: [
+      {name:"text",     label:"Worauf legst du dich diese Woche fest?", type:"text", required:true, width:"full", placeholder:"z.B. 12 Std. Lead-Gen"},
+      {name:"assignee", label:"Zugewiesen an", type:"select", options:PERSON_OPTIONS, value:"tim"}
+    ],
+    onSubmit: async werte=>{
+      const { data, error } = await db.from("weekly_commitments")
+        .insert({ week_start: WEEKS[entryWeekIdx()][0], text: werte.text, assignee: werte.assignee, done: false }).select();
+      pruefe(error, "Commitment konnte nicht gespeichert werden");
+      state.commitments.push(data[0]);
+      renderCommitments();
+    }
+  });
 });
 
 document.getElementById("commitmentsList").addEventListener("click", async (ev)=>{
   const el = ev.target.closest("[data-act]");
   if(!el) return;
-  const id = el.dataset.id;
-  const c = state.commitments.find(x=>String(x.id)===String(id));
+  const c = state.commitments.find(x=>String(x.id)===String(el.dataset.id));
   if(!c) return;
 
   if(el.dataset.act === "toggle"){
     const done = el.checked;
     const { error } = await db.from("weekly_commitments").update({ done }).eq("id", c.id);
-    if(error){ console.error(error); alert("Konnte nicht gespeichert werden: "+error.message); el.checked = !done; return; }
+    if(error){ console.error(error); showErrorBanner("Konnte nicht gespeichert werden: "+error.message); el.checked = !done; return; }
     c.done = done;
     renderCommitments();
   } else if(el.dataset.act === "del"){
-    if(!confirm("Commitment \""+c.text+"\" löschen?")) return;
+    if(!await confirmDialog(`Commitment „${c.text}" löschen?`)) return;
     const { error } = await db.from("weekly_commitments").delete().eq("id", c.id);
-    if(error){ console.error(error); alert("Konnte nicht gelöscht werden: "+error.message); return; }
-    state.commitments = state.commitments.filter(x=>String(x.id)!==String(id));
+    if(error){ console.error(error); showErrorBanner("Konnte nicht gelöscht werden: "+error.message); return; }
+    state.commitments = state.commitments.filter(x=>String(x.id)!==String(c.id));
     renderCommitments();
   }
 });
 
-/* ---------- Neue-Aufgabe-Modal ---------- */
-function openAddTaskModal(){
-  document.getElementById("inTaskText").value = "";
-  document.getElementById("inTaskAssignee").value = "tim";
-  document.getElementById("inTaskPriority").value = "mittel";
-  document.getElementById("addTaskModal").classList.add("open");
-  setTimeout(()=>document.getElementById("inTaskText").focus(), 0);
-}
-function closeAddTaskModal(){ document.getElementById("addTaskModal").classList.remove("open"); }
-
-document.getElementById("openAddTaskBtn").addEventListener("click", openAddTaskModal);
-document.getElementById("addTaskModalClose").addEventListener("click", closeAddTaskModal);
-document.getElementById("addTaskModal").addEventListener("click", (ev)=>{ if(ev.target.id==="addTaskModal") closeAddTaskModal(); });
-
-document.getElementById("addTaskBtn").addEventListener("click", async ()=>{
-  const textEl = document.getElementById("inTaskText");
-  const text = textEl.value.trim();
-  if(!text){ alert("Bitte eine Aufgabe eingeben."); return; }
-  const assignee = document.getElementById("inTaskAssignee").value;
-  const priority = document.getElementById("inTaskPriority").value;
-  const { data, error } = await db.from("tasks").insert({
-    week_start: WEEKS[state.boardWeekIdx][0], text, assignee, priority, done: false
-  }).select();
-  if(error){ console.error(error); alert("Aufgabe konnte nicht gespeichert werden: "+error.message); return; }
-  state.tasks.push(data[0]);
-  closeAddTaskModal();
-  renderTasks();
+/* ---------- Neue Aufgabe ---------- */
+document.getElementById("openAddTaskBtn").addEventListener("click", async ()=>{
+  await openModal({
+    title: "Neue Aufgabe",
+    submitLabel: "Aufgabe hinzufügen",
+    fields: [
+      {name:"text",     label:"Was ist zu tun?", type:"text", required:true, width:"full", placeholder:"z.B. Angebot für Kunde X schreiben"},
+      {name:"assignee", label:"Zugewiesen an",   type:"select", options:PERSON_OPTIONS, value:"tim"},
+      {name:"priority", label:"Priorität",       type:"select", options:PRIO_OPTIONS, value:"mittel"}
+    ],
+    onSubmit: async werte=>{
+      const { data, error } = await db.from("tasks").insert({
+        week_start: WEEKS[state.boardWeekIdx][0],
+        text: werte.text, assignee: werte.assignee, priority: werte.priority, done: false
+      }).select();
+      pruefe(error, "Aufgabe konnte nicht gespeichert werden");
+      state.tasks.push(data[0]);
+      renderTasks();
+    }
+  });
 });
 
 /* ---------- Board: Wochen-Navigation ---------- */
@@ -867,79 +849,54 @@ document.getElementById("ztNextWeek").addEventListener("click", ()=>{
   if(state.ztWeekIdx < N_WEEKS - 1){ state.ztWeekIdx++; renderZeittracking(); }
 });
 
-/* ---------- Board: Karte anklicken -> Modal ---------- */
-let modalTaskId = null;
-function openTaskModal(id){
-  const t = state.tasks.find(x=>String(x.id)===String(id));
-  if(!t) return;
-  modalTaskId = t.id;
-  document.getElementById("modalTaskText").value = t.text;
-  document.getElementById("modalStatus").value = normStatus(t);
-  document.getElementById("modalAssignee").value = t.assignee;
-  document.getElementById("modalPriority").value = t.priority;
-  // "Nächste Woche" nur anbieten, wenn es eine nächste Woche gibt
-  document.getElementById("modalPushWeek").style.display = (state.boardWeekIdx < N_WEEKS - 1) ? "inline-flex" : "none";
-  document.getElementById("taskModal").classList.add("open");
-}
-function closeTaskModal(){
-  document.getElementById("taskModal").classList.remove("open");
-  modalTaskId = null;
-}
-
+/* ---------- Aufgabe bearbeiten ---------- */
 document.getElementById("kanbanBoard").addEventListener("click", (ev)=>{
   const card = ev.target.closest(".kanban-card");
   if(card) openTaskModal(card.dataset.id);
 });
 
-document.getElementById("modalClose").addEventListener("click", closeTaskModal);
-document.getElementById("taskModal").addEventListener("click", (ev)=>{
-  if(ev.target.id === "taskModal") closeTaskModal();
-});
-document.addEventListener("keydown", (ev)=>{
-  if(ev.key !== "Escape") return;
-  ["taskModal","goalModal","addTaskModal"].forEach(id=>document.getElementById(id).classList.remove("open"));
-  modalTaskId = null;
-});
-
-document.getElementById("modalSave").addEventListener("click", async ()=>{
-  if(modalTaskId == null) return;
-  const t = state.tasks.find(x=>String(x.id)===String(modalTaskId));
+async function openTaskModal(id){
+  const t = state.tasks.find(x=>String(x.id)===String(id));
   if(!t) return;
-  const text = document.getElementById("modalTaskText").value.trim();
-  if(!text){ alert("Der Aufgabentext darf nicht leer sein."); return; }
-  const status = document.getElementById("modalStatus").value;
-  const assignee = document.getElementById("modalAssignee").value;
-  const priority = document.getElementById("modalPriority").value;
-  const done = status === "done";
-  const { error } = await db.from("tasks").update({ text, status, assignee, priority, done }).eq("id", t.id);
-  if(error){ console.error(error); alert("Speichern fehlgeschlagen: "+error.message); return; }
-  Object.assign(t, { text, status, assignee, priority, done });
-  closeTaskModal();
-  renderTasks();
-});
+  const gibtNaechsteWoche = state.boardWeekIdx < N_WEEKS - 1;
 
-document.getElementById("modalPushWeek").addEventListener("click", async ()=>{
-  if(modalTaskId == null || state.boardWeekIdx >= N_WEEKS - 1) return;
-  const t = state.tasks.find(x=>String(x.id)===String(modalTaskId));
-  if(!t) return;
-  const nextWeekStart = WEEKS[state.boardWeekIdx + 1][0];
-  const { error } = await db.from("tasks").update({ week_start: nextWeekStart }).eq("id", t.id);
-  if(error){ console.error(error); alert("Verschieben fehlgeschlagen: "+error.message); return; }
-  t.week_start = nextWeekStart;
-  closeTaskModal();
-  renderTasks();
-});
+  const ergebnis = await openModal({
+    title: "Aufgabe bearbeiten",
+    submitLabel: "Speichern",
+    fields: [
+      {name:"text",     label:"Aufgabe",       type:"text", required:true, width:"full"},
+      {name:"status",   label:"Status",        type:"select", options:STATUS_COLUMNS},
+      {name:"assignee", label:"Zugewiesen an", type:"select", options:PERSON_OPTIONS},
+      {name:"priority", label:"Priorität",     type:"select", options:PRIO_OPTIONS}
+    ],
+    initial: { text: t.text, status: normStatus(t), assignee: t.assignee, priority: t.priority },
+    extraActions: [{ label: "→ Nächste Woche", value: "push", hidden: !gibtNaechsteWoche }],
+    onSubmit: async werte=>{
+      const done = werte.status === "done";
+      const { error } = await db.from("tasks")
+        .update({ text: werte.text, status: werte.status, assignee: werte.assignee, priority: werte.priority, done })
+        .eq("id", t.id);
+      pruefe(error, "Speichern fehlgeschlagen");
+      Object.assign(t, { text: werte.text, status: werte.status, assignee: werte.assignee, priority: werte.priority, done });
+      renderTasks();
+    },
+    onDelete: async ()=>{
+      if(!await confirmDialog(`Aufgabe „${t.text}" löschen?`)) return false;
+      const { error } = await db.from("tasks").delete().eq("id", t.id);
+      pruefe(error, "Löschen fehlgeschlagen");
+      state.tasks = state.tasks.filter(x=>String(x.id)!==String(t.id));
+      renderTasks();
+    }
+  });
 
-document.getElementById("modalDelete").addEventListener("click", async ()=>{
-  if(modalTaskId == null) return;
-  if(!confirm("Aufgabe wirklich löschen?")) return;
-  const id = modalTaskId;
-  const { error } = await db.from("tasks").delete().eq("id", id);
-  if(error){ console.error(error); alert("Löschen fehlgeschlagen: "+error.message); return; }
-  state.tasks = state.tasks.filter(t=>String(t.id)!==String(id));
-  closeTaskModal();
-  renderTasks();
-});
+  if(ergebnis && ergebnis.action === "push"){
+    const nextWeekStart = WEEKS[state.boardWeekIdx + 1][0];
+    const { error } = await db.from("tasks").update({ week_start: nextWeekStart }).eq("id", t.id);
+    if(error){ console.error(error); showErrorBanner("Verschieben fehlgeschlagen: "+error.message); return; }
+    t.week_start = nextWeekStart;
+    renderTasks();
+  }
+}
 
 /* ---------- Init ---------- */
 async function init(){

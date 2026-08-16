@@ -51,10 +51,23 @@ if banner is None:
     print("Wahrscheinlich hat ein Modul nicht geladen — index.html direkt im")
     print("Browser oeffnen und die Konsole ansehen.")
     sys.exit(1)
+# Der Dialogteil muss wirklich gelaufen sein — sonst prueft der Test die
+# Popups gar nicht und meldet trotzdem "bestanden".
+ERWARTETE_DIALOGPRUEFUNGEN = 8
+
 if not banner.startswith("SMOKE: OK"):
     m = re.search(r'id="smokeResult"[^>]*>(.*?)</div>', dom, re.S)
     print("FEHLGESCHLAGEN: JavaScript-Fehler beim Rendern\n")
     print(html.unescape(m.group(1)).strip() if m else banner)
+    sys.exit(1)
+
+m = re.search(r"Dialog: (\d+) Pruefungen bestanden", banner)
+if not m:
+    print("FEHLGESCHLAGEN: Die Dialogpruefung ist gar nicht gelaufen.")
+    sys.exit(1)
+if int(m.group(1)) != ERWARTETE_DIALOGPRUEFUNGEN:
+    print(f"FEHLGESCHLAGEN: {m.group(1)} Dialogpruefungen statt {ERWARTETE_DIALOGPRUEFUNGEN} — "
+          "es wurde eine uebersprungen.")
     sys.exit(1)
 
 # 2) Stimmen die gerechneten Zahlen?
@@ -73,9 +86,10 @@ if count(r'class="bar-fill') < 10:
 projects = count(r'class="project-card["\s]')
 if projects != 1:
     failures.append(f"Projektkarten: erwartet 1, waren {projects}")
+# 3, nicht 2: die Dialogpruefung weiter unten legt selbst eine Aufgabe an.
 tasks = count(r'class="kanban-card["\s]')
-if tasks != 2:
-    failures.append(f"Aufgabenkarten: erwartet 2, waren {tasks}")
+if tasks != 3:
+    failures.append(f"Aufgabenkarten: erwartet 3 (2 aus den Testdaten + 1 aus der Dialogpruefung), waren {tasks}")
 if count(r"<tr") < 25:
     failures.append("Verlaufstabelle hat zu wenige Zeilen.")
 

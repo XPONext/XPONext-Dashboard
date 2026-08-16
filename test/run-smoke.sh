@@ -40,7 +40,7 @@ PY
 sleep 1
 
 "$CHROME" --headless --disable-gpu --no-sandbox --no-first-run \
-  --disable-extensions --virtual-time-budget=6000 \
+  --disable-extensions --virtual-time-budget=9000 \
   --dump-dom "http://localhost:$PORT/_smoketest.html" 2>/dev/null > "$TMP/dom.html"
 
 python3 test/assert-smoke.py "$TMP/dom.html"
