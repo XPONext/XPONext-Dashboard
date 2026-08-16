@@ -2,10 +2,10 @@
 # Startet den Zeittracker-Loop: alle 30 Min ein Popup, bis "Tracking stoppen"
 # gedrückt wird oder der Loop-Prozess anderweitig beendet wird.
 #
-# Wird beim Anmelden automatisch vom LaunchAgent gestartet (mit --delay, damit
-# nicht mitten im Hochfahren schon ein Dialog aufgeht) und zusätzlich per
-# Doppelklick auf "Start Tracking.app", falls man ihn zwischendurch von Hand
-# wieder anwerfen will.
+# Wird nicht direkt vom LaunchAgent aufgerufen, sondern von check_loop.sh — das
+# entscheidet vorher, ob der Loop überhaupt laufen soll (Feierabend? Arbeitszeit?).
+# Das --delay sorgt dafür, dass nicht mitten im Hochfahren oder Aufwachen schon
+# ein Dialog aufgeht. Von Hand starten geht weiterhin direkt über dieses Skript.
 DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PIDFILE="$DIR/.tmp/loop.pid"
 mkdir -p "$DIR/.tmp"
@@ -46,11 +46,12 @@ osascript -e 'display notification "Zeittracking läuft — alle 30 Min ein Popu
 
 while true; do
   python3 "$DIR/popup.py"
-  # "Feierabend" im Popup legt diese Datei an — dann für heute Schluss,
-  # beim nächsten Anmelden startet der LaunchAgent den Loop wieder.
+  # "Feierabend" im Popup legt diese Datei an — dann für heute Schluss. Den Tag
+  # merkt sich popup.py separat in .tmp/feierabend.date; check_loop.sh startet
+  # den Loop deshalb erst morgen früh wieder.
   if [ -f "$DIR/.tmp/stop.flag" ]; then
     rm -f "$DIR/.tmp/stop.flag" "$PIDFILE"
-    osascript -e 'display notification "Zeittracking gestoppt. Läuft beim nächsten Anmelden wieder." with title "XPO Zeittracker"'
+    osascript -e 'display notification "Zeittracking gestoppt. Läuft morgen früh wieder." with title "XPO Zeittracker"'
     exit 0
   fi
   sleep 1800

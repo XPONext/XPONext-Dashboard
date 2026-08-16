@@ -1,8 +1,9 @@
 # XPO Zeittracker
 
-Läuft automatisch — einmal einrichten, danach startet er bei jeder Anmeldung von
-selbst (rund eine Minute nach dem Hochfahren). Kein Icon zum Draufdrücken. Ab
-dann poppt alle 30 Minuten ein natives macOS-Dialogfenster auf und fragt:
+Läuft automatisch — einmal einrichten, danach startet er von selbst: bei jeder
+Anmeldung (rund eine Minute nach dem Hochfahren) und auch, wenn du den Laptop
+morgens einfach nur aufklappst. Kein Icon zum Draufdrücken. Ab dann poppt alle
+30 Minuten ein natives macOS-Dialogfenster auf und fragt:
 
 1. **Feierabend**, **Pause** oder **Jetzt eintragen** — bei Pause wird alles andere übersprungen und eine Pause getrackt, bei Feierabend hört er für heute auf
 2. **Für wen?** — die Kundenliste
@@ -73,8 +74,32 @@ Das war's. Der Tracker läuft sofort los und ab dann bei jeder Anmeldung.
 ## Benutzung
 
 - **Läuft von allein** im Hintergrund (kein Fenster, kein Dock-Icon)
-- **Feierabend** im Popup → Schluss für heute; beim nächsten Anmelden läuft er wieder
+- **Feierabend** im Popup → Schluss für heute; am nächsten Morgen läuft er wieder
 - **Pause** im Popup → trackt eine Pause, der Loop läuft weiter
+
+## Wie das "von selbst" funktioniert
+
+Aufklappen ist für macOS kein Anmelden — ein LaunchAgent mit `RunAtLoad` allein
+würde also nur beim Login starten. Wer seinen Mac nie neu startet, sondern nur
+zuklappt, bekäme nach einem Feierabend nie wieder ein Popup. Deshalb hat der
+Agent zusätzlich ein `StartInterval` von 5 Minuten: solche Trigger holt launchd
+direkt nach dem Aufwachen nach.
+
+Jeder Trigger landet in `check_loop.sh`, das drei Dinge prüft, bevor es den Loop
+anwirft:
+
+1. Läuft der Loop schon? (dann nichts tun)
+2. Wurde heute schon Feierabend gedrückt? (`.tmp/feierabend.date`)
+3. Ist gerade Arbeitszeit? (6–22 Uhr, `START_HOUR`/`END_HOUR` in `check_loop.sh`)
+
+Ohne Punkt 3 würde nach einem Feierabend um 22 Uhr um 00:05 sofort wieder ein
+Popup aufgehen, sobald der Tag wechselt und der Rechner noch wach ist. Wer
+früher anfängt oder später aufhört, ändert die beiden Werte und führt
+`./install.sh` erneut aus.
+
+Es ist bewusst **ein** Agent für beides: launchd startet einen Job nie doppelt,
+solange die erste Instanz läuft — während der Loop läuft, laufen die
+Intervall-Trigger einfach ins Leere.
 
 ## Ganz abschalten
 
