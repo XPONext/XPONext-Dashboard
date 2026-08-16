@@ -251,10 +251,15 @@ def main():
             return  # abgebrochen — nichts speichern
 
         if result == "STOP":
-            # Feierabend: Loop nach diesem Durchlauf beenden (start_loop.sh liest
-            # die Datei). Beim nächsten Anmelden startet der LaunchAgent neu.
+            # Feierabend, zwei Dateien mit zwei Aufgaben:
+            #   stop.flag       — kurzlebiges Signal an start_loop.sh ("beende dich
+            #                     nach diesem Durchlauf"), wird dort gleich gelöscht
+            #   feierabend.date — bleibt liegen und merkt sich den Tag, damit
+            #                     check_loop.sh den Loop nicht sofort wieder
+            #                     anwirft. Ab morgen früh läuft er von selbst.
             (ROOT / ".tmp").mkdir(exist_ok=True)
             (ROOT / ".tmp" / "stop.flag").touch()
+            (ROOT / ".tmp" / "feierabend.date").write_text(datetime.now().strftime("%Y-%m-%d"))
             return
 
         if result == "PAUSE":
