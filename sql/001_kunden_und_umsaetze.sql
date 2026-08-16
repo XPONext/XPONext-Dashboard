@@ -6,19 +6,53 @@
 -- auf die Kundenliste. Danach pflegst du Kunden im Dashboard statt in der Datenbank,
 -- und `popup.py` muss dafür NICHT neu installiert werden.
 --
--- VORHER: sql/000_inventur.sql ausführen und die Ergebnisse ansehen.
+-- NICHTS ANZUPASSEN. Einfach komplett einfügen und ausführen.
 --
--- WICHTIG — vor dem Ausführen eine Sache ersetzen:
---   Überall steht `<APP_SECRET>` als Platzhalter. Setz dort die Formulierung
---   ein, die die Inventur-Abfrage 4 für die bestehenden Tabellen zeigt.
---   Steht dort z.B.
---       (current_setting('request.headers', true)::json ->> 'x-app-secret') = 'euerGeheimnis'
---   dann muss hier exakt dasselbe stehen. Nicht abweichend formulieren —
---   sonst sind die neuen Tabellen anders abgesichert als die alten.
+-- Das Team-Passwort steht nirgends in dieser Datei: Abschnitt 0 liest die
+-- Absicherung aus einer bestehenden Tabelle aus und wendet sie wörtlich auf
+-- die neuen an. Dadurch sind alle Tabellen garantiert gleich geschützt, und
+-- das Passwort muss nirgendwo hineinkopiert werden.
 --
--- Ausführen: Supabase → SQL Editor → einfügen → Run.
--- Die Abschnitte laufen in dieser Reihenfolge und sind einzeln wiederholbar.
+-- Ausführen: Supabase → SQL Editor → New query → alles einfügen → Run.
+-- Das Skript ist wiederholbar: ein zweiter Lauf ändert nichts kaputt.
 -- ============================================================
+
+
+-- ------------------------------------------------------------
+-- 0) Die bestehende Absicherung übernehmen
+--
+-- Legt eine Hilfsfunktion an, die eine Tabelle genauso absichert wie die
+-- schon vorhandenen. Bricht mit einer klaren Meldung ab, wenn sich keine
+-- Vorlage finden lässt — lieber gar nichts anlegen als etwas Ungeschütztes.
+-- ------------------------------------------------------------
+create or replace function public.xpo_policy_uebernehmen(ziel text)
+returns void
+language plpgsql
+as $$
+declare
+  ausdruck text;
+begin
+  -- Vorlage: die Policy einer bestehenden Tabelle
+  select p.qual into ausdruck
+  from pg_policies p
+  where p.schemaname = 'public'
+    and p.tablename in ('time_entries','daily_team','daily_personal','tasks')
+    and p.qual is not null
+  order by case p.tablename
+             when 'time_entries' then 0 when 'daily_team' then 1 else 2 end
+  limit 1;
+
+  if ausdruck is null then
+    raise exception
+      'Keine bestehende Policy als Vorlage gefunden. Bitte melden — die neuen Tabellen dürfen nicht ungeschützt angelegt werden.';
+  end if;
+
+  execute format('alter table public.%I enable row level security', ziel);
+  execute format('drop policy if exists "app_secret_all" on public.%I', ziel);
+  execute format(
+    'create policy "app_secret_all" on public.%I for all using (%s) with check (%s)',
+    ziel, ausdruck, ausdruck);
+end $$;
 
 
 -- ------------------------------------------------------------
@@ -46,13 +80,7 @@ create table if not exists public.customers (
 create index if not exists customers_aktiv_idx
   on public.customers (active, sort_order);
 
-alter table public.customers enable row level security;
-
-drop policy if exists "app_secret_all" on public.customers;
-create policy "app_secret_all" on public.customers
-  for all
-  using      (<APP_SECRET>)
-  with check (<APP_SECRET>);
+select public.xpo_policy_uebernehmen('customers');
 
 
 -- ------------------------------------------------------------
@@ -86,13 +114,7 @@ create table if not exists public.revenues (
 create index if not exists revenues_kunde_idx
   on public.revenues (customer_id, period_start);
 
-alter table public.revenues enable row level security;
-
-drop policy if exists "app_secret_all" on public.revenues;
-create policy "app_secret_all" on public.revenues
-  for all
-  using      (<APP_SECRET>)
-  with check (<APP_SECRET>);
+select public.xpo_policy_uebernehmen('revenues');
 
 
 -- ------------------------------------------------------------
@@ -335,13 +357,7 @@ create table if not exists public.tracker_options (
   unique (kind, name)
 );
 
-alter table public.tracker_options enable row level security;
-
-drop policy if exists "app_secret_all" on public.tracker_options;
-create policy "app_secret_all" on public.tracker_options
-  for all
-  using      (<APP_SECRET>)
-  with check (<APP_SECRET>);
+select public.xpo_policy_uebernehmen('tracker_options');
 
 insert into public.tracker_options (kind, name, active, sort_order) values
   ('state','Deepwork',      true,  10),
@@ -370,8 +386,29 @@ grant select, insert, update, delete
 
 
 -- ------------------------------------------------------------
+-- 6d) Hilfsfunktion wieder entfernen — sie wurde nur zum Anlegen gebraucht
+-- ------------------------------------------------------------
+drop function if exists public.xpo_policy_uebernehmen(text);
+
+
+-- ------------------------------------------------------------
 -- 7) Gegenprobe — nach dem Ausführen ansehen
 -- ------------------------------------------------------------
+
+-- WICHTIGSTE PRÜFUNG: Sind alle drei neuen Tabellen abgesichert?
+-- In der Spalte "geschuetzt" muss überall "ja" stehen. Steht irgendwo "NEIN",
+-- sofort melden und die Tabellen nicht benutzen.
+select
+  t.tabelle,
+  case when p.policyname is not null then 'ja' else 'NEIN — ungeschützt!' end as geschuetzt,
+  c.relrowsecurity as rls_an
+from (values ('customers'),('revenues'),('tracker_options')) as t(tabelle)
+left join pg_class c
+  on c.relname = t.tabelle
+ and c.relnamespace = 'public'::regnamespace
+left join pg_policies p
+  on p.schemaname = 'public' and p.tablename = t.tabelle;
+
 
 -- Wurden alle Zeiteinträge verknüpft? "offen" sollte 0 sein
 -- (außer bei Einträgen ganz ohne Zuordnung, z.B. Pausen).
