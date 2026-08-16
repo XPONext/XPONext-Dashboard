@@ -37,3 +37,8 @@ export function barClass(pct){
   if(pct>=60) return "warn";
   return "low";
 }
+
+/* Heutiges Datum als YYYY-MM-DD. */
+export function todayIso(){
+  return new Date().toISOString().slice(0,10);
+}
