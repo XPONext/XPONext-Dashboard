@@ -5,13 +5,30 @@ selbst (rund eine Minute nach dem Hochfahren). Kein Icon zum Draufdrücken. Ab
 dann poppt alle 30 Minuten ein natives macOS-Dialogfenster auf und fragt:
 
 1. **Feierabend**, **Pause** oder **Jetzt eintragen** — bei Pause wird alles andere übersprungen und eine Pause getrackt, bei Feierabend hört er für heute auf
-2. **State**: Deepwork, Kommunikation, Abarbeiten, Planung, Strategie, Weiterbilden, Sonstiges
-3. **Zuordnung**: Kunde (z.B. chuong, protours), XPO (intern), Neukunden, Sonstiges — Liste kommt live aus Supabase
-4. **Aktivität**: Vertrieb, Copywriting, Admin, Techsetup, Beratung, Meeting — oder überspringen
+2. **Für wen?** — die Kundenliste
+3. **Was für Arbeit war das?** — Deepwork, Kommunikation, Abarbeiten, Planung, Sonstiges
 
 Die Antworten landen direkt in der geteilten Supabase-Datenbank und tauchen im
-XPONext-Dashboard (`index.html` eine Ebene höher) im Zeittracking-Tab auf. Wenn
-sich hier die Kategorien ändern, muss die Auswertung im Dashboard mitziehen.
+XPONext-Dashboard (`index.html` eine Ebene höher) im Zeittracking-Tab auf.
+
+## Kategorien ändern
+
+**Beide Listen kommen aus der Datenbank, nicht aus dem Skript.** Kategorien
+ändern heißt deshalb: eine Zeile in Supabase ändern — kein erneutes
+`install.sh` auf beiden Macs.
+
+- **Kunden** pflegst du im Dashboard unter „Kunden". Sie tauchen sofort im
+  Popup auf.
+- **Arbeitsarten** stehen in der Tabelle `tracker_options` (`kind = 'state'`).
+
+Ist die Datenbank nicht erreichbar, greifen die Rückfall-Listen oben in
+`popup.py` — das Popup geht dann trotzdem auf, statt die Zeit verfallen zu
+lassen.
+
+Der frühere vierte Schritt **Aktivität** ist entfallen: Er überschnitt sich mit
+der Arbeitsart („Kommunikation" vs. „Meeting", „Abarbeiten" vs. „Admin") und
+ist mit einer echten Kundenzuordnung redundant. Alte Einträge behalten ihre
+Aktivität, das Dashboard zeigt sie unter „Nach Art der Arbeit" weiterhin an.
 
 Es kann immer nur ein Fenster gleichzeitig offen sein — bist du länger weg, stapeln
 sich keine verpassten Popups, die Zeit bleibt einfach ungetrackt.

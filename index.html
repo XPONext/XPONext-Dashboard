@@ -351,49 +351,50 @@
 
 <section class="view" id="view-zeittracking">
   <div class="container">
-    <div class="card" id="ztTodayCard">
-      <h2>Heute</h2>
-      <div class="grid4">
-        <div class="stat"><div class="lbl">Std. gearbeitet</div><div class="num" id="ztTodayHours">0</div></div>
-        <div class="stat"><div class="lbl">Tim</div><div class="num" id="ztTodayTim">0</div></div>
-        <div class="stat"><div class="lbl">Simon</div><div class="num" id="ztTodaySimon">0</div></div>
-        <div class="stat"><div class="lbl">Pause</div><div class="num" id="ztTodayPause">0</div></div>
+
+    <div class="board-head">
+      <h2 id="ztWeekHeading">Diese Woche</h2>
+      <div class="week-nav">
+        <button type="button" class="wk-btn" id="ztPrevWeek" title="Vorherige Woche">‹</button>
+        <span id="ztWeekLabel">diese Woche</span>
+        <button type="button" class="wk-btn" id="ztNextWeek" title="Nächste Woche">›</button>
+      </div>
+    </div>
+
+    <div class="grid4">
+      <div class="stat">
+        <div class="lbl">Erfasst</div>
+        <div class="num" id="ztWeekHours">0</div>
+        <div class="pct" id="ztWeekHoursSub">Stunden gesamt</div>
+      </div>
+      <div class="stat">
+        <div class="lbl">Tim</div>
+        <div class="num" id="ztWeekTim">0</div>
+        <div class="pct" id="ztWeekTimSub">Stunden</div>
+      </div>
+      <div class="stat">
+        <div class="lbl">Simon</div>
+        <div class="num" id="ztWeekSimon">0</div>
+        <div class="pct" id="ztWeekSimonSub">Stunden</div>
+      </div>
+      <div class="stat" id="ztTodayCard">
+        <div class="lbl">Heute</div>
+        <div class="num" id="ztTodayHours">0</div>
+        <div class="pct" id="ztTodaySub">Stunden</div>
       </div>
     </div>
 
     <div class="card">
-      <div class="board-head">
-        <h2 id="ztWeekHeading">Diese Woche</h2>
-        <div class="week-nav">
-          <button type="button" class="wk-btn" id="ztPrevWeek" title="Vorherige Woche">‹</button>
-          <span id="ztWeekLabel">diese Woche</span>
-          <button type="button" class="wk-btn" id="ztNextWeek" title="Nächste Woche">›</button>
-        </div>
-      </div>
-      <div class="grid4">
-        <div class="stat"><div class="lbl">Std. gearbeitet</div><div class="num" id="ztWeekHours">0</div></div>
-        <div class="stat"><div class="lbl">Tim</div><div class="num" id="ztWeekTim">0</div></div>
-        <div class="stat"><div class="lbl">Simon</div><div class="num" id="ztWeekSimon">0</div></div>
-        <div class="stat"><div class="lbl">Bester Tag <small style="font-weight:400;">gesamt</small></div><div class="num" id="ztHighscoreDay" style="font-size:1rem;">—</div></div>
-      </div>
+      <h2>Für wen <small class="zt-week-sub">diese Woche</small></h2>
+      <div id="ztByZuordnung"></div>
     </div>
 
-    <div class="grid2">
-      <div class="card">
-        <h2>Nach State <small class="zt-week-sub">diese Woche</small></h2>
-        <div id="ztByState"></div>
-      </div>
+    <details class="card zt-details">
+      <summary><span class="zt-summary-title">Nach Art der Arbeit</span><span class="zt-summary-hint"></span></summary>
+      <div id="ztByState"></div>
+      <div class="zt-legacy" id="ztLegacy"></div>
+    </details>
 
-      <div class="card">
-        <h2>Nach Zuordnung <small class="zt-week-sub">diese Woche</small></h2>
-        <div id="ztByZuordnung"></div>
-      </div>
-    </div>
-
-    <div class="card" style="margin-top:1.3rem;">
-      <h2>Nach Aktivität <small class="zt-week-sub">diese Woche</small></h2>
-      <div id="ztByAktivitaet"></div>
-    </div>
   </div>
 </section>
 

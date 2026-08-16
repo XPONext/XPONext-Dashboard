@@ -321,3 +321,35 @@ section.view.active{display:block;}
 .num.lohn-ok{color:var(--green);}
 .num.lohn-warn{color:var(--amber);}
 .num.lohn-low{color:var(--red);}
+
+/* ---------- Zeittracking ---------- */
+.zt-details{padding-top:var(--sp-4);padding-bottom:var(--sp-4);}
+.zt-details summary{
+  display:flex;align-items:center;justify-content:space-between;gap:var(--sp-4);
+  cursor:pointer;list-style:none;
+}
+.zt-details summary::-webkit-details-marker{display:none;}
+.zt-summary-title{
+  font-size:var(--fs-h2);font-weight:var(--fw-black);
+  color:var(--text-primary);letter-spacing:-0.01em;
+}
+.zt-summary-hint{font-size:var(--fs-sm);color:var(--text-muted);}
+/* Der Hinweis benennt die naechste Aktion, nicht den aktuellen Zustand. */
+.zt-details:not([open]) .zt-summary-hint::after{content:"aufklappen ▾";}
+.zt-details[open] .zt-summary-hint::after{content:"zuklappen ▴";}
+.zt-details[open] summary{margin-bottom:var(--sp-4);}
+
+.zt-legacy{margin-top:var(--sp-5);}
+.zt-legacy:empty{margin-top:0;}
+.zt-legacy-head{
+  font-size:var(--fs-xs);font-weight:var(--fw-bold);
+  color:var(--text-muted);text-transform:uppercase;letter-spacing:0.055em;
+  margin-bottom:var(--sp-1);
+}
+.zt-legacy-hint{font-size:var(--fs-sm);color:var(--text-muted);margin-bottom:var(--sp-3);line-height:var(--lh-normal);}
+.zt-legacy-list{display:flex;flex-wrap:wrap;gap:var(--sp-2);}
+.zt-chip{
+  background:var(--bg-subtle);border:1px solid var(--border);
+  border-radius:var(--r-pill);padding:0.18rem 0.6rem;
+  font-size:var(--fs-sm);color:var(--text-body);
+}

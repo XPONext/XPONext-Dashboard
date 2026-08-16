@@ -8,12 +8,21 @@ zwischen den Dialogen), damit es sich beim Durchklicken flüssig anfühlt:
 
   1. Startdialog: "Feierabend" (beendet den Loop für heute), "Pause"
      (überspringt alles) oder "Jetzt eintragen"
-  2. State (Deepwork, Kommunikation, ... oder Sonstiges) — reine Auswahl, kein Freitext
-  3. Zuordnung (Kunde / XPO / Neukunden / Sonstiges) — Liste kommt live aus Supabase
-     (Tabelle "zuordnung_optionen"), damit neue Kunden sofort auswählbar sind, ohne
-     das Skript neu zu installieren
-  4. Aktivität (Vertrieb, Copywriting, ... oder Sonstiges) — oder überspringen
-  5. POST an Supabase
+  2. Für wen? — die Kundenliste, live aus Supabase
+  3. Was? — der State, ebenfalls live aus Supabase
+  4. POST an Supabase
+
+Beide Listen kommen aus der Datenbank, nicht aus diesem Skript. Kategorien
+ändern heißt deshalb: eine Zeile in Supabase ändern — kein erneutes install.sh
+auf beiden Macs.
+
+Der frühere vierte Schritt "Aktivität" ist entfallen. Er überschnitt sich mit
+dem State ("Kommunikation" vs. "Meeting", "Abarbeiten" vs. "Admin") und ist mit
+einer echten Kundenzuordnung ohnehin redundant. Aus vier Fenstern alle 30
+Minuten werden drei.
+
+Die Kundenfrage steht jetzt VOR der State-Frage: Für wen gearbeitet wurde,
+weiß man sofort; was für eine Art Arbeit es war, muss man kurz überlegen.
 """
 
 import json
@@ -48,9 +57,11 @@ PERSON = os.environ.get("PERSON", "")  # "tim" oder "simon"
 
 # ─── Kategorien ────────────────────────────────────────────────────────────
 
-STATES = ["Deepwork", "Kommunikation", "Abarbeiten", "Planung", "Strategie", "Weiterbilden", "Sonstiges"]
-ZUORDNUNG_FALLBACK = ["XPO", "Neukunden", "Sonstiges"]  # falls Supabase nicht erreichbar ist
-AKTIVITAETEN = ["Vertrieb", "Copywriting", "Admin", "Techsetup", "Beratung", "Meeting"]  # + "Überspringen", gleiche Funktion wie "Sonstiges"
+# Beide Listen werden live aus Supabase geladen. Die Konstanten hier greifen
+# nur, wenn die Datenbank nicht erreichbar ist — dann soll das Popup trotzdem
+# etwas Sinnvolles anbieten statt gar nicht aufzugehen.
+STATES_FALLBACK = ["Deepwork", "Kommunikation", "Abarbeiten", "Planung", "Sonstiges"]
+ZUORDNUNG_FALLBACK = ["XPO intern", "Neukunden", "Sonstiges"]
 
 SKIP_LABEL = "Überspringen"
 
@@ -85,7 +96,7 @@ def _choose_step(var, items, prompt, allow_skip=False, step_no=None, total=None)
 
 def run_flow():
     """Führt den gesamten Dialog-Ablauf in einem osascript-Prozess aus.
-    Gibt "PAUSE", "CANCELLED" oder "state<SEP>zuordnung<SEP>aktivitaet" zurück.
+    Gibt "STOP", "PAUSE", "CANCELLED" oder "zuordnung<SEP>state" zurück.
 
     Läuft komplett über "System Events" statt direkt über osascript/StandardAdditions:
     Wenn der LaunchAgent das Skript automatisch (ohne vorherige Terminal-Session)
@@ -93,7 +104,8 @@ def run_flow():
     Vordergrund/Fokus — System Events ist ein dauerhaft laufender Prozess und
     übernimmt das robuster.
     """
-    zuordnung_optionen = fetch_zuordnung_optionen()
+    zuordnung_optionen = fetch_options("zuordnung")
+    state_optionen = fetch_options("state")
     script = f'''
         tell application "System Events"
             activate
@@ -101,11 +113,10 @@ def run_flow():
             if startBtn is "Feierabend" then return "STOP"
             if startBtn is "Pause" then return "PAUSE"
 
-            {_choose_step("stateVal", STATES, "Was war dein State?", step_no=1, total=3)}
-            {_choose_step("zuordnungVal", zuordnung_optionen, "Wofür? (Kunde / XPO intern / Neukunden)", step_no=2, total=3)}
-            {_choose_step("aktivitaetVal", AKTIVITAETEN, "Was für eine Aktivität?", allow_skip=True, step_no=3, total=3)}
+            {_choose_step("zuordnungVal", zuordnung_optionen, "Für wen?", step_no=1, total=2)}
+            {_choose_step("stateVal", state_optionen, "Was für Arbeit war das?", step_no=2, total=2)}
 
-            return stateVal & "{SEP}" & zuordnungVal & "{SEP}" & aktivitaetVal
+            return zuordnungVal & "{SEP}" & stateVal
         end tell
     '''
     result = subprocess.run(["osascript", "-e", script], capture_output=True, text=True)
@@ -127,11 +138,24 @@ def show_error(msg=""):
 
 # ─── Supabase ────────────────────────────────────────────────────────────────
 
-def fetch_zuordnung_optionen():
-    """Holt die Liste der Zuordnungs-Optionen live aus Supabase (Tabelle
-    zuordnung_optionen). Fällt bei Fehlern auf ZUORDNUNG_FALLBACK zurück."""
+def fetch_options(kind):
+    """Holt eine Auswahlliste live aus Supabase.
+
+    kind = "zuordnung" -> die Kundenliste (Sicht zuordnung_optionen auf customers)
+    kind = "state"     -> die Arbeitsarten (Tabelle tracker_options)
+
+    Fällt bei jedem Fehler auf die Konstanten oben zurück: Ohne Internet soll
+    das Popup trotzdem aufgehen, sonst geht die Zeit verloren.
+    """
+    if kind == "zuordnung":
+        url = f"{SUPABASE_URL}/rest/v1/zuordnung_optionen?select=name&active=eq.true&order=sort_order.asc"
+        fallback = ZUORDNUNG_FALLBACK
+    else:
+        url = f"{SUPABASE_URL}/rest/v1/tracker_options?select=name&kind=eq.state&active=eq.true&order=sort_order.asc"
+        fallback = STATES_FALLBACK
+
     req = urllib.request.Request(
-        f"{SUPABASE_URL}/rest/v1/zuordnung_optionen?select=name&active=eq.true&order=sort_order.asc",
+        url,
         headers={
             "apikey": SUPABASE_ANON_KEY,
             "Authorization": f"Bearer {SUPABASE_ANON_KEY}",
@@ -140,21 +164,22 @@ def fetch_zuordnung_optionen():
     )
     try:
         with urllib.request.urlopen(req, timeout=10) as resp:
-            rows = json.loads(resp.read())
-            names = [r["name"] for r in rows]
-            return names if names else ZUORDNUNG_FALLBACK
+            names = [r["name"] for r in json.loads(resp.read())]
+            return names if names else fallback
     except Exception:
-        return ZUORDNUNG_FALLBACK
+        return fallback
 
 
-def post_entry(state, zuordnung, aktivitaet):
+def post_entry(state, zuordnung):
     payload = {
         "person": PERSON,
         "ts": datetime.now(timezone.utc).isoformat(),
         "duration_minutes": 30,
         "state": state,
         "zuordnung": zuordnung,
-        "aktivitaet": aktivitaet,
+        # aktivitaet wird nicht mehr erfragt. Die Spalte bleibt in der Datenbank,
+        # damit die bisherigen Einträge lesbar bleiben.
+        "aktivitaet": None,
     }
     req = urllib.request.Request(
         f"{SUPABASE_URL}/rest/v1/time_entries",
@@ -233,18 +258,18 @@ def main():
             return
 
         if result == "PAUSE":
-            post_entry("Pause", None, None)
+            post_entry("Pause", None)
             return
 
         # Defensiv: fehlende Felder (z.B. durch einen unerwarteten AppleScript-Rückgabewert)
         # einfach leer lassen statt eine Fehlermeldung zu zeigen — besser ein unvollständiger
         # Eintrag als ein nerviger Error-Dialog.
         parts = result.split(SEP)
-        parts += [""] * (3 - len(parts))
-        state, zuordnung, aktivitaet = parts[:3]
+        parts += [""] * (2 - len(parts))
+        zuordnung, state = parts[:2]
         if not state:
             return  # nichts Sinnvolles zum Speichern
-        post_entry(state, zuordnung or None, aktivitaet or None)
+        post_entry(state, zuordnung or None)
     finally:
         release_lock()
 
