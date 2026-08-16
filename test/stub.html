@@ -14,7 +14,20 @@ window.prompt = ()=> "TESTSECRET";
 window.alert = m=>rec("alert: "+m);
 window.confirm = ()=> true;
 
+const HEUTE = new Date(); const M = HEUTE.getFullYear()+"-"+String(HEUTE.getMonth()+1).padStart(2,"0");
 const FAKE = {
+  customers: [
+    {id:"k1", name:"Protours",   kind:"kunde",  status:"aktiv", active:true,  sort_order:10, note:null},
+    {id:"k2", name:"Chuong",     kind:"kunde",  status:"aktiv", active:true,  sort_order:20, note:null},
+    {id:"k3", name:"Altkunde",   kind:"kunde",  status:"beendet", active:false, sort_order:30, note:null},
+    {id:"i1", name:"XPO intern", kind:"intern", status:"aktiv", active:true,  sort_order:90, note:null}
+  ],
+  revenue_months: [
+    // Protours: Retainer 3.000 EUR im laufenden Monat
+    {customer_id:"k1", revenue_id:"r1", kind:"retainer", month_start:M+"-01", amount:3000},
+    // Chuong: einmaliger Auftrag, auf den Monat verteilt
+    {customer_id:"k2", revenue_id:"r2", kind:"einmalig", month_start:M+"-01", amount:800}
+  ],
   daily_personal: [
     {date:"2026-08-10", person:"tim",   lead_gen_hours:8,  hebel:{callBreakdowns:1.5, coachings:0.5}},
     {date:"2026-08-11", person:"simon", lead_gen_hours:6,  hebel:{offer:2, zielgruppe:1}},
@@ -25,9 +38,17 @@ const FAKE = {
     {date:"2026-08-12", termine_gebucht:2, termine_showup:2, closes:[]}
   ],
   time_entries: [
-    {id:1, person:"tim",   ts:new Date().toISOString(), duration_minutes:30, state:"Deepwork",      zuordnung:"XPO",       aktivitaet:"Copywriting"},
-    {id:2, person:"simon", ts:new Date().toISOString(), duration_minutes:30, state:"Kommunikation", zuordnung:"Neukunden", aktivitaet:"Vertrieb"},
-    {id:3, person:"tim",   ts:new Date().toISOString(), duration_minutes:30, state:"Pause",         zuordnung:null,        aktivitaet:null}
+    // Protours: 3 x 30 Min = 1,5 Std. -> 3000/1,5 = 2000 EUR/Std. (gruen)
+    {id:1, person:"tim",   ts:new Date().toISOString(), duration_minutes:30, state:"Deepwork",      zuordnung:"Protours",   customer_id:"k1", aktivitaet:"Copywriting"},
+    {id:4, person:"tim",   ts:new Date().toISOString(), duration_minutes:30, state:"Deepwork",      zuordnung:"Protours",   customer_id:"k1", aktivitaet:"Copywriting"},
+    {id:5, person:"simon", ts:new Date().toISOString(), duration_minutes:30, state:"Abarbeiten",    zuordnung:"Protours",   customer_id:"k1", aktivitaet:"Admin"},
+    // Chuong: 40 x 30 Min = 20 Std. -> 800/20 = 40 EUR/Std. (rot)
+    ...Array.from({length:40},(_,i)=>({id:100+i, person:"simon", ts:new Date().toISOString(), duration_minutes:30, state:"Abarbeiten", zuordnung:"Chuong", customer_id:"k2", aktivitaet:"Beratung"})),
+    // Intern und Pause
+    {id:2, person:"simon", ts:new Date().toISOString(), duration_minutes:30, state:"Kommunikation", zuordnung:"XPO intern", customer_id:"i1", aktivitaet:"Vertrieb"},
+    {id:3, person:"tim",   ts:new Date().toISOString(), duration_minutes:30, state:"Pause",         zuordnung:null,         customer_id:null, aktivitaet:null},
+    // Ohne Zuordnung -> senkt den Abdeckungsgrad
+    {id:6, person:"tim",   ts:new Date().toISOString(), duration_minutes:30, state:"Planung",       zuordnung:null,         customer_id:null, aktivitaet:null}
   ],
   tasks: [
     {id:"t1", text:"Angebot <b>schreiben</b>", status:"inarbeit", assignee:"tim", priority:"hoch", done:false, week_start:"2026-08-10", created_at:"2026-08-10T08:00:00Z"},
@@ -132,6 +153,19 @@ setTimeout(async ()=>{
     pruefeDialog("Fehlschlag zeigt keine Bestaetigung", bestaetigung.style.display !== "block");
     pruefeDialog("Fehlschlag meldet sich sichtbar", !!banner && banner.style.display !== "none" && /fehlgeschlagen|Testfehler/i.test(banner.textContent));
     window.__schreibfehler = false;
+
+    // ---- Kunden-Ansicht ----
+    document.querySelector('[data-view="kunden"]').click();
+    await new Promise(r=>setTimeout(r, 250));
+    const lohnBadges = [...document.querySelectorAll("#kdList .lohn-badge")].map(e=>e.textContent);
+    pruefeDialog("Kundenliste gefuellt", lohnBadges.length === 2);
+    // Protours 3000 EUR / 1,5 Std. = 2.000 EUR/Std. -> gruen
+    pruefeDialog("Stundenlohn Protours stimmt", /2\.000/.test(lohnBadges[0] || ""));
+    pruefeDialog("Bester Kunde steht oben", !!document.querySelector("#kdList .lohn-badge.lohn-ok"));
+    // Chuong 800 EUR / 20 Std. = 40 EUR/Std. -> rot
+    pruefeDialog("Schlechter Stundenlohn wird rot", !!document.querySelector("#kdList .lohn-badge.lohn-low"));
+    pruefeDialog("Abdeckungsgrad wird genannt", /getrackten Stunden/.test(document.getElementById("kdCoverage").textContent));
+    pruefeDialog("Zeitraum-Label ohne doppelten Punkt", !/\.\./.test(document.getElementById("kdZeitraumLabel").textContent));
   }catch(e){
     window.__dialogChecks.push("Dialogpruefung abgebrochen: " + (e && e.message));
   }

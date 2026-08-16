@@ -9,7 +9,7 @@ Die erwarteten Werte ergeben sich aus den Testdaten in test/stub.html:
   Wochen    nur KW 5 zaehlt; der Eintrag vom
             05.01.2025 liegt ausserhalb von
             WEEKS und faellt bewusst heraus    = 1
-  Zeit      2 x 30 Min, Pause zaehlt nicht     = 1 Std.
+  Zeit      45 x 30 Min, Pause zaehlt nicht    = 22,5 Std.
   Aufgaben  je eine in "In Arbeit" und "Done"
 
 Wenn sich Testdaten oder Logik aendern, gehoeren die Erwartungen hier mit
@@ -53,7 +53,7 @@ if banner is None:
     sys.exit(1)
 # Der Dialogteil muss wirklich gelaufen sein — sonst prueft der Test die
 # Popups gar nicht und meldet trotzdem "bestanden".
-ERWARTETE_DIALOGPRUEFUNGEN = 14
+ERWARTETE_DIALOGPRUEFUNGEN = 20
 
 if not banner.startswith("SMOKE: OK"):
     m = re.search(r'id="smokeResult"[^>]*>(.*?)</div>', dom, re.S)
@@ -76,7 +76,7 @@ check("Closes", text_of("statCloses"), "2")
 check("Termine gebucht", text_of("statTermineGebucht"), "7")
 check("Termine Show-up", text_of("statTermineShowup"), "5")
 check("Erfasste Wochen", text_of("streakWeeksLogged"), "1")
-check("Zeittracking heute (Std.)", text_of("ztTodayHours"), "1")
+check("Zeittracking heute (Std.)", text_of("ztTodayHours"), "22,5")
 
 # 3) Wurde ueberhaupt gerendert?
 if count(r'class="bar-fill') < 10:

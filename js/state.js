@@ -3,6 +3,7 @@
 
 import { N_WEEKS, PERSONS, LEVERS, WEEKLY_TARGET, STATUS_COLUMNS } from "./config.js";
 import { weekIndexForDate } from "./utils/weeks.js";
+import { localDateStr } from "./utils/format.js";
 
 /* Ein einziges Objekt statt zehn Modul-Variablen: importierte Bindings sind
    in ES-Modulen schreibgeschuetzt, Eigenschaften eines importierten Objekts
@@ -18,6 +19,8 @@ export const state = {
   commitments:   [], // Wochen-Commitments aus "weekly_commitments"
   projects:      [], // Langzeitprojekte aus "projects"
   projectSteps:  [], // Zugehörige Schritte aus "project_steps"
+  customers:     [], // Kunden und interne Zuordnungen aus "customers"
+  revenueMonths: [], // Umsatz je Kunde und Monat aus der Sicht "revenue_months"
 
   boardWeekIdx: 0,    // aktuell im Aufgaben-Board angezeigte Woche (Index in WEEKS)
   ztWeekIdx: null     // aktuell im Zeittracking angezeigte Woche; null = noch nicht gesetzt
@@ -111,4 +114,75 @@ export function cumulative(){
 export function normStatus(t){
   if(t.status && STATUS_COLUMNS.some(c=>c[0]===t.status)) return t.status;
   return t.done ? "done" : "backlog";
+}
+
+
+/* ---------- Kunden und Stundenlohn ----------
+   Bewusst kalendarisch gerechnet, NICHT ueber WEEKS: Retainer laufen in
+   Monaten, und weekIndexForDate() liefert ausserhalb des definierten
+   Zeitraums -1, wodurch Eintraege still aus allen Summen fielen. */
+
+/* "2026-08-16" -> "2026-08-01" */
+export function monatsStart(datumStr){
+  return datumStr.slice(0, 7) + "-01";
+}
+
+/* Liste der Monatsanfaenge von vonMonat bis bisMonat, beide einschliesslich. */
+export function monateZwischen(vonMonat, bisMonat){
+  const raus = [];
+  let [j, m] = vonMonat.split("-").map(Number);
+  const [jb, mb] = bisMonat.split("-").map(Number);
+  while(j < jb || (j === jb && m <= mb)){
+    raus.push(j + "-" + String(m).padStart(2, "0") + "-01");
+    m++;
+    if(m > 12){ m = 1; j++; }
+  }
+  return raus;
+}
+
+export function kundeNach(id){
+  return state.customers.find(c=>String(c.id) === String(id)) || null;
+}
+
+/* Umsatz eines Kunden im Zeitraum [vonMonat, bisMonat] (Monatsanfaenge). */
+export function umsatzImZeitraum(customerId, vonMonat, bisMonat){
+  return state.revenueMonths
+    .filter(r=>String(r.customer_id) === String(customerId)
+            && r.month_start >= vonMonat && r.month_start <= bisMonat)
+    .reduce((s,r)=> s + (Number(r.amount) || 0), 0);
+}
+
+/* Getrackte Arbeitsstunden eines Kunden im Zeitraum.
+   Pausen zaehlen nicht als Arbeitszeit. */
+export function stundenImZeitraum(customerId, vonMonat, bisMonat){
+  const bisEnde = letzterTagDesMonats(bisMonat);
+  const minuten = state.timeEntries
+    .filter(e=>{
+      if(e.state === "Pause") return false;
+      if(String(e.customer_id || "") !== String(customerId)) return false;
+      const tag = localDateStr(e.ts);
+      return tag >= vonMonat && tag <= bisEnde;
+    })
+    .reduce((s,e)=> s + (Number(e.duration_minutes) || 0), 0);
+  return minuten / 60;
+}
+
+export function letzterTagDesMonats(monatsStartStr){
+  const [j, m] = monatsStartStr.split("-").map(Number);
+  const d = new Date(j, m, 0);   // Tag 0 des Folgemonats = letzter Tag
+  return j + "-" + String(m).padStart(2,"0") + "-" + String(d.getDate()).padStart(2,"0");
+}
+
+/* Alle getrackten Arbeitsstunden im Zeitraum — auch die ohne Kunden.
+   Braucht man fuer den Abdeckungsgrad. */
+export function stundenGesamt(vonMonat, bisMonat){
+  const bisEnde = letzterTagDesMonats(bisMonat);
+  const minuten = state.timeEntries
+    .filter(e=>{
+      if(e.state === "Pause") return false;
+      const tag = localDateStr(e.ts);
+      return tag >= vonMonat && tag <= bisEnde;
+    })
+    .reduce((s,e)=> s + (Number(e.duration_minutes) || 0), 0);
+  return minuten / 60;
 }

@@ -16,6 +16,7 @@ import { populateEntryControls, loadDayIntoForm } from "./views/eingabe.js";
 import { loadDayIntoHebelForm } from "./views/hebel.js";
 import "./views/aufgaben.js";
 import "./views/projekte.js";
+import "./views/kunden.js";
 import "./views/zeittracking.js";
 
 window.addEventListener("error", ev=>{

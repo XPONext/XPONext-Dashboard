@@ -23,6 +23,7 @@
     <button class="tab-btn" data-view="projekte">Projekte</button>
     <button class="tab-btn" data-view="hebel">Hebel</button>
     <button class="tab-btn" data-view="verlauf">Verlauf</button>
+    <button class="tab-btn" data-view="kunden">Kunden</button>
     <button class="tab-btn" data-view="zeittracking">Zeittracking</button>
   </nav>
 </aside>
@@ -295,6 +296,59 @@
 </section>
 
 <!-- ZEITTRACKING -->
+<section class="view" id="view-kunden">
+  <div class="container">
+
+    <div class="board-head">
+      <div class="period-nav">
+        <label for="kdZeitraum" class="t-label">Zeitraum</label>
+        <select id="kdZeitraum">
+          <option value="1">Dieser Monat</option>
+          <option value="3" selected>Letzte 3 Monate</option>
+          <option value="6">Letzte 6 Monate</option>
+          <option value="all">Gesamt</option>
+        </select>
+        <span class="period-hint" id="kdZeitraumLabel"></span>
+      </div>
+      <div class="board-actions" style="margin:0;">
+        <button class="btn" id="kdAddCustomer">+ Kunde anlegen</button>
+        <button class="btn-outline" id="kdAddRevenue">+ Umsatz erfassen</button>
+      </div>
+    </div>
+
+    <div class="grid4">
+      <div class="stat">
+        <div class="lbl">Umsatz im Zeitraum</div>
+        <div class="num" id="kdUmsatz">—</div>
+        <div class="pct" id="kdUmsatzSub">aus Retainern und Einzelaufträgen</div>
+      </div>
+      <div class="stat">
+        <div class="lbl">Abrechenbare Stunden</div>
+        <div class="num" id="kdStunden">—</div>
+        <div class="pct" id="kdStundenSub">auf Kunden gebucht</div>
+      </div>
+      <div class="stat">
+        <div class="lbl">Stundenlohn (Schnitt)</div>
+        <div class="num" id="kdSchnitt">—</div>
+        <div class="pct" id="kdSchnittSub">Umsatz ÷ abrechenbare Stunden</div>
+      </div>
+      <div class="stat">
+        <div class="lbl">Interne Zeit</div>
+        <div class="num" id="kdIntern">—</div>
+        <div class="pct" id="kdInternSub">nicht auf Kunden abrechenbar</div>
+      </div>
+    </div>
+
+    <div class="coverage-note" id="kdCoverage"></div>
+
+    <div class="card">
+      <h2>Kunden nach Stundenlohn <small id="kdTableSub">Umsatz und getrackte Zeit im gewählten Zeitraum</small></h2>
+      <div id="kdList"></div>
+    </div>
+
+  </div>
+</section>
+
 <section class="view" id="view-zeittracking">
   <div class="container">
     <div class="card" id="ztTodayCard">

@@ -278,3 +278,46 @@ section.view.active{display:block;}
 .commit-row:hover .commit-del{opacity:1;}
 .commit-del:hover{color:var(--red);}
 .commit-empty{font-size:0.85rem;color:var(--text-muted);padding:0.4rem 0;}
+
+/* ---------- Kunden ---------- */
+.period-nav{display:flex;align-items:center;gap:var(--sp-3);flex-wrap:wrap;}
+.period-nav select{width:auto;min-width:170px;}
+.period-hint{font-size:var(--fs-sm);color:var(--text-muted);}
+
+/* Der Stundenlohn darf nie ohne diesen Hinweis dastehen — sonst wirkt eine
+   Zahl belastbar, die es nicht ist. */
+.coverage-note{
+  display:none;
+  background:var(--bg);
+  border:1px solid var(--border);
+  border-left:3px solid var(--amber-strong);
+  border-radius:var(--r-sm);
+  padding:var(--sp-3) var(--sp-4);
+  margin-bottom:var(--sp-5);
+  font-size:var(--fs-sm);
+  color:var(--text-body);
+  line-height:var(--lh-normal);
+}
+
+.kd-name{font-weight:var(--fw-semi);color:var(--text-primary);}
+.kd-actions{white-space:nowrap;text-align:right;}
+.kd-btn{
+  background:none;border:none;
+  color:var(--text-muted);cursor:pointer;
+  font-family:var(--font);font-size:var(--fs-sm);font-weight:var(--fw-semi);
+  padding:var(--sp-1) var(--sp-2);border-radius:var(--r-sm);
+}
+.kd-btn:hover{color:var(--accent-dark);background:var(--accent-light);}
+
+/* Bewertung, deshalb Ampel- und keine Serienfarben. */
+.lohn-badge{
+  display:inline-block;
+  padding:0.18rem 0.52rem;border-radius:var(--r-pill);
+  font-size:0.76rem;font-weight:var(--fw-bold);white-space:nowrap;
+}
+.lohn-badge.lohn-ok{background:var(--green-bg);color:var(--green);}
+.lohn-badge.lohn-warn{background:var(--amber-bg);color:var(--amber);}
+.lohn-badge.lohn-low{background:var(--red-bg);color:var(--red);}
+.num.lohn-ok{color:var(--green);}
+.num.lohn-warn{color:var(--amber);}
+.num.lohn-low{color:var(--red);}
