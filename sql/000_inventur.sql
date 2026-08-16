@@ -5,7 +5,11 @@
 -- Fragen: Welche Zuordnungswerte gibt es wirklich? Und wie sind die
 -- bestehenden Policies formuliert?
 --
--- Ausführen: Supabase → SQL Editor → einfügen → Run.
+-- Ausführen: Supabase → SQL Editor.
+--
+-- ACHTUNG: Supabase zeigt beim Ausführen der ganzen Datei nur das Ergebnis
+-- der LETZTEN Abfrage. Deshalb jeden Block einzeln markieren und mit
+-- Cmd+Enter ausführen — dann läuft nur das Markierte.
 -- ============================================================
 
 
@@ -70,7 +74,8 @@ order by tablename, policyname;
 --    (Im Dashboard-Code steht kein Schreibzugriff; das hier ist die
 --    Gegenprobe auf der Datenbankseite.)
 select
-  schemaname, tablename,
+  schemaname,
+  relname as tabelle,
   n_tup_ins as eingefuegt,
   n_tup_upd as geaendert,
   n_tup_del as geloescht

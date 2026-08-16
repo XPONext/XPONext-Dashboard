@@ -1,9 +1,9 @@
 -- ============================================================
 -- SCHRITT 1 — Kunden und Umsätze
 --
--- Legt die Tabellen `customers` und `revenues` an, koppelt die
--- Zeiteinträge daran und macht aus `zuordnung_optionen` eine Sicht auf die
--- Kundenliste. Danach pflegst du Kunden im Dashboard statt in der Datenbank,
+-- Legt die Tabellen `customers`, `revenues` und `tracker_options` an, koppelt
+-- die Zeiteinträge an die Kunden und macht aus `zuordnung_optionen` eine Sicht
+-- auf die Kundenliste. Danach pflegst du Kunden im Dashboard statt in der Datenbank,
 -- und `popup.py` muss dafür NICHT neu installiert werden.
 --
 -- VORHER: sql/000_inventur.sql ausführen und die Ergebnisse ansehen.
@@ -243,6 +243,51 @@ grant select on public.zuordnung_optionen to anon, authenticated;
 
 
 -- ------------------------------------------------------------
+-- 6b) Kategorien des Zeittrackers in die Datenbank
+--
+-- Bisher stehen "State" und "Aktivität" fest in popup.py. Jede Änderung
+-- bedeutet deshalb: install.sh auf BEIDEN Macs neu ausführen, und bis Simon
+-- das gemacht hat, schreibt seine Version weiter die alten Namen.
+--
+-- Mit dieser Tabelle ist das vorbei: Kategorien ändern heißt ab dann eine
+-- Zeile hier ändern. Das Popup zieht sie beim nächsten Öffnen.
+--
+-- Die States sind von sieben auf fünf gekürzt: "Strategie" und "Weiterbilden"
+-- bildet der Kunde "XPO intern" ab. Alte Einträge behalten ihre Werte und
+-- werden im Dashboard weiterhin angezeigt.
+-- ------------------------------------------------------------
+create table if not exists public.tracker_options (
+  id          uuid primary key default gen_random_uuid(),
+  kind        text not null check (kind in ('state','aktivitaet')),
+  name        text not null,
+  active      boolean not null default true,
+  sort_order  integer not null default 100,
+  created_at  timestamptz not null default now(),
+  unique (kind, name)
+);
+
+alter table public.tracker_options enable row level security;
+
+drop policy if exists "app_secret_all" on public.tracker_options;
+create policy "app_secret_all" on public.tracker_options
+  for all
+  using      (<APP_SECRET>)
+  with check (<APP_SECRET>);
+
+insert into public.tracker_options (kind, name, active, sort_order) values
+  ('state','Deepwork',      true,  10),
+  ('state','Kommunikation', true,  20),
+  ('state','Abarbeiten',    true,  30),
+  ('state','Planung',       true,  40),
+  ('state','Sonstiges',     true,  50),
+  -- Nicht mehr zur Auswahl, aber als Bezeichnung erhalten, damit alte
+  -- Einträge lesbar bleiben:
+  ('state','Strategie',     false, 60),
+  ('state','Weiterbilden',  false, 70)
+on conflict (kind, name) do nothing;
+
+
+-- ------------------------------------------------------------
 -- 7) Gegenprobe — nach dem Ausführen ansehen
 -- ------------------------------------------------------------
 
@@ -265,6 +310,12 @@ select name, active, sort_order
 from public.zuordnung_optionen
 where active = true
 order by sort_order asc;
+
+-- Welche States stehen im Popup zur Auswahl?
+select name, active, sort_order
+from public.tracker_options
+where kind = 'state'
+order by sort_order;
 
 
 -- ============================================================
