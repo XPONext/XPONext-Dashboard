@@ -407,7 +407,7 @@ function renderCommitments(){
     <div class="commit-row ${c.done?"is-done":""}" data-id="${c.id}">
       <input type="checkbox" ${c.done?"checked":""} data-act="toggle" data-id="${c.id}">
       <span class="commit-text">${escapeHtml(c.text)}</span>
-      <span class="task-badge person">${PERSON_LABEL[c.assignee]||c.assignee}</span>
+      ${personBadge(c.assignee)}
       <button type="button" class="commit-del" data-act="del" data-id="${c.id}" title="Commitment löschen">✕</button>
     </div>`).join("");
 }
@@ -464,7 +464,7 @@ function renderProjects(){
       <div class="step-row ${s.done?"is-done":""}">
         <input type="checkbox" ${s.done?"checked":""} data-pact="step-toggle" data-id="${s.id}">
         <span class="step-text">${escapeHtml(s.text)}</span>
-        <span class="task-badge person">${PERSON_LABEL[s.assignee]||s.assignee}</span>
+        ${personBadge(s.assignee)}
         <button type="button" class="step-del" data-pact="step-del" data-id="${s.id}" title="Schritt löschen">✕</button>
       </div>`).join("") : `<div class="step-empty">Noch keine Schritte — leg unten den ersten an.</div>`;
 
@@ -476,7 +476,7 @@ function renderProjects(){
       ${p.description ? `<div class="project-desc">${escapeHtml(p.description)}</div>` : ""}
       <div class="project-badges">
         <span class="status-badge st-${p.status}">${PROJECT_STATUS_LABEL[p.status]||p.status}</span>
-        <span class="task-badge person">${PERSON_LABEL[p.owner]||p.owner}</span>
+        ${personBadge(p.owner)}
         ${p.due_date ? `<span class="due-badge ${isLate?"is-late":""}">${isLate?"überfällig seit ":"bis "}${fmtDate(p.due_date)}</span>` : ""}
       </div>
       <div class="project-progress">
@@ -491,6 +491,13 @@ function renderProjects(){
 
 /* ---------- Aufgaben-Board ---------- */
 const PERSON_LABEL = { tim:"Tim", simon:"Simon", beide:"Beide" };
+
+/* Badge fuer die zugewiesene Person. Ohne Zuweisung gar kein Badge — Altdaten
+   aus der Zeit vor dem Feld haben sonst das Wort "undefined" angezeigt. */
+function personBadge(who){
+  if(!who) return "";
+  return `<span class="task-badge person">${escapeHtml(PERSON_LABEL[who] || who)}</span>`;
+}
 const PRIO_LABEL = { hoch:"Hoch", mittel:"Mittel", niedrig:"Niedrig" };
 
 function renderTasks(){
@@ -512,7 +519,7 @@ function renderTasks(){
         <div class="kanban-card ${key==="done"?"is-done":""}" data-id="${t.id}">
           <div class="kanban-card-text">${escapeHtml(t.text)}</div>
           <div class="kanban-card-badges">
-            <span class="task-badge person">${PERSON_LABEL[t.assignee]||t.assignee}</span>
+            ${personBadge(t.assignee)}
             <span class="task-badge prio-${t.priority}">${PRIO_LABEL[t.priority]||t.priority}</span>
           </div>
         </div>`).join("")

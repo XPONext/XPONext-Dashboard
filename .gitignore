@@ -2,4 +2,7 @@
 .tmp/
 .DS_Store
 .tmp-smoke/
+.tmp-visual/
 _smoketest.html
+_visualtest.html
+test/baseline/

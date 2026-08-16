@@ -30,11 +30,12 @@ const FAKE = {
     {id:"t2", text:"Landingpage", status:"done", assignee:"simon", priority:"niedrig", done:true, week_start:"2026-08-10", created_at:"2026-08-10T09:00:00Z"}
   ],
   weekly_goals: [{week_start:"2026-08-10", goal:"Fokus auf Neukunden"}],
-  weekly_commitments: [{id:"c1", week_start:"2026-08-10", text:"3x Cold Call", done:false, created_at:"2026-08-10T08:00:00Z"}],
+  weekly_commitments: [{id:"c1", week_start:"2026-08-10", text:"3x Cold Call", assignee:"simon", done:false, created_at:"2026-08-10T08:00:00Z"},
+    {id:"c2", week_start:"2026-08-10", text:"Altes Commitment ohne Zuweisung", done:true, created_at:"2026-08-10T09:00:00Z"}],
   projects: [{id:"p1", title:"Website-Relaunch", description:"Neue Seite", status:"aktiv", owner:"tim", due_date:"2026-09-30", created_at:"2026-08-01T08:00:00Z"}],
   project_steps: [
-    {id:"s1", project_id:"p1", title:"Konzept", done:true,  created_at:"2026-08-01T08:00:00Z"},
-    {id:"s2", project_id:"p1", title:"Umsetzung", done:false, created_at:"2026-08-02T08:00:00Z"}
+    {id:"s1", project_id:"p1", text:"Konzept", assignee:"tim", done:true,  created_at:"2026-08-01T08:00:00Z"},
+    {id:"s2", project_id:"p1", text:"Umsetzung", done:false, created_at:"2026-08-02T08:00:00Z"}  // ohne assignee: Altbestand
   ]
 };
 
