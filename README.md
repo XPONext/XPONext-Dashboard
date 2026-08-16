@@ -54,19 +54,11 @@ Es gibt keine klassischen Tests, aber zwei Skripte, die den größten Teil abdec
 Beide brauchen nur Python 3 und Google Chrome.
 
 ```bash
-./test/run-smoke.sh          # laden alle Module? stimmen die Zahlen? gehen die Dialoge?
-./test/run-visual.sh check   # hat sich das Aussehen ungewollt verändert?
+./test/run-smoke.sh   # laden alle Module? stimmen die Zahlen? gehen die Dialoge?
 ```
 
 Der Rauchtest lädt die echte `index.html`, ersetzt Supabase durch feste Testdaten
-und prüft Ergebnis und Dialoge. Der visuelle Vergleich fotografiert alle Ansichten
-und vergleicht sie Pixel für Pixel mit einer Referenz.
-
-Wenn eine Änderung das Aussehen **absichtlich** ändert, neue Referenz aufnehmen:
-
-```bash
-./test/run-visual.sh baseline
-```
+und prüft Ergebnis, Dialoge und Fehlerfälle.
 
 Danach [CHECKLIST.md](CHECKLIST.md) einmal von Hand durchgehen — alles Interaktive
 (speichern, blättern, löschen) fangen die Skripte nicht ab.

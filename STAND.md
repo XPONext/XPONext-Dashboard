@@ -57,7 +57,6 @@ das du im Editor ausführst.
 ## Kurzbefehle
 
 ```bash
-./serve.sh                   # lokal öffnen (Doppelklick geht nicht mehr)
-./test/run-smoke.sh          # laden alle Module? stimmen die Zahlen?
-./test/run-visual.sh check   # hat sich das Aussehen ungewollt verändert?
+./serve.sh            # lokal öffnen (Doppelklick geht nicht mehr)
+./test/run-smoke.sh   # laden alle Module? stimmen die Zahlen?
 ```
