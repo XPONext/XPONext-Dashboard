@@ -190,17 +190,47 @@
 <!-- PROJEKTE -->
 <section class="view" id="view-projekte">
   <div class="container">
-    <div class="board-actions">
-      <button class="btn" id="openAddProjectBtn">+ Projekt anlegen</button>
-      <label class="toggle-inline"><input type="checkbox" id="showDoneProjects"> Abgeschlossene anzeigen</label>
+
+    <div class="board-head">
+      <div class="period-nav">
+        <label for="prFilter" class="t-label">Zeigen</label>
+        <select id="prFilter">
+          <option value="offen">Laufende Projekte</option>
+          <option value="meine-tim">Nur Tim</option>
+          <option value="meine-simon">Nur Simon</option>
+          <option value="alle">Alle, auch abgeschlossene</option>
+        </select>
+      </div>
+      <div class="board-actions" style="margin:0;">
+        <button class="btn" id="openAddProjectBtn">+ Projekt anlegen</button>
+      </div>
     </div>
 
-    <div class="grid4" style="margin-bottom:1.3rem;">
-      <div class="stat"><div class="lbl">Projekte aktiv</div><div class="num" id="projStatActive">0</div></div>
-      <div class="stat"><div class="lbl">Schritte offen</div><div class="num" id="projStatOpen">0</div></div>
-      <div class="stat"><div class="lbl">Schritte erledigt</div><div class="num" id="projStatDone">0</div></div>
-      <div class="stat"><div class="lbl">Nächste Deadline</div><div class="num" id="projStatDeadline" style="font-size:1rem;">—</div></div>
+    <div class="grid4">
+      <div class="stat">
+        <div class="lbl">Laufende Projekte</div>
+        <div class="num" id="projStatActive">0</div>
+        <div class="pct" id="projStatActiveSub">—</div>
+      </div>
+      <div class="stat">
+        <div class="lbl">Fortschritt gesamt</div>
+        <div class="num" id="projStatProgress">—</div>
+        <div class="bar-track"><div class="bar-fill" id="projStatProgressBar" style="width:0%"></div></div>
+        <div class="pct" id="projStatProgressSub">Schritte erledigt</div>
+      </div>
+      <div class="stat">
+        <div class="lbl">Überfällig</div>
+        <div class="num" id="projStatLate">0</div>
+        <div class="pct" id="projStatLateSub">Schritte über der Frist</div>
+      </div>
+      <div class="stat">
+        <div class="lbl">Nächste Deadline</div>
+        <div class="num" id="projStatDeadline" style="font-size:1.05rem;line-height:1.3">—</div>
+        <div class="pct" id="projStatDeadlineSub">—</div>
+      </div>
     </div>
+
+    <div class="workload" id="projWorkload"></div>
 
     <div id="projectsList"></div>
   </div>

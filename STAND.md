@@ -15,8 +15,8 @@ Modals, Diagramm-Modul, Rauchtest (27 Fälle) und Popup-Test.
 | ✅ Zeittracker → Kunden + Stundenlohn | Kunden-Reiter, `sql/001` ausgeführt |
 | ✅ Zeittracking übersichtlicher, Popup entrümpelt | drei Fenster statt vier |
 | ✅ Hebel-Modul | Wochenverlauf, Eingabe in Viertelstunden |
-| ⬜ Verlauf ansehnlicher | offen |
-| ⬜ Projektmodul ausbauen | offen |
+| ✅ Verlauf ansehnlicher | Diagramme, CSV-Export, gefaltete Tabellen |
+| ✅ Projektmodul ausbauen | Fortschritt, Fristen, Auslastung, Kundenbezug |
 
 **Zustand der Datenbank:** `customers`, `revenues`, `tracker_options` stehen
 und sind abgesichert (ohne Team-Passwort liefert keine Tabelle Daten).
@@ -27,6 +27,9 @@ im Dashboard, das Popup zieht sie automatisch.
 
 ## Offen
 
+0. **`sql/002_projekte.sql` ausführen** — drei zusätzliche Spalten für
+   Fristen an Schritten, Aufgaben-Verknüpfung und Kundenbezug. Legt nur an,
+   löscht nichts.
 1. **Simon:** `git pull` und `./install.sh` — Anleitung in
    [time_tracker/README.md](time_tracker/README.md).
 2. **Kundennamen aufräumen:** `chuong`, `protours`, `wotka`,

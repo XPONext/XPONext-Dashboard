@@ -1,158 +1,333 @@
-/* Ansicht: Projekte — Langzeitprojekte mit Schritten. */
+/* Ansicht: Projekte — Langzeitvorhaben mit Schritten.
 
-import { fmtDate, escapeHtml, todayIso } from "../utils/format.js";
+   Die Frage, die diese Ansicht beantwortet: Woran arbeiten wir gerade, wie
+   weit sind wir, und was ist liegengeblieben? Deshalb steht oben der
+   Gesamtfortschritt und das, was über der Frist ist — nicht eine Zählung
+   erledigter Schritte, die immer nur wächst. */
+
+import { fmtDate, escapeHtml, num, todayIso } from "../utils/format.js";
 import { db } from "../supabase.js";
-import { state } from "../state.js";
+import { state, kundeNach, normStatus } from "../state.js";
+import { fetchAllData } from "../data.js";
 import { openModal, confirmDialog } from "../ui/modal.js";
-import { onRender, showErrorBanner } from "../ui/bus.js";
-import { personBadge, pruefe, PERSON_OPTIONS } from "../ui/components.js";
+import { onRender, renderAll, showErrorBanner } from "../ui/bus.js";
+import { personBadge, pruefe, PERSON_OPTIONS, PERSON_LABEL, emptyState } from "../ui/components.js";
 
-/* ---------- Projekte ----------
-   Langzeitprojekte hängen bewusst an keiner Woche — sie laufen quer über den
-   ganzen Zeitraum. Jedes Projekt hat beliebig viele Schritte zum Abhaken. */
 const PROJECT_STATUS_LABEL = { aktiv:"Aktiv", pausiert:"Pausiert", fertig:"Abgeschlossen" };
+const STATUS_OPTIONS = [["aktiv","Aktiv"],["pausiert","Pausiert"],["fertig","Abgeschlossen"]];
 
 function stepsOf(projectId){
   return state.projectSteps.filter(s=>String(s.project_id)===String(projectId));
 }
 
-function renderProjects(){
-  const showDone = document.getElementById("showDoneProjects").checked;
-
-  // Kennzahlen immer über alle Projekte rechnen, unabhängig vom Anzeigefilter.
-  const activeProjects = state.projects.filter(p=>p.status==="aktiv");
-  const openSteps = state.projectSteps.filter(s=>!s.done && state.projects.some(p=>String(p.id)===String(s.project_id) && p.status!=="fertig"));
-  document.getElementById("projStatActive").textContent = activeProjects.length;
-  document.getElementById("projStatOpen").textContent = openSteps.length;
-  document.getElementById("projStatDone").textContent = state.projectSteps.filter(s=>s.done).length;
-
-  const todayStr = todayIso();
-  const upcoming = state.projects
-    .filter(p=>p.status!=="fertig" && p.due_date)
-    .sort((a,b)=>a.due_date.localeCompare(b.due_date))[0];
-  document.getElementById("projStatDeadline").textContent = upcoming ? (fmtDate(upcoming.due_date)+" · "+upcoming.title) : "—";
-
-  const visible = state.projects.filter(p=>showDone || p.status!=="fertig");
-  // Offene zuerst, innerhalb dessen die mit der nächsten Deadline oben.
-  visible.sort((a,b)=>{
-    const rank = s => s==="aktiv" ? 0 : (s==="pausiert" ? 1 : 2);
-    if(rank(a.status)!==rank(b.status)) return rank(a.status)-rank(b.status);
-    if(a.due_date && b.due_date) return a.due_date.localeCompare(b.due_date);
-    if(a.due_date) return -1;
-    if(b.due_date) return 1;
-    return new Date(a.created_at) - new Date(b.created_at);
-  });
-
-  const list = document.getElementById("projectsList");
-  if(!visible.length){
-    list.innerHTML = `<div class="projects-empty">${state.projects.length ? "Keine offenen Projekte — setz den Haken oben, um die abgeschlossenen zu sehen." : "Noch keine Projekte angelegt."}</div>`;
-    return;
-  }
-
-  list.innerHTML = visible.map(p=>{
-    const steps = stepsOf(p.id);
-    const doneCount = steps.filter(s=>s.done).length;
-    const pct = steps.length ? (doneCount/steps.length)*100 : 0;
-    const isLate = p.due_date && p.due_date < todayStr && p.status!=="fertig";
-
-    const stepRows = steps.length ? steps.map(s=>`
-      <div class="step-row ${s.done?"is-done":""}">
-        <input type="checkbox" ${s.done?"checked":""} data-pact="step-toggle" data-id="${s.id}">
-        <span class="step-text">${escapeHtml(s.text)}</span>
-        ${personBadge(s.assignee)}
-        <button type="button" class="step-del" data-pact="step-del" data-id="${s.id}" title="Schritt löschen">✕</button>
-      </div>`).join("") : `<div class="step-empty">Noch keine Schritte — leg unten den ersten an.</div>`;
-
-    return `<div class="project-card ${p.status==="fertig"?"is-done":""}">
-      <div class="project-top">
-        <div class="project-title">${escapeHtml(p.title)}</div>
-        <button type="button" class="project-edit" data-pact="proj-edit" data-id="${p.id}" title="Projekt bearbeiten">Bearbeiten</button>
-      </div>
-      ${p.description ? `<div class="project-desc">${escapeHtml(p.description)}</div>` : ""}
-      <div class="project-badges">
-        <span class="status-badge st-${escapeHtml(p.status)}">${escapeHtml(PROJECT_STATUS_LABEL[p.status]||p.status)}</span>
-        ${personBadge(p.owner)}
-        ${p.due_date ? `<span class="due-badge ${isLate?"is-late":""}">${isLate?"überfällig seit ":"bis "}${fmtDate(p.due_date)}</span>` : ""}
-      </div>
-      <div class="project-progress">
-        <div class="bar-track"><div class="bar-fill ${pct>=100?"ok":(pct>=50?"warn":"low")}" style="width:${pct}%"></div></div>
-        <span class="ratio">${doneCount}/${steps.length}</span>
-      </div>
-      <div class="step-list">${stepRows}</div>
-      <button type="button" class="btn-outline step-add" data-pact="step-add" data-id="${p.id}">+ Schritt</button>
-    </div>`;
-  }).join("");
+function tasksOf(projectId){
+  return state.tasks.filter(t=>String(t.project_id)===String(projectId));
 }
+
+/* Tage bis zur Frist. Negativ = überfällig. */
+function tageBis(datum){
+  if(!datum) return null;
+  const heute = new Date(todayIso()+"T00:00:00");
+  const ziel  = new Date(datum+"T00:00:00");
+  return Math.round((ziel - heute) / 86400000);
+}
+
+function fristText(tage){
+  if(tage === null) return "";
+  if(tage < 0)  return Math.abs(tage) + (Math.abs(tage) === 1 ? " Tag überfällig" : " Tage überfällig");
+  if(tage === 0) return "heute fällig";
+  if(tage === 1) return "morgen fällig";
+  if(tage <= 14) return "in " + tage + " Tagen";
+  return "";
+}
+
+function istOffen(p){ return p.status !== "fertig"; }
+
+async function neuLaden(){
+  try{
+    await fetchAllData();
+  }catch(e){
+    showErrorBanner("Gespeichert, aber die Ansicht konnte nicht aktualisiert werden: " +
+                    ((e && e.message) || e) + " — bitte die Seite neu laden.");
+  }
+  renderAll();
+}
+
+/* ---------- Dialoge ---------- */
+
+function kundenOptionen(){
+  return [["", "— kein Kunde —"]].concat(
+    state.customers.filter(c=>c.kind === "kunde" && c.status !== "beendet").map(c=>[c.id, c.name])
+  );
+}
+
 async function openProjectModal(id){
   const p = id != null ? state.projects.find(x=>String(x.id)===String(id)) : null;
 
-  await openModal({
+  const felder = [
+    { name:"title", label:"Projektname", type:"text", required:true, width:"full",
+      placeholder:"z.B. Website-Relaunch" },
+    { name:"description", label:"Beschreibung", type:"textarea", width:"full",
+      placeholder:"Worum geht es? (optional)" },
+    { name:"owner",  label:"Verantwortlich", type:"select", options:PERSON_OPTIONS, value:"beide" },
+    { name:"status", label:"Status", type:"select", options:STATUS_OPTIONS, value:"aktiv" },
+    { name:"due_date", label:"Deadline", type:"date" }
+  ];
+  // Der Kundenbezug ist optional und erscheint nur, wenn es Kunden gibt.
+  if(state.customers.length){
+    felder.push({ name:"customer_id", label:"Für welchen Kunden?", type:"select",
+                  options:kundenOptionen(), value:"", width:"full",
+                  hint:"Optional — interne Projekte lässt du leer." });
+  }
+
+  const ergebnis = await openModal({
     title: p ? "Projekt bearbeiten" : "Neues Projekt",
     submitLabel: p ? "Änderungen speichern" : "Projekt anlegen",
-    fields: [
-      {name:"title",       label:"Projektname",  type:"text",     required:true, width:"full", placeholder:"z.B. Website-Relaunch"},
-      {name:"description", label:"Beschreibung", type:"textarea", width:"full", placeholder:"Worum geht es? (optional)"},
-      {name:"owner",       label:"Verantwortlich", type:"select", options:PERSON_OPTIONS, value:"beide"},
-      {name:"status",      label:"Status",       type:"select",   options:[["aktiv","Aktiv"],["pausiert","Pausiert"],["fertig","Fertig"]], value:"aktiv"},
-      {name:"due_date",    label:"Deadline",     type:"date"}
-    ],
+    fields: felder,
     initial: p,
     onSubmit: async werte=>{
-      const payload = {
+      const nutzlast = {
         title: werte.title,
         description: werte.description || null,
         owner: werte.owner,
         status: werte.status,
         due_date: werte.due_date || null
       };
+      if(state.customers.length) nutzlast.customer_id = werte.customer_id || null;
+
       if(p){
-        const { data, error } = await db.from("projects").update(payload).eq("id", p.id).select();
+        const { data, error } = await db.from("projects").update(nutzlast).eq("id", p.id).select();
         pruefe(error, "Projekt konnte nicht gespeichert werden");
         const idx = state.projects.findIndex(x=>String(x.id)===String(p.id));
         if(idx>=0) state.projects[idx] = data[0];
       } else {
-        const { data, error } = await db.from("projects").insert(payload).select();
+        const { data, error } = await db.from("projects").insert(nutzlast).select();
         pruefe(error, "Projekt konnte nicht angelegt werden");
         state.projects.push(data[0]);
       }
-      renderProjects();
     },
     onDelete: p ? async ()=>{
       const n = stepsOf(p.id).length;
-      const ok = await confirmDialog(
-        `Projekt „${p.title}" löschen?`,
-        { detail: n ? `Die ${n} zugehörigen Schritte werden mitgelöscht.` : "" }
-      );
-      if(!ok) return false;   // Dialog bleibt offen
+      const a = tasksOf(p.id).length;
+      const teile = [];
+      if(n) teile.push(`${n} Schritt${n>1?"e":""}`);
+      if(a) teile.push(`${a} verknüpfte Aufgabe${a>1?"n":""}`);
+      const ok = await confirmDialog(`Projekt „${p.title}" löschen?`, {
+        detail: teile.length
+          ? teile.join(" und ") + " — die Schritte werden mitgelöscht, die Aufgaben bleiben erhalten und verlieren nur die Zuordnung."
+          : ""
+      });
+      if(!ok) return false;
       const { error } = await db.from("projects").delete().eq("id", p.id);
       pruefe(error, "Projekt konnte nicht gelöscht werden");
       state.projects = state.projects.filter(x=>String(x.id)!==String(p.id));
       state.projectSteps = state.projectSteps.filter(s=>String(s.project_id)!==String(p.id));
-      renderProjects();
     } : null
   });
+  if(ergebnis) await neuLaden();
 }
 
-async function openStepModal(projectId){
-  await openModal({
-    title: "Neuer Schritt",
-    submitLabel: "Schritt hinzufügen",
+async function openStepModal(projectId, vorhandener){
+  const ergebnis = await openModal({
+    title: vorhandener ? "Schritt bearbeiten" : "Neuer Schritt",
+    submitLabel: vorhandener ? "Änderungen speichern" : "Schritt hinzufügen",
     fields: [
-      {name:"text",     label:"Was ist zu tun?", type:"text", required:true, width:"full", placeholder:"z.B. Struktur der Startseite festlegen"},
-      {name:"assignee", label:"Zugewiesen an",   type:"select", options:PERSON_OPTIONS, value:"tim"}
+      { name:"text", label:"Was ist zu tun?", type:"text", required:true, width:"full",
+        placeholder:"z.B. Struktur der Startseite festlegen" },
+      { name:"assignee", label:"Zugewiesen an", type:"select", options:PERSON_OPTIONS, value:"tim" },
+      { name:"due_date", label:"Bis wann?", type:"date", hint:"Optional." }
     ],
+    initial: vorhandener,
     onSubmit: async werte=>{
-      const { data, error } = await db.from("project_steps")
-        .insert({ project_id: projectId, text: werte.text, assignee: werte.assignee, done: false }).select();
-      pruefe(error, "Schritt konnte nicht gespeichert werden");
-      state.projectSteps.push(data[0]);
-      renderProjects();
-    }
+      const nutzlast = {
+        project_id: projectId,
+        text: werte.text,
+        assignee: werte.assignee,
+        due_date: werte.due_date || null
+      };
+      if(vorhandener){
+        const { error } = await db.from("project_steps").update(nutzlast).eq("id", vorhandener.id);
+        pruefe(error, "Schritt konnte nicht gespeichert werden");
+      } else {
+        const { data, error } = await db.from("project_steps")
+          .insert({ ...nutzlast, done:false }).select();
+        pruefe(error, "Schritt konnte nicht gespeichert werden");
+        state.projectSteps.push(data[0]);
+      }
+    },
+    onDelete: vorhandener ? async ()=>{
+      if(!await confirmDialog(`Schritt „${vorhandener.text}" löschen?`)) return false;
+      const { error } = await db.from("project_steps").delete().eq("id", vorhandener.id);
+      pruefe(error, "Schritt konnte nicht gelöscht werden");
+      state.projectSteps = state.projectSteps.filter(s=>String(s.id)!==String(vorhandener.id));
+    } : null
   });
+  if(ergebnis) await neuLaden();
 }
+
+/* ---------- Übersicht ---------- */
+
+function renderKopf(sichtbare){
+  const offene = state.projects.filter(istOffen);
+  const alleSchritte = state.projectSteps.filter(s=>
+    offene.some(p=>String(p.id)===String(s.project_id)));
+  const erledigt = alleSchritte.filter(s=>s.done).length;
+  const pct = alleSchritte.length ? (erledigt/alleSchritte.length)*100 : 0;
+
+  document.getElementById("projStatActive").textContent = offene.length;
+  const pausiert = offene.filter(p=>p.status === "pausiert").length;
+  document.getElementById("projStatActiveSub").textContent =
+    pausiert ? pausiert + " davon pausiert" : (offene.length ? "alle aktiv" : "keins offen");
+
+  document.getElementById("projStatProgress").textContent =
+    alleSchritte.length ? num(pct,0) + "%" : "—";
+  const bar = document.getElementById("projStatProgressBar");
+  bar.style.width = pct + "%";
+  bar.className = "bar-fill " + (pct >= 80 ? "ok" : pct >= 40 ? "warn" : "low");
+  document.getElementById("projStatProgressSub").textContent =
+    alleSchritte.length ? erledigt + " von " + alleSchritte.length + " Schritten" : "noch keine Schritte";
+
+  const ueberfaellig = alleSchritte.filter(s=>!s.done && s.due_date && tageBis(s.due_date) < 0);
+  document.getElementById("projStatLate").textContent = ueberfaellig.length;
+  document.getElementById("projStatLateSub").textContent =
+    ueberfaellig.length ? "ältester: " + fristText(tageBis(
+      ueberfaellig.map(s=>s.due_date).sort()[0])) : "nichts über der Frist";
+
+  // Nächste Deadline über Projekte UND Schritte
+  const fristen = offene.filter(p=>p.due_date).map(p=>({ datum:p.due_date, was:p.title }))
+    .concat(alleSchritte.filter(s=>!s.done && s.due_date).map(s=>({ datum:s.due_date, was:s.text })))
+    .sort((a,b)=>a.datum.localeCompare(b.datum));
+  const naechste = fristen[0];
+  document.getElementById("projStatDeadline").textContent =
+    naechste ? fmtDate(naechste.datum) + " " + naechste.was : "—";
+  document.getElementById("projStatDeadlineSub").textContent =
+    naechste ? (fristText(tageBis(naechste.datum)) || "später") : "keine Frist gesetzt";
+
+  renderAuslastung(offene);
+}
+
+/* Wer hat wie viel offen? Beantwortet die Frage, ob sich etwas bei einer
+   Person staut. */
+function renderAuslastung(offene){
+  const el = document.getElementById("projWorkload");
+  const offeneSchritte = state.projectSteps.filter(s=>
+    !s.done && offene.some(p=>String(p.id)===String(s.project_id)));
+
+  if(!offeneSchritte.length){ el.innerHTML = ""; return; }
+
+  const proPerson = {};
+  offeneSchritte.forEach(s=>{
+    const wer = s.assignee || "offen";
+    proPerson[wer] = proPerson[wer] || { gesamt:0, spaet:0 };
+    proPerson[wer].gesamt++;
+    if(s.due_date && tageBis(s.due_date) < 0) proPerson[wer].spaet++;
+  });
+
+  el.innerHTML = `<div class="workload-title">Offene Schritte</div>
+    <div class="workload-list">${Object.entries(proPerson)
+      .sort((a,b)=>b[1].gesamt-a[1].gesamt)
+      .map(([wer, z])=>`
+        <span class="workload-chip${z.spaet ? " is-late" : ""}">
+          ${escapeHtml(PERSON_LABEL[wer] || "ohne Zuweisung")}
+          <b>${z.gesamt}</b>${z.spaet ? `<span class="wl-late">${z.spaet} überfällig</span>` : ""}
+        </span>`).join("")}</div>`;
+}
+
+/* ---------- Projektliste ---------- */
+
+function gefilterteProjekte(){
+  const filter = document.getElementById("prFilter").value;
+  if(filter === "alle") return state.projects.slice();
+  if(filter.startsWith("meine-")){
+    const wer = filter.slice(6);
+    return state.projects.filter(p=>istOffen(p) && (p.owner === wer || p.owner === "beide"));
+  }
+  return state.projects.filter(istOffen);
+}
+
+function renderProjects(){
+  const sichtbare = gefilterteProjekte();
+  renderKopf(sichtbare);
+
+  const list = document.getElementById("projectsList");
+  if(!state.projects.length){
+    list.innerHTML = emptyState("Noch keine Projekte",
+      "Langzeitvorhaben, die nicht in eine Woche passen — Website-Relaunch, neues Angebot, Prozessumbau. Schritte hakst du nach und nach ab.");
+    return;
+  }
+  if(!sichtbare.length){
+    list.innerHTML = emptyState("Nichts in dieser Auswahl",
+      "Stell die Auswahl oben auf „Alle, auch abgeschlossene“, um die übrigen Projekte zu sehen.");
+    return;
+  }
+
+  // Projekte mit näherer Frist zuerst, fristlose ans Ende
+  const sortiert = sichtbare.slice().sort((a,b)=>{
+    if(a.status === "fertig" && b.status !== "fertig") return 1;
+    if(b.status === "fertig" && a.status !== "fertig") return -1;
+    if(a.due_date && b.due_date) return a.due_date.localeCompare(b.due_date);
+    if(a.due_date) return -1;
+    if(b.due_date) return 1;
+    return String(a.title).localeCompare(String(b.title));
+  });
+
+  list.innerHTML = sortiert.map(p=>{
+    const steps = stepsOf(p.id).slice().sort((a,b)=>{
+      if(!!a.done !== !!b.done) return a.done ? 1 : -1;
+      if(a.due_date && b.due_date) return a.due_date.localeCompare(b.due_date);
+      if(a.due_date) return -1;
+      if(b.due_date) return 1;
+      return String(a.created_at||"").localeCompare(String(b.created_at||""));
+    });
+    const fertig = steps.filter(s=>s.done).length;
+    const pct = steps.length ? (fertig/steps.length)*100 : 0;
+    const tage = tageBis(p.due_date);
+    const kunde = p.customer_id ? kundeNach(p.customer_id) : null;
+    const aufgaben = tasksOf(p.id);
+    const offeneAufgaben = aufgaben.filter(t=>normStatus(t) !== "done").length;
+
+    const schrittZeilen = steps.length ? steps.map(s=>{
+      const st = tageBis(s.due_date);
+      const spaet = !s.done && st !== null && st < 0;
+      return `<div class="step-row ${s.done?"is-done":""}">
+        <input type="checkbox" ${s.done?"checked":""} data-pact="step-toggle" data-id="${escapeHtml(s.id)}">
+        <span class="step-text">${escapeHtml(s.text)}</span>
+        ${s.due_date ? `<span class="due-badge ${spaet?"is-late":""}">${escapeHtml(fmtDate(s.due_date))}${spaet?" · "+escapeHtml(fristText(st)):""}</span>` : ""}
+        ${personBadge(s.assignee)}
+        <button type="button" class="step-edit" data-pact="step-edit" data-id="${escapeHtml(s.id)}" title="Schritt bearbeiten">✎</button>
+      </div>`;
+    }).join("") : `<div class="step-empty">Noch keine Schritte — zerleg das Projekt in einzelne Handgriffe, dann siehst du den Fortschritt.</div>`;
+
+    return `<div class="project-card ${p.status==="fertig"?"is-done":""}">
+      <div class="project-top">
+        <div class="project-title">${escapeHtml(p.title)}</div>
+        <button type="button" class="project-edit" data-pact="proj-edit" data-id="${escapeHtml(p.id)}" title="Projekt bearbeiten">✎</button>
+      </div>
+      ${p.description ? `<div class="project-desc">${escapeHtml(p.description)}</div>` : ""}
+      <div class="project-badges">
+        <span class="status-badge st-${escapeHtml(p.status)}">${escapeHtml(PROJECT_STATUS_LABEL[p.status]||p.status)}</span>
+        ${personBadge(p.owner)}
+        ${kunde ? `<span class="task-badge kunde">${escapeHtml(kunde.name)}</span>` : ""}
+        ${p.due_date ? `<span class="due-badge ${tage!==null&&tage<0&&p.status!=="fertig"?"is-late":""}">bis ${escapeHtml(fmtDate(p.due_date))}${
+            p.status!=="fertig" && fristText(tage) ? " · " + escapeHtml(fristText(tage)) : ""}</span>` : ""}
+        ${offeneAufgaben ? `<span class="task-badge">${offeneAufgaben} offene Aufgabe${offeneAufgaben>1?"n":""} im Board</span>` : ""}
+      </div>
+      <div class="project-progress">
+        <div class="bar-track"><div class="bar-fill ${pct>=80?"ok":pct>=40?"warn":"low"}" style="width:${pct}%"></div></div>
+        <span class="ratio">${fertig}/${steps.length}</span>
+      </div>
+      <div class="step-list">${schrittZeilen}</div>
+      <div class="step-add">
+        <button type="button" class="btn-outline" data-pact="step-add" data-id="${escapeHtml(p.id)}">+ Schritt</button>
+      </div>
+    </div>`;
+  }).join("");
+}
+
+/* ---------- Ereignisse ---------- */
 
 document.getElementById("openAddProjectBtn").addEventListener("click", ()=>openProjectModal(null));
-document.getElementById("showDoneProjects").addEventListener("change", renderProjects);
+document.getElementById("prFilter").addEventListener("change", renderProjects);
 
 document.getElementById("projectsList").addEventListener("click", async (ev)=>{
   const el = ev.target.closest("[data-pact]");
@@ -160,10 +335,12 @@ document.getElementById("projectsList").addEventListener("click", async (ev)=>{
   const act = el.dataset.pact, id = el.dataset.id;
 
   if(act === "proj-edit"){ openProjectModal(id); return; }
-  if(act === "step-add"){ openStepModal(id); return; }
+  if(act === "step-add"){ openStepModal(id, null); return; }
 
   const s = state.projectSteps.find(x=>String(x.id)===String(id));
   if(!s) return;
+
+  if(act === "step-edit"){ openStepModal(s.project_id, s); return; }
 
   if(act === "step-toggle"){
     const done = el.checked;
@@ -171,12 +348,7 @@ document.getElementById("projectsList").addEventListener("click", async (ev)=>{
     if(error){ console.error(error); showErrorBanner("Konnte nicht gespeichert werden: "+error.message); el.checked = !done; return; }
     s.done = done;
     renderProjects();
-  } else if(act === "step-del"){
-    if(!await confirmDialog(`Schritt „${s.text}" löschen?`)) return;
-    const { error } = await db.from("project_steps").delete().eq("id", s.id);
-    if(error){ console.error(error); showErrorBanner("Konnte nicht gelöscht werden: "+error.message); return; }
-    state.projectSteps = state.projectSteps.filter(x=>String(x.id)!==String(id));
-    renderProjects();
   }
 });
+
 onRender("projekte", renderProjects);

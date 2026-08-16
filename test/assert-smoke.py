@@ -54,7 +54,7 @@ if banner is None:
     sys.exit(1)
 # Der Dialogteil muss wirklich gelaufen sein — sonst prueft der Test die
 # Popups gar nicht und meldet trotzdem "bestanden".
-ERWARTETE_DIALOGPRUEFUNGEN = 27
+ERWARTETE_DIALOGPRUEFUNGEN = 34
 
 if not banner.startswith("SMOKE: OK"):
     m = re.search(r'id="smokeResult"[^>]*>(.*?)</div>', dom, re.S)
@@ -85,8 +85,8 @@ if count(r'class="bar-fill') < 10:
 # Auf das Kartenelement selbst zielen, nicht auf seine Unterelemente
 # (kanban-card-text, kanban-card-badges tragen ein aehnliches Praefix).
 projects = count(r'class="project-card["\s]')
-if projects != 1:
-    failures.append(f"Projektkarten: erwartet 1, waren {projects}")
+if projects != 2:
+    failures.append(f"Projektkarten: erwartet 2 (Filter steht am Ende auf alle), waren {projects}")
 # Wieder 2: Die Dialogpruefung legt zwar eine dritte Aufgabe an, danach
 # erzwingt sie aber einen Speicherfehler. Der laedt den Stand aus der
 # Datenbank neu — und damit verschwindet die nur lokal gehaltene Aufgabe.

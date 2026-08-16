@@ -374,3 +374,33 @@ tr.leerzeile td{
   font-size:var(--fs-sm);color:var(--text-muted);
   margin-top:var(--sp-3);line-height:var(--lh-normal);
 }
+
+/* ---------- Projekte: Auslastung und Schritte ---------- */
+.workload{margin:var(--sp-5) 0;}
+.workload:empty{margin:0;}
+.workload-title{
+  font-size:var(--fs-xs);font-weight:var(--fw-bold);
+  color:var(--text-muted);text-transform:uppercase;letter-spacing:0.055em;
+  margin-bottom:var(--sp-2);
+}
+.workload-list{display:flex;flex-wrap:wrap;gap:var(--sp-2);}
+.workload-chip{
+  display:inline-flex;align-items:center;gap:var(--sp-2);
+  background:var(--bg);border:1px solid var(--border);
+  border-radius:var(--r-pill);padding:0.25rem 0.75rem;
+  font-size:var(--fs-sm);color:var(--text-body);
+}
+.workload-chip b{color:var(--text-primary);font-weight:var(--fw-black);}
+.workload-chip.is-late{border-color:var(--red);}
+.wl-late{color:var(--red);font-weight:var(--fw-semi);font-size:var(--fs-xs);}
+
+.step-edit{
+  background:none;border:none;color:var(--text-muted);
+  font-size:0.85rem;line-height:1;cursor:pointer;
+  padding:0.2rem 0.3rem;border-radius:var(--r-sm);opacity:0;
+  transition:opacity .12s var(--ease), color .12s var(--ease);
+}
+.step-row:hover .step-edit{opacity:1;}
+.step-edit:hover{color:var(--accent);background:var(--accent-light);}
+.step-row .due-badge{flex:0 0 auto;}
+.task-badge.kunde{background:var(--bg-subtle);color:var(--text-body);border:1px solid var(--border);}
