@@ -271,17 +271,16 @@ setTimeout(async ()=>{
     pruefeDialog("Kein Eintrag verdoppelt",
       document.querySelectorAll('#kdRevenues [data-kd="rev-edit"]').length === vorher);
 
-    // Pflichtpruefung: einmaliger Auftrag ohne Enddatum
+    // Pflichtpruefung: Betrag muss ueber 0 liegen
     document.querySelector('#kdRevenues [data-kd="rev-edit"]').click();
     await bisWahr(()=>!!dlgJetzt());
     revDlg = dlgJetzt();
-    revDlg.querySelector('[name="kind"]').value = "einmalig";
-    revDlg.querySelector('[name="period_end"]').value = "";
+    revDlg.querySelector('[name="amount"]').value = "0";
     revDlg.querySelector('[data-dlg="submit"]').click();
-    pruefeDialog("Einmalauftrag ohne Enddatum wird abgelehnt",
+    pruefeDialog("Umsatz ohne Betrag wird abgelehnt",
       await bisWahr(()=>!!dlgJetzt() && !revDlg.querySelector(".dlg-error").hidden));
     revDlg.querySelector('[data-dlg="abbruch"]').click();
-    await warte(120);
+    await bisWahr(()=>!dlgJetzt());
 
     // Kunde bearbeiten: der Sichtbarkeitsschalter muss da sein und darf sich
     // beim Speichern nicht von selbst umstellen.

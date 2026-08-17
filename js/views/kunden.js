@@ -148,19 +148,18 @@ async function umsatzDialog(customerId, vorhandener){
         value:"retainer" },
       { name:"amount", label:"Betrag in €", type:"number", min:"0", step:"0.01",
         required:true,
-        hint:"Bei Retainer der Betrag pro Monat, bei Einzelauftrag der Gesamtbetrag." },
-      { name:"period_start", label:"Von", type:"date", value: heute.slice(0,8) + "01", required:true },
+        hint:"Beim Retainer der Betrag pro Monat, beim Einzelauftrag der Gesamtbetrag." },
+      { name:"period_start", label:"Ab / beauftragt am", type:"date",
+        value: heute, required:true,
+        hint:"Beim Einzelauftrag zählt der volle Betrag in diesem Monat." },
       { name:"period_end", label:"Bis", type:"date",
-        hint:"Beim laufenden Retainer leer lassen." },
+        hint:"Beim laufenden Retainer leer lassen. Beim Einzelauftrag nur zur Info." },
       { name:"title", label:"Bezeichnung", type:"text", width:"full",
         placeholder:"z.B. Betreuung Q3 (optional)" }
     ],
     initial: vorhandener,
     validate: werte=>{
       if(!(Number(werte.amount) > 0)) return "Bitte einen Betrag über 0 € eintragen.";
-      if(werte.kind === "einmalig" && !werte.period_end){
-        return "Ein einmaliger Auftrag braucht ein Enddatum — sonst lässt sich der Betrag keinem Zeitraum zuordnen.";
-      }
       if(werte.period_end && werte.period_end < werte.period_start){
         return "Das Enddatum liegt vor dem Startdatum.";
       }
