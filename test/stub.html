@@ -228,8 +228,6 @@ setTimeout(async ()=>{
     pruefeDialog("Ampelschwellen werden genannt", /50/.test(document.getElementById("kdSchnittSub").textContent));
     pruefeDialog("Umsatzeintraege sind aufgelistet", document.querySelectorAll('#kdRevenues [data-kd="rev-edit"]').length === 2);
 
-    // Umsatz bearbeiten — ohne diesen Weg waere ein Tippfehler beim Betrag
-    // nur noch im SQL-Editor zu beheben.
     const dlgJetzt = ()=>document.querySelector("dialog.dlg[open]");
     const warte = (ms)=>new Promise(r=>setTimeout(r, ms));
     // Auf die Bedingung warten statt auf die Uhr. Feste Wartezeiten haben hier
@@ -240,6 +238,19 @@ setTimeout(async ()=>{
       while(Date.now() < ende){ if(fn()) return true; await warte(50); }
       return false;
     };
+
+    // Der Betrag in der Kundenzeile muss direkt in den Eintrag fuehren.
+    const betrag = document.querySelector('#kdList [data-kd="rev-of"]');
+    pruefeDialog("Umsatzbetrag in der Kundenzeile ist anklickbar", !!betrag);
+    betrag.click();
+    await bisWahr(()=>!!dlgJetzt());
+    const direkt = dlgJetzt();
+    pruefeDialog("Klick auf den Betrag oeffnet den Umsatzeintrag",
+      !!direkt && /Umsatz bearbeiten/.test(direkt.textContent));
+    direkt.querySelector('[data-dlg="abbruch"]').click();
+    // Warten, bis der Dialog wirklich weg ist — sonst greift der naechste
+    // Schritt noch auf den alten zu.
+    await bisWahr(()=>!dlgJetzt());
 
     document.querySelector('#kdRevenues [data-kd="rev-edit"]').click();
     await bisWahr(()=>!!dlgJetzt());

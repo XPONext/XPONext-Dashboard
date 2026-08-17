@@ -410,3 +410,11 @@ tr.leerzeile td{
 .step-row:focus-within .step-edit,
 .commit-del:focus-visible,
 .commit-row:focus-within .commit-del{opacity:1;}
+
+/* Der Umsatzbetrag in der Kundenzeile fuehrt direkt in den Eintrag. */
+.kd-betrag{
+  background:none;border:none;padding:0;
+  font:inherit;color:var(--text-primary);
+  cursor:pointer;border-bottom:1px dashed var(--text-muted);
+}
+.kd-betrag:hover{color:var(--accent-dark);border-bottom-color:var(--accent);}

@@ -54,7 +54,7 @@ if banner is None:
     sys.exit(1)
 # Der Dialogteil muss wirklich gelaufen sein — sonst prueft der Test die
 # Popups gar nicht und meldet trotzdem "bestanden".
-ERWARTETE_DIALOGPRUEFUNGEN = 44
+ERWARTETE_DIALOGPRUEFUNGEN = 46
 
 if not banner.startswith("SMOKE: OK"):
     m = re.search(r'id="smokeResult"[^>]*>(.*?)</div>', dom, re.S)

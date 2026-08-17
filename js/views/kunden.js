@@ -277,7 +277,10 @@ function renderKunden(){
     <tbody>${sortiert.map(z=>`
       <tr>
         <td><span class="kd-name">${escapeHtml(z.c.name)}</span></td>
-        <td>${z.umsatz > 0 ? escapeHtml(euro(z.umsatz)) : "–"}</td>
+        <td>${z.umsatz > 0
+              ? `<button type="button" class="kd-betrag" data-kd="rev-of" data-id="${escapeHtml(z.c.id)}"
+                   title="Umsatzeintrag bearbeiten">${escapeHtml(euro(z.umsatz))}</button>`
+              : "–"}</td>
         <td>${z.stunden > 0 ? escapeHtml(num(z.stunden,1)) + " Std." : "–"}</td>
         <td>${z.lohn == null
               ? `<span class="t-muted">${
@@ -338,11 +341,36 @@ document.getElementById("kdZeitraum").addEventListener("change", renderKunden);
 document.getElementById("kdAddCustomer").addEventListener("click", ()=>kundeDialog(null));
 document.getElementById("kdAddRevenue").addEventListener("click", ()=>umsatzDialog(null, null));
 
+/* Vom Betrag in der Kundenzeile direkt in den passenden Umsatzeintrag.
+   Vorher fuehrte "Bearbeiten" zum Kunden und der Umsatz war nur ueber einen
+   zugeklappten Bereich weiter unten erreichbar — den findet niemand. */
+async function umsatzVonKunde(customerId){
+  const eintraege = state.revenues.filter(r=>String(r.customer_id) === String(customerId));
+  if(!eintraege.length){ await umsatzDialog(customerId, null); return; }
+  if(eintraege.length === 1){ await umsatzDialog(customerId, eintraege[0]); return; }
+
+  const wahl = await openModal({
+    title: "Welchen Umsatz bearbeiten?",
+    submitLabel: "Bearbeiten",
+    fields: [{
+      name:"id", label:"Eintrag", type:"select", width:"full",
+      options: eintraege.map(r=>[r.id,
+        (r.kind === "retainer" ? "Retainer " : "Einmalig ") + euro(r.amount) +
+        (r.kind === "retainer" ? "/Monat" : "") + " · ab " + fmtDate(r.period_start) +
+        (r.title ? " · " + r.title : "")])
+    }]
+  });
+  if(!wahl) return;
+  const gewaehlt = eintraege.find(r=>String(r.id) === String(wahl.id));
+  if(gewaehlt) await umsatzDialog(customerId, gewaehlt);
+}
+
 document.getElementById("kdList").addEventListener("click", ev=>{
   const btn = ev.target.closest("[data-kd]");
   if(!btn) return;
-  if(btn.dataset.kd === "edit") kundeDialog(btn.dataset.id);
+  if(btn.dataset.kd === "edit")   kundeDialog(btn.dataset.id);
   if(btn.dataset.kd === "umsatz") umsatzDialog(btn.dataset.id, null);
+  if(btn.dataset.kd === "rev-of") umsatzVonKunde(btn.dataset.id);
 });
 
 document.getElementById("kdRevenues").addEventListener("click", ev=>{
