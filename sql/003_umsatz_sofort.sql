@@ -27,8 +27,15 @@ alter table public.revenues
 
 -- ------------------------------------------------------------
 -- 2) Die Sicht neu rechnen
+--
+-- Bewusst erst loeschen, dann neu anlegen: `create or replace view` verlangt
+-- exakt dieselben Spaltentypen wie zuvor und bricht sonst mit
+-- "cannot change data type of view column" ab. Die Sicht enthaelt keine
+-- eigenen Daten, das Loeschen kostet also nichts.
 -- ------------------------------------------------------------
-create or replace view public.revenue_months
+drop view if exists public.revenue_months;
+
+create view public.revenue_months
 with (security_invoker = on) as
 
 -- Retainer: Monatsbetrag über jeden Monat des Zeitraums.
@@ -39,7 +46,7 @@ select
   r.kind,
   m::date                                 as month_start,
   (m + interval '1 month - 1 day')::date  as month_end,
-  r.amount                                as amount
+  r.amount::numeric                       as amount
 from public.revenues r
 cross join lateral generate_series(
     date_trunc('month', r.period_start),
@@ -56,7 +63,7 @@ select
   r.kind,
   date_trunc('month', r.period_start)::date,
   (date_trunc('month', r.period_start) + interval '1 month - 1 day')::date,
-  r.amount
+  r.amount::numeric
 from public.revenues r
 where r.kind = 'einmalig';
 
