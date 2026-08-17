@@ -194,13 +194,20 @@ function renderKunden(){
   document.getElementById("kdTableSub").textContent =
     "Umsatz und getrackte Zeit — " + name;
 
-  const kunden = state.customers.filter(c=>c.kind === "kunde");
+  // Beendete Kunden stehen nicht mehr in der Liste. Ihre Stunden bleiben in
+  // der Datenbank, aber eine Tabelle "Kunden nach Stundenlohn" soll die
+  // aktuellen Kunden zeigen, nicht die Karteileichen aus der alten
+  // Zuordnungsliste.
+  const kunden = state.customers.filter(c=>c.kind === "kunde" && c.status !== "beendet");
   const intern = state.customers.filter(c=>c.kind === "intern");
 
   const zeilen = kunden.map(c=>{
     const umsatz = umsatzImZeitraum(c.id, von, bis);
     const stunden = stundenImZeitraum(c.id, von, bis);
-    const lohn = stunden > 0 ? umsatz / stunden : null;
+    // Nur rechnen, wenn BEIDE Seiten da sind. Vorher ergab "Zeit getrackt,
+    // aber kein Umsatz erfasst" ein rotes "0 EUR/Std." — eine Bewertung, die
+    // niemand gemeint hat.
+    const lohn = (stunden > 0 && umsatz > 0) ? umsatz / stunden : null;
     return { c, umsatz, stunden, lohn };
   });
 
@@ -273,7 +280,9 @@ function renderKunden(){
         <td>${z.umsatz > 0 ? escapeHtml(euro(z.umsatz)) : "–"}</td>
         <td>${z.stunden > 0 ? escapeHtml(num(z.stunden,1)) + " Std." : "–"}</td>
         <td>${z.lohn == null
-              ? `<span class="t-muted">${z.umsatz > 0 ? "keine Zeit erfasst" : "–"}</span>`
+              ? `<span class="t-muted">${
+                  z.umsatz > 0 ? "keine Zeit erfasst" :
+                  z.stunden > 0 ? "kein Umsatz erfasst" : "–"}</span>`
               : `<span class="lohn-badge lohn-${lohnKlasse(z.lohn)}">${escapeHtml(euro(z.lohn))} / Std.</span>`}</td>
         <td>${z.c.status === "aktiv" ? "" : `<span class="status-badge st-${escapeHtml(z.c.status)}">${escapeHtml(statusLabel(z.c.status))}</span>`}</td>
         <td class="kd-actions">
