@@ -161,17 +161,3 @@ export function letzterTagDesMonats(monatsStartStr){
   const d = new Date(j, m, 0);   // Tag 0 des Folgemonats = letzter Tag
   return j + "-" + String(m).padStart(2,"0") + "-" + String(d.getDate()).padStart(2,"0");
 }
-
-/* Alle getrackten Arbeitsstunden im Zeitraum — auch die ohne Kunden.
-   Braucht man fuer den Abdeckungsgrad. */
-export function stundenGesamt(vonMonat, bisMonat){
-  const bisEnde = letzterTagDesMonats(bisMonat);
-  const minuten = state.timeEntries
-    .filter(e=>{
-      if(e.state === "Pause") return false;
-      const tag = localDateStr(e.ts);
-      return tag >= vonMonat && tag <= bisEnde;
-    })
-    .reduce((s,e)=> s + (Number(e.duration_minutes) || 0), 0);
-  return minuten / 60;
-}

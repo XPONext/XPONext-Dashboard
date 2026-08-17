@@ -17,6 +17,17 @@ window.confirm = ()=> true;
 const HEUTE = new Date(); const M = HEUTE.getFullYear()+"-"+String(HEUTE.getMonth()+1).padStart(2,"0");
 // Fristen relativ zu heute — feste Daten waeren ab einem bestimmten Tag
 // zwangslaeufig ueberfaellig und der Test wuerde von allein rot.
+// Montag der laufenden Woche — die Aufgaben muessen im Board der AKTUELLEN
+// Woche landen. Mit einem festen week_start rutschten sie beim naechsten
+// Wochenwechsel in die Vorwoche und der Test wurde von allein rot. Genau das
+// ist am 17.08.2026 passiert.
+function wochenStart(){
+  const d = new Date();
+  const versatz = (d.getDay() + 6) % 7;   // Montag = 0
+  d.setDate(d.getDate() - versatz);
+  return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
+}
+
 function tagRelativ(n){
   const d = new Date(); d.setDate(d.getDate()+n);
   return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
@@ -61,12 +72,12 @@ const FAKE = {
     {id:6, person:"tim",   ts:new Date().toISOString(), duration_minutes:30, state:"Planung",       zuordnung:null,         customer_id:null, aktivitaet:null}
   ],
   tasks: [
-    {id:"t1", text:"Angebot <b>schreiben</b>", status:"inarbeit", assignee:"tim", priority:"hoch", done:false, week_start:"2026-08-10", project_id:"p1", created_at:"2026-08-10T08:00:00Z"},
-    {id:"t2", text:"Landingpage", status:"done", assignee:"simon", priority:"niedrig", done:true, week_start:"2026-08-10", created_at:"2026-08-10T09:00:00Z"}
+    {id:"t1", text:"Angebot <b>schreiben</b>", status:"inarbeit", assignee:"tim", priority:"hoch", done:false, week_start:wochenStart(), project_id:"p1", created_at:"2026-08-10T08:00:00Z"},
+    {id:"t2", text:"Landingpage", status:"done", assignee:"simon", priority:"niedrig", done:true, week_start:wochenStart(), created_at:"2026-08-10T09:00:00Z"}
   ],
-  weekly_goals: [{week_start:"2026-08-10", goal:"Fokus auf Neukunden"}],
-  weekly_commitments: [{id:"c1", week_start:"2026-08-10", text:"3x Cold Call", assignee:"simon", done:false, created_at:"2026-08-10T08:00:00Z"},
-    {id:"c2", week_start:"2026-08-10", text:"Altes Commitment ohne Zuweisung", done:true, created_at:"2026-08-10T09:00:00Z"}],
+  weekly_goals: [{week_start:wochenStart(), goal:"Fokus auf Neukunden"}],
+  weekly_commitments: [{id:"c1", week_start:wochenStart(), text:"3x Cold Call", assignee:"simon", done:false, created_at:"2026-08-10T08:00:00Z"},
+    {id:"c2", week_start:wochenStart(), text:"Altes Commitment ohne Zuweisung", done:true, created_at:"2026-08-10T09:00:00Z"}],
   projects: [
     {id:"p1", title:"Website-Relaunch <b>2026</b>", description:"Neue Seite", status:"aktiv", owner:"tim", due_date:tagRelativ(45), customer_id:"k1", created_at:"2026-08-01T08:00:00Z"},
     {id:"p2", title:"Altes Projekt", description:null, status:"fertig", owner:"simon", due_date:null, customer_id:null, created_at:"2026-07-01T08:00:00Z"}
@@ -81,21 +92,55 @@ const FAKE = {
 let idZaehler = 100;
 window.__schreibfehler = false;   // Schalter fuer den Fehlerfall im Test
 function result(table){
-  // Bei select kommen die Testdaten zurueck, bei insert/upsert der geschriebene
-  // Datensatz mit neuer id — so wie es echtes Supabase mit .select() tut.
-  let daten = FAKE[table] ? JSON.parse(JSON.stringify(FAKE[table])) : [];
-  let geschrieben = false;
+  // Kleiner Speicher statt reiner Attrappe: Geschriebenes landet wirklich in
+  // FAKE und kommt beim naechsten Lesen zurueck. Nur so laesst sich pruefen,
+  // ob eine Ansicht nach dem Speichern auch neu zeichnet — genau daran ist
+  // der Umsatz-Dialog gescheitert.
+  //
+  // Ausgefuehrt wird erst in then(), nicht beim Aufruf: Im echten Client
+  // steht .update(...) VOR .eq(...), der Filter ist zum Zeitpunkt des
+  // update-Aufrufs also noch gar nicht bekannt.
+  if(!FAKE[table]) FAKE[table] = [];
+  const tabelle = FAKE[table];
+  const filter = [];
+  let aktion = null, nutzlast = null;
+
+  const passt = (zeile)=> filter.every(([feld, wert])=> String(zeile[feld]) === String(wert));
+
+  function ausfuehren(){
+    if(aktion === "insert" || aktion === "upsert"){
+      const neu = Object.assign(
+        { id: "neu"+(++idZaehler), created_at: new Date().toISOString() }, nutzlast);
+      tabelle.push(neu);
+      return [neu];
+    }
+    if(aktion === "update"){
+      const geaendert = [];
+      tabelle.forEach((z, i)=>{
+        if(passt(z)){ Object.assign(tabelle[i], nutzlast); geaendert.push(tabelle[i]); }
+      });
+      return geaendert;
+    }
+    if(aktion === "delete"){
+      const weg = tabelle.filter(passt);
+      const bleiben = tabelle.filter(z=>!passt(z));
+      tabelle.length = 0; tabelle.push(...bleiben);
+      return weg;
+    }
+    return tabelle.filter(passt);          // lesend
+  }
+
   const chain = {
-    select: ()=>chain, order: ()=>chain, eq: ()=>chain, limit: ()=>chain,
-    delete: ()=>{ daten = []; return chain; },
-    single: ()=>chain,
-    insert: (row)=>{ geschrieben = true; daten = [Object.assign({id:"neu"+(++idZaehler), created_at:new Date().toISOString()}, row)]; return chain; },
-    upsert: (row)=>{ geschrieben = true; daten = [Object.assign({id:"neu"+(++idZaehler)}, row)]; return chain; },
-    update: (row)=>{ geschrieben = true; daten = [Object.assign({id:"upd"+(++idZaehler)}, row)]; return chain; },
+    select: ()=>chain, order: ()=>chain, limit: ()=>chain, single: ()=>chain,
+    eq: (feld, wert)=>{ filter.push([feld, wert]); return chain; },
+    insert: (row)=>{ aktion = "insert"; nutzlast = row; return chain; },
+    upsert: (row)=>{ aktion = "upsert"; nutzlast = row; return chain; },
+    update: (row)=>{ aktion = "update"; nutzlast = row; return chain; },
+    delete: ()=>{ aktion = "delete"; return chain; },
     then: (res)=>Promise.resolve(
-      window.__schreibfehler && geschrieben
+      window.__schreibfehler && aktion
         ? { data: null, error: { message: "Testfehler beim Schreiben", code: "42501" } }
-        : { data: daten, error: null }
+        : { data: JSON.parse(JSON.stringify(ausfuehren())), error: null }
     ).then(res)
   };
   return chain;
@@ -178,7 +223,6 @@ setTimeout(async ()=>{
     pruefeDialog("Bester Kunde steht oben", !!document.querySelector("#kdList .lohn-badge.lohn-ok"));
     // Chuong 800 EUR / 20 Std. = 40 EUR/Std. -> rot
     pruefeDialog("Schlechter Stundenlohn wird rot", !!document.querySelector("#kdList .lohn-badge.lohn-low"));
-    pruefeDialog("Abdeckungsgrad wird genannt", /getrackten Stunden/.test(document.getElementById("kdCoverage").textContent));
     pruefeDialog("Zeitraum-Label ohne doppelten Punkt", !/\.\./.test(document.getElementById("kdZeitraumLabel").textContent));
     pruefeDialog("Schnitt-Stundenlohn stimmt", /177/.test(document.getElementById("kdSchnitt").textContent));
     pruefeDialog("Ampelschwellen werden genannt", /50/.test(document.getElementById("kdSchnittSub").textContent));
@@ -186,28 +230,53 @@ setTimeout(async ()=>{
 
     // Umsatz bearbeiten — ohne diesen Weg waere ein Tippfehler beim Betrag
     // nur noch im SQL-Editor zu beheben.
+    const dlgJetzt = ()=>document.querySelector("dialog.dlg[open]");
+    const warte = (ms)=>new Promise(r=>setTimeout(r, ms));
+    // Auf die Bedingung warten statt auf die Uhr. Feste Wartezeiten haben hier
+    // wiederholt Fehler gemeldet, die keine waren — und wuerden umgekehrt
+    // echte Fehler verdecken, sobald etwas langsamer wird.
+    const bisWahr = async (fn, maxMs = 5000)=>{
+      const ende = Date.now() + maxMs;
+      while(Date.now() < ende){ if(fn()) return true; await warte(50); }
+      return false;
+    };
+
     document.querySelector('#kdRevenues [data-kd="rev-edit"]').click();
-    await new Promise(r=>setTimeout(r, 120));
-    const revDlg = document.querySelector("dialog.dlg[open]");
+    await bisWahr(()=>!!dlgJetzt());
+    let revDlg = dlgJetzt();
     pruefeDialog("Umsatz-Dialog oeffnet vorbelegt",
       !!revDlg && Number(revDlg.querySelector('[name="amount"]').value) > 0);
     pruefeDialog("Umsatz laesst sich loeschen", !!revDlg.querySelector('[data-dlg="delete"]'));
 
+    // Speichern muss die Liste sichtbar aktualisieren. Genau das fehlte: Der
+    // Eintrag landete in der Datenbank, die Ansicht blieb stehen — und man
+    // traegt ihn ein zweites Mal ein.
+    const vorher = document.querySelectorAll('#kdRevenues [data-kd="rev-edit"]').length;
+    revDlg.querySelector('[name="amount"]').value = "4242";
+    revDlg.querySelector('[data-dlg="submit"]').click();
+    pruefeDialog("Dialog schliesst nach dem Speichern", await bisWahr(()=>!dlgJetzt()));
+    pruefeDialog("Umsatzliste wird nach dem Speichern neu gezeichnet",
+      await bisWahr(()=>/4\.242/.test(document.getElementById("kdRevenues").textContent)));
+    pruefeDialog("Kein Eintrag verdoppelt",
+      document.querySelectorAll('#kdRevenues [data-kd="rev-edit"]').length === vorher);
+
     // Pflichtpruefung: einmaliger Auftrag ohne Enddatum
+    document.querySelector('#kdRevenues [data-kd="rev-edit"]').click();
+    await bisWahr(()=>!!dlgJetzt());
+    revDlg = dlgJetzt();
     revDlg.querySelector('[name="kind"]').value = "einmalig";
     revDlg.querySelector('[name="period_end"]').value = "";
     revDlg.querySelector('[data-dlg="submit"]').click();
-    await new Promise(r=>setTimeout(r, 100));
     pruefeDialog("Einmalauftrag ohne Enddatum wird abgelehnt",
-      revDlg.open && !revDlg.querySelector(".dlg-error").hidden);
+      await bisWahr(()=>!!dlgJetzt() && !revDlg.querySelector(".dlg-error").hidden));
     revDlg.querySelector('[data-dlg="abbruch"]').click();
-    await new Promise(r=>setTimeout(r, 80));
+    await warte(120);
 
     // Kunde bearbeiten: der Sichtbarkeitsschalter muss da sein und darf sich
     // beim Speichern nicht von selbst umstellen.
     document.querySelector('#kdList [data-kd="edit"]').click();
-    await new Promise(r=>setTimeout(r, 120));
-    const kdDlg = document.querySelector("dialog.dlg[open]");
+    await bisWahr(()=>!!dlgJetzt());
+    const kdDlg = dlgJetzt();
     pruefeDialog("Kunden-Dialog hat den Popup-Schalter", !!kdDlg.querySelector('[name="active"]'));
     kdDlg.querySelector('[data-dlg="abbruch"]').click();
     await new Promise(r=>setTimeout(r, 80));
@@ -268,6 +337,14 @@ setTimeout(async ()=>{
   }catch(e){
     window.__dialogChecks.push("Dialogpruefung abgebrochen: " + (e && e.message));
   }
+  // Zurueck auf den Ausgangsreiter und ausrudern lassen. Die abschliessende
+  // Kontrolle des Markups in assert-smoke.py liest den fertigen Seitenzustand
+  // — landet sie mitten in einem Neuzeichnen, meldet sie Fehler, die keine
+  // sind. Genau das ist einmal passiert.
+  try{
+    document.querySelector('[data-view="aufgaben"]').click();
+    await new Promise(r=>setTimeout(r, 600));
+  }catch(e){ /* egal, der Bericht folgt trotzdem */ }
   window.__dialogFertig = true;
 }, 1200);
 

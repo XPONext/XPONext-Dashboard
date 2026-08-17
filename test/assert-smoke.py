@@ -54,7 +54,7 @@ if banner is None:
     sys.exit(1)
 # Der Dialogteil muss wirklich gelaufen sein — sonst prueft der Test die
 # Popups gar nicht und meldet trotzdem "bestanden".
-ERWARTETE_DIALOGPRUEFUNGEN = 42
+ERWARTETE_DIALOGPRUEFUNGEN = 44
 
 if not banner.startswith("SMOKE: OK"):
     m = re.search(r'id="smokeResult"[^>]*>(.*?)</div>', dom, re.S)
@@ -93,8 +93,11 @@ if projects != 2:
 # Genau das soll passieren: nach einem Fehlschlag darf im Speicher nichts
 # stehen, was die Datenbank nicht hat.
 tasks = count(r'class="kanban-card["\s]')
-if tasks != 2:
-    failures.append(f"Aufgabenkarten: erwartet 2 nach dem Neuladen, waren {tasks}")
+# 2 aus den Testdaten + 1 ueber den Dialog angelegte. Die dritte ist der
+# eigentliche Nachweis: Die Attrappe merkt sich Schreibvorgaenge, die neue
+# Aufgabe muss also nach dem Neuladen sichtbar sein.
+if tasks != 3:
+    failures.append(f"Aufgabenkarten: erwartet 3 (2 aus den Testdaten + 1 angelegte), waren {tasks}")
 # Der Verlauf fasst Wochen ohne Eintrag zusammen, statt 25 Zeilen mit
 # Gedankenstrichen zu zeigen — geprueft wird deshalb die Faltung selbst.
 if count(r'class="leerzeile"') < 1:

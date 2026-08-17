@@ -14,7 +14,7 @@
 import { euro, num, escapeHtml, fmtDate, todayIso } from "../utils/format.js";
 import {
   state, kundeNach, monatsStart, letzterTagDesMonats,
-  umsatzImZeitraum, stundenImZeitraum, stundenGesamt
+  umsatzImZeitraum, stundenImZeitraum
 } from "../state.js";
 import {
   kundeSpeichern, kundeLoeschen,
@@ -174,6 +174,7 @@ async function umsatzDialog(customerId, vorhandener){
       await umsatzLoeschen(vorhandener.id);
     } : null
   });
+  if(ergebnis) await neuLaden();
 }
 
 /* ---------- Rendern ---------- */
@@ -206,7 +207,6 @@ function renderKunden(){
   const umsatzGesamt = zeilen.reduce((s,z)=>s+z.umsatz, 0);
   const stundenKunden = zeilen.reduce((s,z)=>s+z.stunden, 0);
   const stundenIntern = intern.reduce((s,c)=>s+stundenImZeitraum(c.id, von, bis), 0);
-  const stundenAlle = stundenGesamt(von, bis);
   const schnitt = stundenKunden > 0 ? umsatzGesamt / stundenKunden : null;
 
   document.getElementById("kdUmsatz").textContent = umsatzGesamt > 0 ? euro(umsatzGesamt) : "—";
@@ -221,26 +221,16 @@ function renderKunden(){
       : `unter ${AMPEL_ROT} € rot · ab ${AMPEL_GRUEN} € grün`;
 
   document.getElementById("kdIntern").textContent = stundenIntern > 0 ? num(stundenIntern,1) + " Std." : "—";
+  const stundenZugeordnet = stundenKunden + stundenIntern;
   document.getElementById("kdInternSub").textContent =
-    stundenAlle > 0
-      ? num((stundenIntern / stundenAlle) * 100, 0) + "% der getrackten Zeit"
+    stundenZugeordnet > 0
+      ? num((stundenIntern / stundenZugeordnet) * 100, 0) + "% der zugeordneten Zeit"
       : "nicht auf Kunden abrechenbar";
 
-  // Abdeckungsgrad — ohne ihn ist der Stundenlohn irreführend
-  const zugeordnet = stundenKunden + stundenIntern;
-  const cov = document.getElementById("kdCoverage");
-  if(stundenAlle > 0){
-    const pct = (zugeordnet / stundenAlle) * 100;
-    // "einem Kunden zugeordnet" waere falsch: die interne Zeit zaehlt mit,
-    // und direkt daneben steht "nicht auf Kunden abrechenbar".
-    cov.textContent =
-      "Grundlage: " + num(zugeordnet,1) + " von " + num(stundenAlle,1) +
-      " getrackten Stunden haben überhaupt eine Zuordnung (" + num(pct,0) + "%). " +
-      "Der Tracker erfasst nur, was im Popup beantwortet wird — die tatsächliche Arbeitszeit ist höher, der Stundenlohn also eher zu hoch als zu niedrig.";
-    cov.style.display = "block";
-  } else {
-    cov.style.display = "none";
-  }
+  // Der frühere Hinweis auf den Abdeckungsgrad steht hier bewusst nicht mehr.
+  // Zu wissen bleibt: Der Tracker erfasst nur, was im Popup beantwortet wird —
+  // der Stundenlohn ist deshalb eher eine Obergrenze.
+  document.getElementById("kdCoverage").style.display = "none";
 
   // Tabelle
   const list = document.getElementById("kdList");
