@@ -3,10 +3,14 @@
 
 import { db } from "./supabase.js";
 import { state, buildWeeklyAggregates } from "./state.js";
-import { showErrorBanner } from "./ui/bus.js";
+import { showErrorBanner, renderAll } from "./ui/bus.js";
+import { pruefeZeile } from "./ui/components.js";
 
 export async function fetchAllData(){
-  const [personalRes, teamRes, timeRes, tasksRes, goalsRes, commitRes, projRes, stepRes,
+  // ACHTUNG: Reihenfolge der Namen und der Abfragen muessen Zeile fuer Zeile
+  // zusammenpassen. Verrutscht hier etwas, landen z.B. Umsaetze in der
+  // Kundenliste — und zwar ohne jede Fehlermeldung.
+  const [personalRes, teamRes, timeRes, tasksRes, goalsRes, commitRes, projRes,
          custRes, revMonRes, revRes] = await Promise.all([
     db.from("daily_personal").select("*"),
     db.from("daily_team").select("*"),
@@ -15,15 +19,12 @@ export async function fetchAllData(){
     db.from("weekly_goals").select("*"),
     db.from("weekly_commitments").select("*").order("created_at", { ascending: true }),
     db.from("projects").select("*").order("created_at", { ascending: true }),
-    db.from("project_steps").select("*").order("created_at", { ascending: true }),
     db.from("customers").select("*").order("sort_order", { ascending: true }),
     db.from("revenue_months").select("*"),
     db.from("revenues").select("*").order("period_start", { ascending: false })
   ]);
   if(projRes.error){ console.error(projRes.error); state.projects = []; }
   else{ state.projects = projRes.data; }
-  if(stepRes.error){ console.error(stepRes.error); state.projectSteps = []; }
-  else{ state.projectSteps = stepRes.data; }
   if(timeRes.error){ console.error(timeRes.error); state.timeEntries = []; }
   else{ state.timeEntries = timeRes.data; }
   if(tasksRes.error){ console.error(tasksRes.error); state.tasks = []; }
@@ -70,6 +71,22 @@ export async function fetchAllData(){
   state.dailyTeam = dt;
   buildWeeklyAggregates();
 }
+
+/* Alles neu laden und neu zeichnen.
+
+   Lag vorher gleich zweimal identisch in den Ansichten. Scheitert das Laden,
+   ist der Speicherstand womoeglich aelter als die Datenbank — deshalb eine
+   sichtbare Meldung statt eines stillen Weitermachens. */
+export async function neuLaden(){
+  try{
+    await fetchAllData();
+  }catch(e){
+    showErrorBanner("Gespeichert, aber die Ansicht konnte nicht aktualisiert werden: " +
+                    ((e && e.message) || e) + " — bitte die Seite neu laden.");
+  }
+  renderAll();
+}
+
 
 /* Wirft bei Fehlern. Vorher wurde nur ein alert() gezeigt und der Aufrufer
    machte weiter — der Nutzer sah danach "Gespeichert", obwohl nichts
@@ -169,4 +186,110 @@ export async function umsatzLoeschen(id){
     console.error(error);
     throw new Error("Umsatz konnte nicht gelöscht werden: " + error.message);
   }
+}
+
+/* ---------- Aufgaben ----------
+   Bis zum Board-Umbau schrieb views/aufgaben.js als einzige Ansicht direkt
+   auf db. Jetzt gibt es zwei Boards und die Dashboard-Karte, die dieselbe
+   Aufgabe speichern — die Ableitungsregeln stehen deshalb hier, an einer
+   einzigen Stelle. */
+
+/* Die Board-Navigation benutzt "allgemein" und "ohne" als Platzhalter fuer
+   "kein Projekt" bzw. "kein Kunde". Diese Strings duerfen NIE in die
+   Datenbank — dort ist die Abwesenheit einer Zuordnung schlicht null. */
+function idOderNull(wert){
+  if(wert == null) return null;
+  const s = String(wert);
+  return (s === "" || s === "allgemein" || s === "ohne") ? null : wert;
+}
+
+export async function aufgabeSpeichern(werte, id){
+  const projektId = idOderNull(werte.project_id);
+  const projekt = projektId != null
+    ? state.projects.find(p => String(p.id) === String(projektId))
+    : null;
+
+  const nutzlast = {
+    text:        werte.text,
+    description: werte.description || null,
+    assignee:    werte.assignee || null,
+    priority:    werte.priority || "mittel",
+    due_date:    werte.due_date || null,
+    status:      werte.status || "backlog"
+  };
+  // done ist das Altfeld aus der Zeit vor den Spalten. Es wird weiter
+  // mitgefuehrt, damit Aufgaben aus dieser Zeit vergleichbar bleiben.
+  nutzlast.done = nutzlast.status === "done";
+
+  // Die Zuordnung nur anfassen, wenn der Aufrufer sie mitschickt — sonst
+  // wuerde das Speichern aus einem Board heraus die Zuordnung leeren.
+  if("project_id" in werte || "customer_id" in werte){
+    nutzlast.project_id = projektId;
+    // Das Projekt gewinnt: es kennt seinen Kunden verlaesslich, die Auswahl
+    // im Dialog kann veraltet sein. Ohne Projekt zaehlt die eigene Wahl.
+    nutzlast.customer_id = projekt
+      ? (projekt.customer_id || null)
+      : idOderNull(werte.customer_id);
+  }
+  if("week_start" in werte) nutzlast.week_start = werte.week_start || null;
+
+  const antwort = id
+    ? await db.from("tasks").update(nutzlast).eq("id", id).select()
+    : await db.from("tasks").insert(nutzlast).select();
+  if(antwort.error){
+    console.error(antwort.error);
+    throw new Error("Aufgabe konnte nicht gespeichert werden: " + antwort.error.message);
+  }
+  pruefeZeile(antwort.data, "Die Aufgabe wurde von der Datenbank nicht übernommen");
+  return antwort.data[0];
+}
+
+export async function aufgabeLoeschen(id){
+  const { error } = await db.from("tasks").delete().eq("id", id);
+  if(error){
+    console.error(error);
+    throw new Error("Aufgabe konnte nicht gelöscht werden: " + error.message);
+  }
+}
+
+export async function aufgabeVerschieben(id, weekStart){
+  const { data, error } = await db.from("tasks")
+    .update({ week_start: weekStart }).eq("id", id).select();
+  if(error){
+    console.error(error);
+    throw new Error("Verschieben fehlgeschlagen: " + error.message);
+  }
+  pruefeZeile(data, "Die Aufgabe wurde von der Datenbank nicht übernommen");
+  return data[0];
+}
+
+
+/* ---------- Projekte ---------- */
+
+export async function projektSpeichern(nutzlast, id){
+  const antwort = id
+    ? await db.from("projects").update(nutzlast).eq("id", id).select()
+    : await db.from("projects").insert(nutzlast).select();
+  if(antwort.error){
+    console.error(antwort.error);
+    throw new Error("Projekt konnte nicht gespeichert werden: " + antwort.error.message);
+  }
+  pruefeZeile(antwort.data, "Das Projekt wurde von der Datenbank nicht übernommen");
+  const projekt = antwort.data[0];
+
+  // Der Kunde steht denormalisiert auch an der Aufgabe, damit eine Aufgabe
+  // ohne Projekt trotzdem ein Board hat. Haengt man ein Projekt an einen
+  // anderen Kunden um, muessen seine Aufgaben mitwandern — sonst liegen sie
+  // weiter im Board des alten Kunden.
+  if(id){
+    const { error } = await db.from("tasks")
+      .update({ customer_id: projekt.customer_id || null })
+      .eq("project_id", projekt.id);
+    if(error){
+      console.error(error);
+      throw new Error("Das Projekt wurde gespeichert, aber seine Aufgaben behielten den alten Kunden: "
+                      + error.message + " — bitte die Seite neu laden.");
+    }
+  }
+  return projekt;
 }

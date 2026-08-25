@@ -1,10 +1,14 @@
 /* Ansicht: Dashboard — Gesamtfortschritt und laufende Woche. */
 
-import { N_WEEKS, TOTAL, TOTAL_HEBEL, WEEKLY_TARGET, PERSONS, LEAD_GEN_PER_PERSON } from "../config.js";
-import { num, euro, weekLabel, barClass } from "../utils/format.js";
+import { N_WEEKS, TOTAL, TOTAL_HEBEL, WEEKLY_TARGET, PERSONS, LEAD_GEN_PER_PERSON,
+         PRIORITY_ORDER } from "../config.js";
+import { num, euro, weekLabel, barClass, escapeHtml, tageBis } from "../utils/format.js";
 import { findCurrentWeekIndex } from "../utils/weeks.js";
-import { personEntry, hebelHours, combinedEntry, cumulative } from "../state.js";
+import { state, normStatus, personEntry, hebelHours, combinedEntry, cumulative } from "../state.js";
+import { neuLaden } from "../data.js";
 import { onRender } from "../ui/bus.js";
+import { personBadge, fristBadge, emptyState } from "../ui/components.js";
+import { openTaskDialog, herkunftText } from "../ui/kanban.js";
 
 function renderDashboard(){
   const {c, weeksLogged, onTarget, bestWeek, bestUmsatz} = cumulative();
@@ -67,6 +71,7 @@ function renderDashboard(){
   }).join("");
 
   renderLeaderboard();
+  renderFaellig();
 }
 
 function bestWeekByMetric(getValue){
@@ -95,4 +100,73 @@ function renderLeaderboard(){
     </div>`;
   }).join("");
 }
+/* ---------- Fällig in den nächsten 2 Tagen ----------
+
+   Seit die Aufgaben auf viele kleine Boards verteilt sind, sieht man beim
+   Öffnen des Dashboards nicht mehr, was ansteht. Diese Karte ist der eine
+   Ort, an dem alles zusammenläuft.
+
+   Überfälliges gehört ausdrücklich dazu: Was gestern fällig war, ist
+   dringender als was übermorgen fällig ist — es darf nicht durchrutschen,
+   nur weil sein Datum hinter dem Fenster liegt. */
+
+const VORLAUF_TAGE = 2;
+
+function renderFaellig(){
+  const liste = document.getElementById("dashDueList");
+  const sub = document.getElementById("dashDueSub");
+
+  const faellig = state.tasks
+    .filter(t => normStatus(t) !== "done" && t.due_date && tageBis(t.due_date) <= VORLAUF_TAGE)
+    .sort((a,b)=>{
+      if(a.due_date !== b.due_date) return a.due_date.localeCompare(b.due_date);
+      return (PRIORITY_ORDER[a.priority] ?? 1) - (PRIORITY_ORDER[b.priority] ?? 1);
+    });
+
+  const spaet = faellig.filter(t => tageBis(t.due_date) < 0).length;
+  sub.textContent = faellig.length
+    ? faellig.length + (faellig.length === 1 ? " Aufgabe" : " Aufgaben")
+      + (spaet ? " · " + spaet + " überfällig" : "")
+    : "nichts offen";
+
+  if(!faellig.length){
+    // Die Karte bleibt auch leer stehen. Verschwände sie, wüsste man nicht,
+    // ob nichts fällig ist oder ob sie nur nicht geladen hat.
+    liste.innerHTML = emptyState(null, "Nichts fällig in den nächsten zwei Tagen.", {inline:true});
+    return;
+  }
+
+  liste.innerHTML = `<div class="due-list">${faellig.map(t=>{
+    const herkunft = herkunftText(t);
+    return `<div class="task-row" data-task-id="${escapeHtml(t.id)}" role="button" tabindex="0">
+      ${fristBadge(t.due_date)}
+      <span class="task-row-text">${escapeHtml(t.text)}</span>
+      ${herkunft ? `<span class="task-badge kunde">${escapeHtml(herkunft)}</span>` : ""}
+      ${personBadge(t.assignee)}
+    </div>`;
+  }).join("")}</div>`;
+}
+
+document.getElementById("dashDueList").addEventListener("click", async (ev)=>{
+  const zeile = ev.target.closest(".task-row");
+  if(!zeile) return;
+  const aufgabe = state.tasks.find(t => String(t.id) === String(zeile.dataset.taskId));
+  if(!aufgabe) return;
+  // Ohne Kunde oder Projekt muss man das von hier aus nachtragen können —
+  // sonst schickt die Karte einen auf die Suche nach dem richtigen Board.
+  const ergebnis = await openTaskDialog({
+    aufgabe,
+    kontext: { zeigeZuordnung: !aufgabe.project_id && !aufgabe.customer_id }
+  });
+  if(ergebnis) await neuLaden();
+});
+
+document.getElementById("dashDueList").addEventListener("keydown", (ev)=>{
+  if(ev.key !== "Enter" && ev.key !== " ") return;
+  const zeile = ev.target.closest(".task-row");
+  if(!zeile) return;
+  ev.preventDefault();
+  zeile.click();
+});
+
 onRender("dashboard", renderDashboard);

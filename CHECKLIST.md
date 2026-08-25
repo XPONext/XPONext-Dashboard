@@ -35,26 +35,42 @@ laden ES-Module nicht mehr über `file://`). Browser-Konsole offen lassen:
 - [ ] Commitment hinzufügen, abhaken, löschen
 - [ ] Vorschau unten aktualisiert sich nach dem Speichern
 
-## Aufgaben (Kanban)
+## Boards (Kunde → Projekt → Board)
+
+- [ ] Reiter „Projekte" zeigt eine Kachel je Kunde, interne getrennt darunter
+- [ ] Kachel „Ohne Kunde" erscheint, solange Altaufgaben unzugeordnet sind
+- [ ] Klick auf einen Kunden → seine Projekte plus „Allgemein"
+- [ ] Klick auf ein Projekt → eigenes Board mit fünf Spalten
+- [ ] Breadcrumb führt beide Ebenen zurück
+- [ ] Reiter wechseln und zurück → man landet wieder auf derselben Ebene
+- [ ] Projekt anlegen aus der Kundenebene → Kunde ist vorbelegt
+- [ ] Projekt auf einen anderen Kunden umhängen → seine Aufgaben wandern mit
+- [ ] Projekt löschen → Aufgaben liegen danach unter „Allgemein" des Kunden
+- [ ] Fortschritt am Projekt bewegt sich, wenn eine Karte auf „Done" geht
+
+## Aufgaben
 
 - [ ] Alle Spalten sichtbar, Aufgaben in der richtigen Spalte
-- [ ] Neue Aufgabe anlegen (Modal) → erscheint im Board
-- [ ] Aufgabe anklicken → Modal öffnet mit den richtigen Werten
+- [ ] Neue Aufgabe ohne Enddatum → Dialog bleibt offen und meldet sich
+- [ ] Mit Enddatum → Karte erscheint, Frist steht auf der Karte
+- [ ] Enddatum in der Vergangenheit → Frist wird rot
+- [ ] Beschreibung eintragen, speichern, Dialog erneut öffnen → Text ist da
+- [ ] Karte mit Beschreibung trägt das ✎-Zeichen
 - [ ] Status ändern → Karte wandert in die andere Spalte
 - [ ] Aufgabe löschen
-- [ ] Woche vor/zurück blättern
-- [ ] Aufgabe in die nächste Woche schieben
+- [ ] Wochen-Board: Kunde/Projekt zuordnen → Karte erscheint im richtigen Board
+- [ ] Wochen-Board: Zähler „ohne Zuordnung" geht dabei um eins runter
+- [ ] Wochen-Board: Woche vor/zurück blättern, Aufgabe in die nächste Woche schieben
 
-## Projekte
+## Dashboard — Fällig in 2 Tagen
 
-- [ ] Projektliste lädt, Fortschritt je Projekt sichtbar
-- [ ] Projekt anlegen → erscheint in der Liste
-- [ ] Projekt bearbeiten → geänderte Werte werden übernommen
-- [ ] Projekt löschen
-- [ ] Schritt hinzufügen → erscheint beim richtigen Projekt
-- [ ] Schritt abhaken → Fortschrittsbalken bewegt sich
-- [ ] Schritt löschen
-- [ ] Leerer Zustand: Projekt ohne Schritte zeigt einen sinnvollen Hinweis
+- [ ] Karte „Fällig in den nächsten 2 Tagen" steht ganz oben
+- [ ] Überfällige Aufgaben stehen zuoberst und sind rot
+- [ ] Eine Aufgabe mit Frist in 5 Tagen steht **nicht** drin
+- [ ] Erledigte Aufgaben stehen nicht drin
+- [ ] Klick auf eine Zeile öffnet den Aufgabendialog
+- [ ] Auf „Done" setzen → Zeile verschwindet sofort
+- [ ] Ohne fällige Aufgaben bleibt die Karte stehen und sagt das auch
 
 ## Hebel
 

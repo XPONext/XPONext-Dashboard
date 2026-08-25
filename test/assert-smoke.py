@@ -10,7 +10,9 @@ Die erwarteten Werte ergeben sich aus den Testdaten in test/stub.html:
             05.01.2025 liegt ausserhalb von
             WEEKS und faellt bewusst heraus    = 1
   Zeit      45 x 30 Min, Pause zaehlt nicht    = 22,5 Std.
-  Aufgaben  je eine in "In Arbeit" und "Done"
+  Aufgaben  je eine in "In Arbeit" und "Done" im Wochen-Board;
+            die frueheren project_steps sind Aufgaben ohne Woche
+  Boards    Kunde -> Projekt -> Board, Fortschritt 1 von 4
   Verlauf   Diagramme gezeichnet, leere Wochen zusammengefasst
 
 Wenn sich Testdaten oder Logik aendern, gehoeren die Erwartungen hier mit
@@ -54,7 +56,7 @@ if banner is None:
     sys.exit(1)
 # Der Dialogteil muss wirklich gelaufen sein — sonst prueft der Test die
 # Popups gar nicht und meldet trotzdem "bestanden".
-ERWARTETE_DIALOGPRUEFUNGEN = 46
+ERWARTETE_DIALOGPRUEFUNGEN = 64
 
 if not banner.startswith("SMOKE: OK"):
     m = re.search(r'id="smokeResult"[^>]*>(.*?)</div>', dom, re.S)
@@ -84,9 +86,12 @@ if count(r'class="bar-fill') < 10:
     failures.append("Zu wenige Fortschrittsbalken — das Dashboard wurde nicht gerendert.")
 # Auf das Kartenelement selbst zielen, nicht auf seine Unterelemente
 # (kanban-card-text, kanban-card-badges tragen ein aehnliches Praefix).
-projects = count(r'class="project-card["\s]')
-if projects != 2:
-    failures.append(f"Projektkarten: erwartet 2 (Filter steht am Ende auf alle), waren {projects}")
+# Die flache Projektliste gibt es nicht mehr; am Ende steht der Navigator auf
+# der Kundenebene. Erwartet werden die vier sichtbaren Kacheln: Protours,
+# Chuong, XPO intern und "Ohne Kunde" (Altbestand). Der beendete Kunde nicht.
+kacheln = count(r'class="project-card board-tile"')
+if kacheln != 4:
+    failures.append(f"Kundenkacheln: erwartet 4 (Protours, Chuong, XPO intern, Ohne Kunde), waren {kacheln}")
 # Wieder 2: Die Dialogpruefung legt zwar eine dritte Aufgabe an, danach
 # erzwingt sie aber einen Speicherfehler. Der laedt den Stand aus der
 # Datenbank neu — und damit verschwindet die nur lokal gehaltene Aufgabe.

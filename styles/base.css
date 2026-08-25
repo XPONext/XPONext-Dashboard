@@ -4,6 +4,11 @@
 
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
 
+/* Das hidden-Attribut muss staerker sein als jedes display aus einer Klasse.
+   Ohne diese Zeile blieb .board-head trotz hidden sichtbar: die Klasse setzt
+   display:flex, und die Regel des Browsers fuer [hidden] verliert dagegen. */
+[hidden]{display:none !important;}
+
 body{
   font-family:var(--font);
   background:var(--bg-subtle);

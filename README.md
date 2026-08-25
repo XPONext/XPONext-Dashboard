@@ -36,10 +36,10 @@ js/
   data.js           Laden und Speichern
   state.js          Daten im Speicher + Wochenaggregate
   router.js         Reiterwechsel
-  ui/               modal, chart, bus, components
+  ui/               modal, chart, bus, components, kanban
   utils/            format, weeks
-  views/            dashboard, eingabe, aufgaben, projekte,
-                    hebel, verlauf, zeittracking
+  views/            dashboard, eingabe, aufgaben, boards, projekte,
+                    kunden, hebel, verlauf, zeittracking
 time_tracker/       macOS-Popup, das die Zeiten erfasst (eigenes README)
 test/               Rauchtest und visueller Vergleich
 ```

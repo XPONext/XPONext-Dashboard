@@ -173,7 +173,10 @@ section.view.active{display:block;}
 }
 
 /* ---------- Aufgaben-Board (Kanban) ---------- */
-#view-aufgaben .container{max-width:1120px;}
+/* Fuenf Spalten brauchen mehr als die 900px Grundbreite — sonst ist das
+   Board in beiden Reitern unbenutzbar schmal. */
+#view-aufgaben .container,
+#view-projekte .container{max-width:1120px;}
 .board-head{display:flex;align-items:center;justify-content:space-between;gap:1rem;margin-bottom:1.2rem;flex-wrap:wrap;}
 .board-head h2{margin-bottom:0;}
 .week-nav{display:flex;align-items:center;gap:0.55rem;font-size:0.85rem;font-weight:var(--fw-bold);color:var(--text-body);}
@@ -240,19 +243,34 @@ section.view.active{display:block;}
   border-radius:6px;flex:0 0 auto;
 }
 .project-edit:hover{color:var(--accent);background:var(--accent-light);}
+/* Im Board-Kopf steht der Knopf allein zwischen Badges. Ohne Rahmen und
+   Beschriftung sah er dort wie ein Sonderzeichen aus, nicht wie ein Knopf. */
+.project-edit.is-labeled{
+  border:1px solid var(--border);color:var(--text-body);
+  font-size:0.78rem;font-weight:var(--fw-semi);padding:0.22rem 0.6rem;
+  border-radius:var(--r-pill);
+}
 
 .project-progress{display:flex;align-items:center;gap:0.7rem;margin:0.85rem 0 0.4rem;}
 .project-progress .bar-track{flex:1;margin:0;}
 .project-progress .ratio{font-size:0.76rem;font-weight:var(--fw-bold);color:var(--text-muted);white-space:nowrap;}
 
-.step-list{margin-top:0.5rem;border-top:1px solid var(--border);}
-.step-row{display:flex;align-items:center;gap:0.65rem;padding:0.55rem 0;border-bottom:1px solid var(--border);}
-.step-row:last-child{border-bottom:none;}
-.step-row input[type=checkbox]{width:16px;height:16px;flex:0 0 auto;accent-color:var(--accent);cursor:pointer;margin:0;}
-.step-text{flex:1;font-size:0.87rem;color:var(--text-primary);line-height:1.4;word-break:break-word;}
-.step-row.is-done .step-text{text-decoration:line-through;color:var(--text-muted);}
-.step-row:hover .step-empty{font-size:var(--fs-sm);color:var(--text-muted);padding:0.55rem 0;}
-.step-add{margin-top:0.6rem;}
+/* Aufgabenzeile — Dashboard-Karte "Fällig in den nächsten 2 Tagen".
+   Erbt die Masse der frueheren Schrittliste, die mit den Schritten wegfiel. */
+.due-list{margin-top:0.2rem;border-top:1px solid var(--border);}
+.task-row{
+  display:flex;align-items:center;gap:0.65rem;
+  padding:0.6rem 0.2rem;border-bottom:1px solid var(--border);
+  cursor:pointer;border-radius:var(--r-sm);
+  transition:background .12s var(--ease);
+}
+.task-row:last-child{border-bottom:none;}
+.task-row:hover{background:var(--bg-subtle);}
+.task-row-text{flex:1;font-size:0.87rem;color:var(--text-primary);line-height:1.4;word-break:break-word;}
+/* Feste Spaltenbreite fuer die Frist: sonst beginnt jeder Aufgabentext an
+   einer anderen Stelle und die Liste laesst sich nicht mehr herunterlesen. */
+.task-row .due-badge{flex:0 0 10.5rem;}
+@media(max-width:640px){ .task-row .due-badge{flex:0 0 auto;} }
 
 /* ---------- Commitments ---------- */
 .commit-row{display:flex;align-items:center;gap:0.7rem;padding:0.65rem 0;border-bottom:1px solid var(--border);}
@@ -385,16 +403,10 @@ tr.leerzeile td{
 .workload-chip.is-late{border-color:var(--red);}
 .wl-late{color:var(--red);font-weight:var(--fw-semi);font-size:var(--fs-xs);}
 
-.step-edit{
-  background:none;border:none;color:var(--text-muted);
-  font-size:0.85rem;line-height:1;cursor:pointer;
-  padding:0.2rem 0.3rem;border-radius:var(--r-sm);opacity:0;
-  transition:opacity .12s var(--ease), color .12s var(--ease);
-}
-.step-row:hover .step-edit{opacity:1;}
-.step-edit:hover{color:var(--accent);background:var(--accent-light);}
-.step-row .due-badge{flex:0 0 auto;}
 .task-badge.kunde{background:var(--bg-subtle);color:var(--text-body);border:1px solid var(--border);}
+/* "Kunde · Projekt" wird schnell laenger als eine Kanban-Spalte breit ist.
+   Abschneiden statt ueberlaufen — der volle Text steht im Titel-Attribut. */
+.kanban-card .task-badge{max-width:100%;overflow:hidden;text-overflow:ellipsis;}
 
 .chart-hinweis{
   font-size:var(--fs-sm);color:var(--text-muted);
@@ -406,8 +418,6 @@ tr.leerzeile td{
 }
 /* Bearbeiten-Knopf muss beim Durchtabben sichtbar werden — sonst verliert man
    die Fokusposition an einem Element mit Deckkraft 0. */
-.step-edit:focus-visible,
-.step-row:focus-within .step-edit,
 .commit-del:focus-visible,
 .commit-row:focus-within .commit-del{opacity:1;}
 
@@ -418,3 +428,47 @@ tr.leerzeile td{
   cursor:pointer;border-bottom:1px dashed var(--text-muted);
 }
 .kd-betrag:hover{color:var(--accent-dark);border-bottom-color:var(--accent);}
+
+/* ---------- Hinweiszeile ueber dem Wochen-Board ----------
+   Sagt, wie viele Altaufgaben noch keinem Kunden zugeordnet sind. Ist der
+   Zaehler bei null, kann der ganze Reiter verschwinden. */
+.board-note{
+  font-size:0.85rem;line-height:1.5;
+  border-radius:var(--r-md);
+  padding:0.6rem 0.9rem;margin-bottom:1rem;
+}
+.board-note.is-open{background:var(--accent-light);color:var(--accent-dark);}
+.board-note.is-done{background:var(--bg-subtle);color:var(--text-muted);}
+
+/* Zeichen auf einer Karte, dass eine Beschreibung hinterlegt ist. */
+.card-note{color:var(--text-muted);font-size:0.78rem;}
+
+
+/* ---------- Board-Navigator: Kunde -> Projekt -> Board ---------- */
+
+.crumbs{display:flex;align-items:center;gap:0.4rem;flex-wrap:wrap;margin-bottom:1.2rem;}
+.crumb{
+  background:none;border:none;padding:0.15rem 0.1rem;
+  font:inherit;font-size:0.86rem;font-weight:var(--fw-semi);
+  color:var(--text-body);cursor:pointer;border-radius:var(--r-sm);
+}
+.crumb:hover{color:var(--accent-dark);}
+.crumb.is-current{color:var(--text-primary);font-weight:var(--fw-black);cursor:default;}
+.crumb-sep{color:var(--text-muted);font-size:0.86rem;}
+
+.board-group{margin-bottom:1.8rem;}
+.board-group-title{
+  font-size:0.72rem;font-weight:var(--fw-black);
+  text-transform:uppercase;letter-spacing:0.05em;
+  color:var(--text-muted);margin-bottom:0.7rem;
+}
+.kunde-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:1.1rem;}
+/* Die Kacheln erben Rahmen, Radius und Schatten von .project-card — hier nur,
+   was sie zum Knopf macht. */
+.board-tile{margin-bottom:0;cursor:pointer;}
+.board-tile:hover{border-color:var(--accent);}
+.board-tile:focus-visible{outline:2px solid var(--accent);outline-offset:2px;}
+
+#boardMeta{margin-bottom:1.1rem;}
+#boardMeta:empty{margin-bottom:0;}
+#boardTitle small{display:block;margin-top:0.15rem;}

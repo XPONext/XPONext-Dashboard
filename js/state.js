@@ -18,14 +18,23 @@ export const state = {
   goals:         [], // Wochenfokus aus "weekly_goals"
   commitments:   [], // Wochen-Commitments aus "weekly_commitments"
   projects:      [], // Langzeitprojekte aus "projects"
-  projectSteps:  [], // Zugehörige Schritte aus "project_steps"
   customers:     [], // Kunden und interne Zuordnungen aus "customers"
   revenues:      [], // Rohe Umsatzeintraege aus "revenues" — zum Bearbeiten
   revenueMonths: [], // Umsatz je Kunde und Monat aus der Sicht "revenue_months"
   ladeFehler:    null, // Meldung, wenn Kunden/Umsaetze nicht geladen werden konnten
 
   boardWeekIdx: 0,    // aktuell im Aufgaben-Board angezeigte Woche (Index in WEEKS)
-  ztWeekIdx: null     // aktuell im Zeittracking angezeigte Woche; null = noch nicht gesetzt
+  ztWeekIdx: null,    // aktuell im Zeittracking angezeigte Woche; null = noch nicht gesetzt
+
+  /* Wo man sich im Board-Navigator befindet. Es gibt kein URL-Routing, also
+     lebt die Ebene hier — sie ueberlebt den Reiterwechsel absichtlich, man
+     landet wieder dort, wo man war.
+     "ohne" und "allgemein" sind Platzhalter und duerfen nie in die Datenbank
+     (siehe idOderNull() in data.js). Als Strings koennen sie mit keiner
+     echten uuid und keiner bigint kollidieren. */
+  boardEbene:     "kunden",  // "kunden" | "projekte" | "board"
+  boardKundeId:   null,      // uuid | "ohne"
+  boardProjektId: null       // bigint | "allgemein"
 };
 
 /* Rechnet die Tageswerte zu Wochenwerten hoch.
@@ -160,4 +169,51 @@ export function letzterTagDesMonats(monatsStartStr){
   const [j, m] = monatsStartStr.split("-").map(Number);
   const d = new Date(j, m, 0);   // Tag 0 des Folgemonats = letzter Tag
   return j + "-" + String(m).padStart(2,"0") + "-" + String(d.getDate()).padStart(2,"0");
+}
+
+
+/* ---------- Aufgaben, Kunden, Projekte ----------
+   Seit die Projekt-Schritte in den Aufgaben aufgegangen sind, haengt an
+   jeder Aufgabe ein Board. Diese Auswahlfunktionen sind der einzige Weg
+   dorthin — nirgends sonst wird nach project_id oder customer_id gefiltert. */
+
+export function projektNach(id){
+  return state.projects.find(p => String(p.id) === String(id)) || null;
+}
+
+/* Zu welchem Kunden gehoert eine Aufgabe?
+
+   tasks.customer_id ist denormalisiert — noetig, weil eine Aufgabe ohne
+   Projekt trotzdem in ein Kundenboard gehoert. Beim LESEN gewinnt trotzdem
+   das Projekt: haengt jemand ein Projekt an einen anderen Kunden um und der
+   Nachzug an den Aufgaben scheitert, wuerde eine veraltete Spalte die Aufgabe
+   sonst still im falschen Board einsortieren. */
+export function kundeIdVonAufgabe(t){
+  if(t.project_id != null){
+    const p = projektNach(t.project_id);
+    if(p && p.customer_id) return String(p.customer_id);
+  }
+  return t.customer_id != null ? String(t.customer_id) : null;
+}
+
+export function aufgabenVonProjekt(projectId){
+  return state.tasks.filter(t => String(t.project_id) === String(projectId));
+}
+
+/* Alle Aufgaben eines Kunden — auch die, die an seinen Projekten haengen. */
+export function aufgabenVonKunde(customerId){
+  return state.tasks.filter(t => kundeIdVonAufgabe(t) === String(customerId));
+}
+
+/* Das "Allgemein"-Board: Aufgaben eines Kunden ohne Projekt. */
+export function allgemeineAufgaben(customerId){
+  return state.tasks.filter(t =>
+    t.project_id == null && kundeIdVonAufgabe(t) === String(customerId));
+}
+
+/* Aufgaben ohne jede Zuordnung. Waehrend der Uebergangsphase sind das die
+   Altbestaende aus dem Wochen-Board — ohne eine eigene Kachel waeren sie im
+   neuen Navigator unerreichbar. */
+export function aufgabenOhneKunde(){
+  return state.tasks.filter(t => kundeIdVonAufgabe(t) === null);
 }

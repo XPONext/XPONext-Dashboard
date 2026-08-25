@@ -44,3 +44,28 @@ export function barClass(pct){
 export function todayIso(){
   return localDateStr(new Date());
 }
+
+/* ---------- Fristen ----------
+   Lagen bis zum Board-Umbau privat in views/projekte.js. Seit Aufgaben eine
+   eigene Faelligkeit haben, brauchen sie auch das Board, die Kacheln und die
+   Dashboard-Karte — deshalb hier, direkt neben todayIso(), an dem sie
+   ohnehin als Einziges haengen. */
+
+/* Tage bis zur Frist. Negativ = ueberfaellig. null = keine Frist. */
+export function tageBis(datum){
+  if(!datum) return null;
+  const heute = new Date(todayIso()+"T00:00:00");
+  const ziel  = new Date(datum+"T00:00:00");
+  const tage = Math.round((ziel - heute) / 86400000);
+  // Ein unbrauchbares Datum soll nicht still als "nicht faellig" durchgehen
+  return Number.isFinite(tage) ? tage : null;
+}
+
+export function fristText(tage){
+  if(tage === null) return "";
+  if(tage < 0)  return Math.abs(tage) + (Math.abs(tage) === 1 ? " Tag überfällig" : " Tage überfällig");
+  if(tage === 0) return "heute fällig";
+  if(tage === 1) return "morgen fällig";
+  if(tage <= 14) return "in " + tage + " Tagen";
+  return "";
+}
