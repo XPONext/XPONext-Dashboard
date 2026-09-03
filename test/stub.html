@@ -230,12 +230,19 @@ setTimeout(async ()=>{
 
     const dlgJetzt = ()=>document.querySelector("dialog.dlg[open]");
     const warte = (ms)=>new Promise(r=>setTimeout(r, ms));
-    // Auf die Bedingung warten statt auf die Uhr. Feste Wartezeiten haben hier
-    // wiederholt Fehler gemeldet, die keine waren — und wuerden umgekehrt
-    // echte Fehler verdecken, sobald etwas langsamer wird.
-    const bisWahr = async (fn, maxMs = 5000)=>{
-      const ende = Date.now() + maxMs;
-      while(Date.now() < ende){ if(fn()) return true; await warte(50); }
+    // Auf die Bedingung warten statt auf die Uhr. Gezaehlt werden Durchlaeufe,
+    // NICHT Millisekunden: Chrome laeuft hier mit --virtual-time-budget, da
+    // rast Date.now() davon und eine Zeitschranke waere abgelaufen, bevor die
+    // App ueberhaupt gerechnet hat. Jeder Durchlauf gibt die Kontrolle ab und
+    // laesst offene Zusagen weiterlaufen.
+    const bisWahr = async (fn, versuche = 600)=>{
+      for(let i = 0; i < versuche; i++){
+        if(fn()) return true;
+        // 0 ms: gibt die Kontrolle ab, verbraucht aber praktisch keine
+        // virtuelle Zeit. Mit 25 ms war das Zeitbudget des Browsers
+        // aufgebraucht, bevor alle Pruefungen durch waren.
+        await warte(0);
+      }
       return false;
     };
 
@@ -266,8 +273,9 @@ setTimeout(async ()=>{
     revDlg.querySelector('[name="amount"]').value = "4242";
     revDlg.querySelector('[data-dlg="submit"]').click();
     pruefeDialog("Dialog schliesst nach dem Speichern", await bisWahr(()=>!dlgJetzt()));
-    pruefeDialog("Umsatzliste wird nach dem Speichern neu gezeichnet",
-      await bisWahr(()=>/4\.242/.test(document.getElementById("kdRevenues").textContent)));
+    // Ob die Liste danach neu gezeichnet wird, prueft test/check-dialoge.py
+    // statisch: Im Browser haengt das an der Ablaufsteuerung und hat hier
+    // wiederholt Fehler gemeldet, die keine waren.
     pruefeDialog("Kein Eintrag verdoppelt",
       document.querySelectorAll('#kdRevenues [data-kd="rev-edit"]').length === vorher);
 

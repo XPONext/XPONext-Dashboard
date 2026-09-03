@@ -1,7 +1,7 @@
 /* Zentraler Anwendungszustand und die daraus abgeleiteten Kennzahlen.
    Kein DOM, keine Netzwerkzugriffe — nur Daten und Rechnen. */
 
-import { N_WEEKS, PERSONS, LEVERS, WEEKLY_TARGET, STATUS_COLUMNS } from "./config.js";
+import { WEEKS, N_WEEKS, PERSONS, LEVERS, WEEKLY_TARGET, STATUS_COLUMNS } from "./config.js";
 import { weekIndexForDate } from "./utils/weeks.js";
 import { localDateStr } from "./utils/format.js";
 
@@ -160,4 +160,33 @@ export function letzterTagDesMonats(monatsStartStr){
   const [j, m] = monatsStartStr.split("-").map(Number);
   const d = new Date(j, m, 0);   // Tag 0 des Folgemonats = letzter Tag
   return j + "-" + String(m).padStart(2,"0") + "-" + String(d.getDate()).padStart(2,"0");
+}
+
+
+/* ---------- Umsatz: eine einzige Quelle ----------
+   Umsatz und Auftraege kommen ausschliesslich aus den Kundeneintraegen.
+   Frueher wurden sie zusaetzlich als "Closes" in der Wochen-Eingabe erfasst —
+   zwei Orte fuer dieselbe Zahl, die zwangslaeufig auseinanderlaufen. */
+
+/* Realisierter Umsatz insgesamt, aus der Monatssicht. */
+export function realisierterUmsatz(){
+  return state.revenueMonths.reduce((s,r)=> s + (Number(r.amount) || 0), 0);
+}
+
+/* Ein Auftrag zaehlt in der Woche, in der er beauftragt wurde. */
+export function auftraegeInWoche(i){
+  const w = WEEKS[i];
+  if(!w) return [];
+  return state.revenues.filter(r=> r.period_start >= w[0] && r.period_start <= w[1]);
+}
+
+/* Auftragswert der Woche: beim Einmalauftrag der Gesamtbetrag, beim Retainer
+   der erste Monatsbetrag — das ist der Wert, der in dieser Woche gewonnen
+   wurde. Die Folgemonate des Retainers zaehlen ueber realisierterUmsatz(). */
+export function auftragswertInWoche(i){
+  return auftraegeInWoche(i).reduce((s,r)=> s + (Number(r.amount) || 0), 0);
+}
+
+export function auftraegeGesamt(){
+  return state.revenues.length;
 }

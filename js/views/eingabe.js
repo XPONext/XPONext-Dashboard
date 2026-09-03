@@ -1,4 +1,8 @@
-/* Ansicht: Wochen-Eingabe — Tageswerte, Closes, Wochenfokus, Commitments. */
+/* Ansicht: Wochen-Eingabe — Termine, Lead-Gen-Stunden, Wochenfokus, Commitments.
+
+   Umsatz und Auftraege stehen hier bewusst NICHT mehr: Sie kommen aus den
+   Kundeneintraegen im Reiter "Kunden". Zwei Eingabeorte fuer dieselbe Zahl
+   laufen zwangslaeufig auseinander. */
 
 import { WEEKS, N_WEEKS, WEEKLY_TARGET, PERSON_STORAGE_KEY } from "../config.js";
 import { num, euro, weekLabel, barClass, escapeHtml, todayIso } from "../utils/format.js";
@@ -32,37 +36,7 @@ function populateEntryControls(){
   document.getElementById("personSelectHebel").value = savedPerson;
 }
 
-let currentClosesDraft = [];
 
-function renderClosesList(){
-  const container = document.getElementById("closesList");
-  if(currentClosesDraft.length===0){
-    container.innerHTML = `<div class="pct">Noch keine Closes für diesen Tag.</div>`;
-    return;
-  }
-  container.innerHTML = currentClosesDraft.map((val, idx)=>`
-    <div style="display:flex;gap:0.5rem;margin-bottom:0.5rem;align-items:center;">
-      <input type="number" min="0" step="10" class="close-amount" data-idx="${idx}" value="${val}" style="flex:1;" placeholder="Auftragswert €">
-      <button type="button" class="btn-outline remove-close" data-idx="${idx}" style="padding:0.5rem 0.8rem;">✕</button>
-    </div>
-  `).join("");
-}
-
-document.getElementById("addCloseBtn").addEventListener("click", ()=>{
-  currentClosesDraft.push(0);
-  renderClosesList();
-});
-document.getElementById("closesList").addEventListener("click", (ev)=>{
-  if(ev.target.classList.contains("remove-close")){
-    currentClosesDraft.splice(Number(ev.target.dataset.idx), 1);
-    renderClosesList();
-  }
-});
-document.getElementById("closesList").addEventListener("input", (ev)=>{
-  if(ev.target.classList.contains("close-amount")){
-    currentClosesDraft[Number(ev.target.dataset.idx)] = Number(ev.target.value)||0;
-  }
-});
 
 function loadDayIntoForm(){
   const date = document.getElementById("entryDate").value;
@@ -70,11 +44,9 @@ function loadDayIntoForm(){
   const dp = (state.dailyPersonal[date] && state.dailyPersonal[date][person]) || {leadGenHours:0};
   document.getElementById("inLeadGen").value = dp.leadGenHours || 0;
 
-  const dt = state.dailyTeam[date] || {termineGebucht:0, termineShowup:0, closes:[]};
+  const dt = state.dailyTeam[date] || {termineGebucht:0, termineShowup:0};
   document.getElementById("inTermineGebucht").value = dt.termineGebucht || 0;
   document.getElementById("inTermineShowup").value = dt.termineShowup || 0;
-  currentClosesDraft = [...(dt.closes || [])];
-  renderClosesList();
 
   const wi = weekIndexForDate(date);
   document.getElementById("entryWeekInfo").textContent = wi>=0 ? ("gehört zu "+weekLabel(wi)) : "";
@@ -92,7 +64,6 @@ function renderPreview(i){
     ["Lead-Gen (Std.)", e.leadGenHours, WEEKLY_TARGET.leadGen, v=>num(v,1)],
     ["Termine gebucht", e.termineGebucht, WEEKLY_TARGET.termineGebucht, v=>num(v,0)],
     ["Termine (Show-up)", e.termineShowup, WEEKLY_TARGET.termineShowup, v=>num(v,0)],
-    ["Closes", e.closes, WEEKLY_TARGET.closes, v=>num(v,0)],
     ["Umsatz", e.umsatz, WEEKLY_TARGET.umsatz, v=>euro(v)],
   ];
   document.getElementById("previewBody").innerHTML = rows.map(([label,ist,soll,f])=>{
@@ -184,7 +155,6 @@ document.getElementById("saveTeamBtn").addEventListener("click", async ()=>{
   state.dailyTeam[date] = {
     termineGebucht: Number(document.getElementById("inTermineGebucht").value)||0,
     termineShowup: Number(document.getElementById("inTermineShowup").value)||0,
-    closes: currentClosesDraft.filter(v=>v>0)
   };
   await speichern(async ()=>{
     await upsertDailyTeam(date);

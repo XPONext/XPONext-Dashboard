@@ -67,7 +67,7 @@
         <div class="pct" id="pctTermineShowup">0% vom Gesamtziel</div>
       </div>
       <div class="stat">
-        <div class="lbl">Closes</div>
+        <div class="lbl">Aufträge</div>
         <div class="num" id="statCloses">0 <small>/ 10</small></div>
         <div class="bar-track"><div class="bar-fill ok" id="barCloses" style="width:0%"></div></div>
         <div class="pct" id="pctCloses">0% vom Gesamtziel</div>
@@ -134,16 +134,12 @@
     </div>
 
     <div class="card">
-      <h2>Team-Zahlen <small>Termine & Closes — gemeinsam. Zeigt den Stand für den gewählten Tag, jederzeit korrigierbar.</small></h2>
+      <h2>Team-Zahlen <small>Termine — gemeinsam. Zeigt den Stand für den gewählten Tag, jederzeit korrigierbar.<br>Umsatz und Aufträge trägst du im Reiter „Kunden“ ein, sie zählen von dort automatisch mit.</small></h2>
       <div class="form-grid">
         <div class="field"><label>Termine gebucht</label><input type="number" id="inTermineGebucht" min="0" step="1"></div>
         <div class="field"><label>Termine (Show-up)</label><input type="number" id="inTermineShowup" min="0" step="1"></div>
       </div>
-      <div class="field">
-        <label>Closes heute <small style="color:var(--text-muted);font-weight:400;">jeweils mit Auftragswert — Umsatz ergibt sich automatisch als Summe</small></label>
-        <div id="closesList"></div>
-        <button type="button" class="btn-outline" id="addCloseBtn" style="margin-top:0.3rem;">+ Close hinzufügen</button>
-      </div>
+      
       <button class="btn" id="saveTeamBtn" style="margin-top:1rem;">Tag speichern</button>
       <div class="save-msg" id="saveTeamMsg">Gespeichert ✓</div>
     </div>
@@ -337,7 +333,7 @@
 
     <div class="card">
       <h2>Vertrieb je Woche
-        <small>Termine, Show-ups und Abschlüsse. Der Auftragswert steht darunter in der Tabelle.</small></h2>
+        <small>Termine, Show-ups und gewonnene Aufträge. Der Auftragswert steht darunter in der Tabelle.</small></h2>
       <div id="vlVertriebChart"></div>
     </div>
 

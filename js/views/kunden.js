@@ -18,12 +18,12 @@ import {
 } from "../state.js";
 import {
   kundeSpeichern, kundeLoeschen,
-  umsatzSpeichern, umsatzLoeschen,
+  umsatzSpeichern, umsatzLoeschen, stundenNachtragen,
   fetchAllData
 } from "../data.js";
 import { openModal, confirmDialog } from "../ui/modal.js";
 import { onRender, renderAll, showErrorBanner } from "../ui/bus.js";
-import { emptyState } from "../ui/components.js";
+import { emptyState, PERSON_OPTIONS } from "../ui/components.js";
 
 /* Nach dem Speichern neu laden. Bewusst NICHT innerhalb von onSubmit:
    Schlaegt das Neuladen fehl, waere sonst der Dialog offen geblieben, obwohl
@@ -176,6 +176,42 @@ async function umsatzDialog(customerId, vorhandener){
   if(ergebnis) await neuLaden();
 }
 
+/* Stunden nachtragen — fuer verpasste Popups oder Arbeit, die vor der
+   Kundenbeziehung stattgefunden hat. Ohne diesen Weg bliebe getrackte Zeit
+   luecken haft und der Stundenlohn systematisch zu hoch. */
+async function stundenDialog(customerId){
+  const k = kundeNach(customerId);
+  if(!k) return;
+
+  const ergebnis = await openModal({
+    title: "Stunden nachtragen — " + k.name,
+    submitLabel: "Stunden hinzufügen",
+    fields: [
+      { name:"stunden", label:"Stunden", type:"number", min:"0", step:"0.25", required:true,
+        hint:"Viertelstunden möglich, z.B. 2,5" },
+      { name:"person", label:"Wer", type:"select", options:PERSON_OPTIONS, value:"tim" },
+      { name:"datum", label:"Wann", type:"date", value: todayIso(), required:true, width:"full" },
+      { name:"notiz", label:"Wofür", type:"text", width:"full",
+        placeholder:"optional, z.B. Konzept vor Vertragsschluss" }
+    ],
+    validate: werte=>{
+      if(!(Number(werte.stunden) > 0)) return "Bitte eine Stundenzahl über 0 eintragen.";
+      if(Number(werte.stunden) > 24) return "Mehr als 24 Stunden an einem Tag — bitte auf mehrere Tage aufteilen.";
+      return null;
+    },
+    onSubmit: async werte=>{
+      await stundenNachtragen({
+        person: werte.person,
+        datum: werte.datum,
+        stunden: Number(werte.stunden),
+        kundenName: k.name,
+        notiz: werte.notiz
+      });
+    }
+  });
+  if(ergebnis) await neuLaden();
+}
+
 /* ---------- Rendern ---------- */
 
 function renderKunden(){
@@ -280,7 +316,8 @@ function renderKunden(){
               ? `<button type="button" class="kd-betrag" data-kd="rev-of" data-id="${escapeHtml(z.c.id)}"
                    title="Umsatzeintrag bearbeiten">${escapeHtml(euro(z.umsatz))}</button>`
               : "–"}</td>
-        <td>${z.stunden > 0 ? escapeHtml(num(z.stunden,1)) + " Std." : "–"}</td>
+        <td><button type="button" class="kd-betrag" data-kd="std" data-id="${escapeHtml(z.c.id)}"
+              title="Stunden nachtragen">${z.stunden > 0 ? escapeHtml(num(z.stunden,1)) + " Std." : "+ Std."}</button></td>
         <td>${z.lohn == null
               ? `<span class="t-muted">${
                   z.umsatz > 0 ? "keine Zeit erfasst" :
@@ -289,6 +326,7 @@ function renderKunden(){
         <td>${z.c.status === "aktiv" ? "" : `<span class="status-badge st-${escapeHtml(z.c.status)}">${escapeHtml(statusLabel(z.c.status))}</span>`}</td>
         <td class="kd-actions">
           <button type="button" class="kd-btn" data-kd="umsatz" data-id="${escapeHtml(z.c.id)}">+ Umsatz</button>
+          <button type="button" class="kd-btn" data-kd="std" data-id="${escapeHtml(z.c.id)}">+ Stunden</button>
           <button type="button" class="kd-btn" data-kd="edit" data-id="${escapeHtml(z.c.id)}">Bearbeiten</button>
         </td>
       </tr>`).join("")}
@@ -370,6 +408,7 @@ document.getElementById("kdList").addEventListener("click", ev=>{
   if(btn.dataset.kd === "edit")   kundeDialog(btn.dataset.id);
   if(btn.dataset.kd === "umsatz") umsatzDialog(btn.dataset.id, null);
   if(btn.dataset.kd === "rev-of") umsatzVonKunde(btn.dataset.id);
+  if(btn.dataset.kd === "std")    stundenDialog(btn.dataset.id);
 });
 
 document.getElementById("kdRevenues").addEventListener("click", ev=>{

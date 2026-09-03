@@ -3,22 +3,26 @@
 import { N_WEEKS, TOTAL, TOTAL_HEBEL, WEEKLY_TARGET, PERSONS, LEAD_GEN_PER_PERSON } from "../config.js";
 import { num, euro, weekLabel, barClass } from "../utils/format.js";
 import { findCurrentWeekIndex } from "../utils/weeks.js";
-import { personEntry, hebelHours, combinedEntry, cumulative } from "../state.js";
+import { personEntry, hebelHours, combinedEntry, cumulative,
+         realisierterUmsatz, auftraegeGesamt, auftraegeInWoche, auftragswertInWoche } from "../state.js";
 import { onRender } from "../ui/bus.js";
 
 function renderDashboard(){
   const {c, weeksLogged, onTarget, bestWeek, bestUmsatz} = cumulative();
 
-  document.getElementById("dashUmsatzIst").textContent = euro(c.umsatz);
-  const umsatzPct = Math.min(100, (c.umsatz/TOTAL.umsatz)*100);
+  // Umsatz kommt aus den Kundeneintraegen, nicht mehr aus der Wochen-Eingabe.
+  const umsatz = realisierterUmsatz();
+  document.getElementById("dashUmsatzIst").textContent = euro(umsatz);
+  const umsatzPct = Math.min(100, (umsatz/TOTAL.umsatz)*100);
   document.getElementById("dashUmsatzBar").style.width = umsatzPct+"%";
-  document.getElementById("dashUmsatzMeta").textContent = num(umsatzPct,1)+"% des Jahresziels erreicht · noch "+euro(Math.max(0,TOTAL.umsatz-c.umsatz))+" bis €20.000";
+  document.getElementById("dashUmsatzMeta").textContent =
+    num(umsatzPct,1)+"% erreicht · noch "+euro(Math.max(0,TOTAL.umsatz-umsatz))+" bis "+euro(TOTAL.umsatz);
 
   const metrics = [
     ["Lead-Gen (Std.)","statCalls","barCalls","pctCalls",c.leadGenHours,TOTAL.leadGen,1],
     ["Termine gebucht","statTermineGebucht","barTermineGebucht","pctTermineGebucht",c.termineGebucht,TOTAL.termineGebucht,0],
     ["Termine (Show-up)","statTermineShowup","barTermineShowup","pctTermineShowup",c.termineShowup,TOTAL.termineShowup,0],
-    ["Closes","statCloses","barCloses","pctCloses",c.closes,TOTAL.closes,0],
+    ["Aufträge","statCloses","barCloses","pctCloses",auftraegeGesamt(),TOTAL.closes,0],
   ];
   metrics.forEach(([label, numId, barId, pctId, ist, soll, digits])=>{
     const pct = soll>0 ? (ist/soll)*100 : 0;
@@ -45,13 +49,13 @@ function renderDashboard(){
     ["Lead-Gen (Std.)", e.leadGenHours, WEEKLY_TARGET.leadGen],
     ["Termine gebucht", e.termineGebucht, WEEKLY_TARGET.termineGebucht],
     ["Termine (Show-up)", e.termineShowup, WEEKLY_TARGET.termineShowup],
-    ["Closes", e.closes, WEEKLY_TARGET.closes],
-    ["Umsatz", e.umsatz, WEEKLY_TARGET.umsatz],
+    ["Aufträge", auftraegeInWoche(curIdx).length, WEEKLY_TARGET.closes],
+    ["Auftragswert", auftragswertInWoche(curIdx), WEEKLY_TARGET.umsatz],
   ];
   document.getElementById("dashCurrentWeekBody").innerHTML = rows.map(([label,ist,soll])=>{
     const pct = soll>0 ? (ist/soll)*100 : 0;
-    const displayIst = label==="Umsatz" ? euro(ist) : num(ist,label==="Lead-Gen (Std.)"?1:0);
-    const displaySoll = label==="Umsatz" ? euro(soll) : num(soll,1);
+    const displayIst = label==="Auftragswert" ? euro(ist) : num(ist,label==="Lead-Gen (Std.)"?1:0);
+    const displaySoll = label==="Auftragswert" ? euro(soll) : num(soll,1);
     return `<div class="row-metric">
       <div class="top"><span class="name">${label}</span><span class="vals">${displayIst} / ${displaySoll}</span></div>
       <div class="bar-track"><div class="bar-fill ${barClass(pct)}" style="width:${Math.min(100,pct)}%"></div></div>
@@ -83,8 +87,8 @@ function renderLeaderboard(){
     ["Lead-Gen (Std.)", i=>combinedEntry(i).leadGenHours, v=>num(v,1)+" Std."],
     ["Termine gebucht", i=>combinedEntry(i).termineGebucht, v=>num(v,0)],
     ["Termine Show-up", i=>combinedEntry(i).termineShowup, v=>num(v,0)],
-    ["Closes", i=>combinedEntry(i).closes, v=>num(v,0)],
-    ["Umsatz", i=>combinedEntry(i).umsatz, v=>euro(v)],
+    ["Aufträge", i=>auftraegeInWoche(i).length, v=>num(v,0)],
+    ["Auftragswert", i=>auftragswertInWoche(i), v=>euro(v)],
     ["Hebel-Stunden", i=>combinedEntry(i).hebelHours, v=>num(v,1)+" Std."],
   ];
   document.getElementById("dashLeaderboard").innerHTML = metrics.map(([label,getVal,fmt])=>{

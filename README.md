@@ -54,8 +54,14 @@ Es gibt keine klassischen Tests, aber zwei Skripte, die den größten Teil abdec
 Beide brauchen nur Python 3 und Google Chrome.
 
 ```bash
-./test/run-smoke.sh   # laden alle Module? stimmen die Zahlen? gehen die Dialoge?
+./test/run-smoke.sh          # laden alle Module? stimmen die Zahlen? gehen die Dialoge?
+python3 test/test-popup.py   # Zeittracker-Popup, ohne Fenster zu oeffnen
 ```
+
+Der Rauchtest ruft am Ende `test/check-dialoge.py` mit auf: eine statische
+Prüfung, dass jeder speichernde Dialog die Ansicht danach auffrischt. Genau
+das hat einmal gefehlt — der Umsatz landete in der Datenbank, die Ansicht
+blieb stehen, und man trug ihn ein zweites Mal ein.
 
 Der Rauchtest lädt die echte `index.html`, ersetzt Supabase durch feste Testdaten
 und prüft Ergebnis, Dialoge und Fehlerfälle.

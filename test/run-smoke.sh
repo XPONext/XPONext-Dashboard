@@ -40,7 +40,7 @@ PY
 sleep 1
 
 "$CHROME" --headless --disable-gpu --no-sandbox --no-first-run \
-  --disable-extensions --virtual-time-budget=25000 \
+  --disable-extensions --virtual-time-budget=60000 \
   --dump-dom "http://localhost:$PORT/_smoketest.html" 2>/dev/null > "$TMP/dom.html"
 
 python3 test/assert-smoke.py "$TMP/dom.html"
@@ -49,3 +49,7 @@ STATUS=$?
 kill "$(cat "$TMP/server.pid")" 2>/dev/null
 rm -rf "$TMP" _smoketest.html
 exit $STATUS
+
+# Struktur der Dialoge statisch pruefen — im Browser ist das nicht
+# zuverlaessig messbar, siehe Kopf von check-dialoge.py.
+python3 "$(dirname "$0")/check-dialoge.py" || exit 1

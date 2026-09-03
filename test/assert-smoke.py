@@ -54,7 +54,7 @@ if banner is None:
     sys.exit(1)
 # Der Dialogteil muss wirklich gelaufen sein — sonst prueft der Test die
 # Popups gar nicht und meldet trotzdem "bestanden".
-ERWARTETE_DIALOGPRUEFUNGEN = 46
+ERWARTETE_DIALOGPRUEFUNGEN = 45
 
 if not banner.startswith("SMOKE: OK"):
     m = re.search(r'id="smokeResult"[^>]*>(.*?)</div>', dom, re.S)
@@ -72,7 +72,9 @@ if int(m.group(1)) != ERWARTETE_DIALOGPRUEFUNGEN:
     sys.exit(1)
 
 # 2) Stimmen die gerechneten Zahlen?
-check("Umsatz gesamt", text_of("dashUmsatzIst"), "€4.300")
+# Umsatz kommt jetzt aus den Kundeneintraegen (revenue_months), nicht mehr
+# aus der Summe der Closes in der Wochen-Eingabe: 3.000 Retainer + 800 einmalig.
+check("Umsatz gesamt", text_of("dashUmsatzIst"), "€3.800")
 check("Closes", text_of("statCloses"), "2")
 check("Termine gebucht", text_of("statTermineGebucht"), "7")
 check("Termine Show-up", text_of("statTermineShowup"), "5")

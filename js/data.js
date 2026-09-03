@@ -84,12 +84,14 @@ export async function upsertDailyPersonal(date, person){
 }
 
 export async function upsertDailyTeam(date){
-  const e = state.dailyTeam[date] || {termineGebucht:0, termineShowup:0, closes:[]};
+  const e = state.dailyTeam[date] || {termineGebucht:0, termineShowup:0};
+  // Die Spalte "closes" wird nicht mehr geschrieben. Sie bleibt in der
+  // Datenbank stehen, damit alte Eintraege nicht verloren gehen — Umsatz und
+  // Auftraege kommen jetzt aus den Kundeneintraegen.
   const { error } = await db.from("daily_team").upsert({
     date,
     termine_gebucht: e.termineGebucht,
     termine_showup: e.termineShowup,
-    closes: e.closes,
     updated_at: new Date().toISOString()
   });
   if(error){ console.error(error); throw new Error("Speichern fehlgeschlagen: "+error.message); }
@@ -169,4 +171,33 @@ export async function umsatzLoeschen(id){
     console.error(error);
     throw new Error("Umsatz konnte nicht gelöscht werden: " + error.message);
   }
+}
+
+
+/* ---------- Stunden nachtragen ----------
+   Wenn ein Popup verpasst wurde oder Arbeit vor der Kundenbeziehung
+   stattgefunden hat. Geschrieben wird derselbe Satzbau wie beim Tracker,
+   damit die Auswertung nicht zwei Faelle unterscheiden muss. */
+export async function stundenNachtragen({ person, datum, stunden, kundenName, notiz }){
+  const minuten = Math.round(Number(stunden) * 60);
+  if(!(minuten > 0)) throw new Error("Bitte eine Stundenzahl über 0 eintragen.");
+
+  const { data, error } = await db.from("time_entries").insert({
+    person,
+    // Mittags, damit der Eintrag unabhaengig von der Zeitzone auf dem
+    // gewaehlten Tag landet.
+    ts: new Date(datum + "T12:00:00").toISOString(),
+    duration_minutes: minuten,
+    state: "Nachgetragen",
+    zuordnung: kundenName,
+    aktivitaet: notiz || null
+  }).select();
+  if(error){
+    console.error(error);
+    throw new Error("Stunden konnten nicht gespeichert werden: " + error.message);
+  }
+  if(!data || !data.length){
+    throw new Error("Die Stunden wurden von der Datenbank nicht übernommen — bitte die Seite neu laden.");
+  }
+  return data[0];
 }

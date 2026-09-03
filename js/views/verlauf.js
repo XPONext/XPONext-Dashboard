@@ -15,7 +15,8 @@
 import { WEEKS, N_WEEKS, PERSONS, TOTAL, WEEKLY_TARGET } from "../config.js";
 import { num, euro, fmtDate, escapeHtml, todayIso } from "../utils/format.js";
 import { findCurrentWeekIndex } from "../utils/weeks.js";
-import { state, personEntry, teamEntry, hebelHours } from "../state.js";
+import { state, personEntry, teamEntry, hebelHours,
+         auftraegeInWoche, auftragswertInWoche } from "../state.js";
 import { onRender, showErrorBanner, flashSaved } from "../ui/bus.js";
 import { linienChart, balkenChart } from "../ui/chart.js";
 import { emptyState } from "../ui/components.js";
@@ -34,7 +35,7 @@ function letzteWocheMitDaten(){
     const t = teamEntry(i);
     const stunden = PERSONS.reduce((s,[k])=>
       s + personEntry(i,k).leadGenHours + hebelHours(personEntry(i,k)), 0);
-    if(t.termineGebucht || t.termineShowup || t.closes || t.umsatz || stunden) letzte = Math.max(letzte, i);
+    if(t.termineGebucht || t.termineShowup || auftraegeInWoche(i).length || stunden) letzte = Math.max(letzte, i);
   }
   return letzte;
 }
@@ -135,7 +136,7 @@ function renderVertrieb(){
   const reihen = [
     { name: "Termine gebucht", werte: labels.map((_,i)=> teamEntry(i).termineGebucht) },
     { name: "davon Show-up",   werte: labels.map((_,i)=> teamEntry(i).termineShowup) },
-    { name: "Abschlüsse",      werte: labels.map((_,i)=> teamEntry(i).closes) }
+    { name: "Aufträge",        werte: labels.map((_,i)=> auftraegeInWoche(i).length) }
   ];
 
   const el = document.getElementById("vlVertriebChart");
@@ -146,7 +147,7 @@ function renderVertrieb(){
   }
   el.innerHTML = balkenChart({
     reihen, labels, hoehe: 220,
-    beschreibung: "Gebuchte Termine, Show-ups und Abschlüsse je Kalenderwoche"
+    beschreibung: "Gebuchte Termine, Show-ups und gewonnene Aufträge je Kalenderwoche"
   });
 }
 
@@ -224,7 +225,7 @@ function renderTeamTabelle(){
 
   for(let i=0;i<N_WEEKS;i++){
     const t = teamEntry(i);
-    const hatWas = t.termineGebucht || t.termineShowup || t.closes || t.umsatz;
+    const hatWas = t.termineGebucht || t.termineShowup || auftraegeInWoche(i).length;
     if(!hatWas && i !== curIdx){ leerAmStueck++; continue; }
     schreibeLuecke();
     zeilen.push(`<tr class="${i===curIdx?'current-week':''}">
@@ -232,8 +233,8 @@ function renderTeamTabelle(){
       <td>${escapeHtml(fmtDate(WEEKS[i][0]))}–${escapeHtml(fmtDate(WEEKS[i][1]))}</td>
       <td>${num(t.termineGebucht,0)}</td>
       <td>${num(t.termineShowup,0)} ${abweichung(t.termineShowup, WEEKLY_TARGET.termineShowup)}</td>
-      <td>${num(t.closes,0)}</td>
-      <td>${t.umsatz ? escapeHtml(euro(t.umsatz)) : "–"}</td>
+      <td>${num(auftraegeInWoche(i).length,0)}</td>
+      <td>${auftragswertInWoche(i) ? escapeHtml(euro(auftragswertInWoche(i))) : "–"}</td>
       <td>${abweichung(t.termineGebucht, WEEKLY_TARGET.termineGebucht)}</td>
     </tr>`);
   }
@@ -246,7 +247,7 @@ function renderTeamTabelle(){
     </tr></thead>
     <tbody>${zeilen.join("")}</tbody>
   </table></div>
-  <p class="tabellen-hinweis">„Auftragswert“ ist die Summe der bei den Abschlüssen eingetragenen Beträge — nicht der realisierte Umsatz aus dem Diagramm oben.</p>`;
+  <p class="tabellen-hinweis">„Auftragswert“ ist die Summe der in dieser Woche gewonnenen Aufträge aus dem Reiter „Kunden“. Der realisierte Umsatz oben verteilt Retainer zusätzlich auf ihre Folgemonate.</p>`;
 }
 
 function renderPersonTabelle(){
@@ -313,7 +314,7 @@ function csvZeile(felder){
 
 function exportiere(){
   const zeilen = [csvZeile([
-    "Woche","Von","Bis","Termine gebucht","Show-up","Abschluesse","Auftragswert",
+    "Woche","Von","Bis","Termine gebucht","Show-up","Auftraege","Auftragswert",
     "Lead-Gen Tim","Lead-Gen Simon","Hebel Tim","Hebel Simon"
   ])];
   for(let i=0;i<N_WEEKS;i++){
@@ -321,7 +322,7 @@ function exportiere(){
     const tim = personEntry(i,"tim"), simon = personEntry(i,"simon");
     zeilen.push(csvZeile([
       "KW " + (i+1), WEEKS[i][0], WEEKS[i][1],
-      t.termineGebucht, t.termineShowup, t.closes, t.umsatz,
+      t.termineGebucht, t.termineShowup, auftraegeInWoche(i).length, auftragswertInWoche(i),
       tim.leadGenHours, simon.leadGenHours,
       hebelHours(tim), hebelHours(simon)
     ]));
