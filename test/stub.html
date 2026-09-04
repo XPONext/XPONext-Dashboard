@@ -319,8 +319,12 @@ setTimeout(async ()=>{
     // 21 - 12 = 9 offen x 3,35 EUR = 30,15 EUR
     pruefeDialog("Opportunitaetskosten gerechnet",
       /30|31/.test(document.getElementById("clKosten").textContent));
-    pruefeDialog("Kostenkarte ist als Warnung markiert",
-      document.getElementById("clKostenKarte").classList.contains("is-warnung"));
+    pruefeDialog("Cockpit ist als Warnung markiert",
+      document.getElementById("clCockpit").classList.contains("is-warnung"));
+    pruefeDialog("Kosten stehen als Hauptzahl im Cockpit",
+      document.querySelector("#clCockpit .cockpit-zahl").id === "clKosten");
+    pruefeDialog("Hochrechnung aufs Jahr wird genannt",
+      /im Jahr/.test(document.getElementById("clKostenErklaerung").textContent));
     pruefeDialog("Wert je Call wird angezeigt", /3,35/.test(document.getElementById("clWert").textContent));
     pruefeDialog("Verlaufsdiagramm gezeichnet", !!document.querySelector("#clChart svg"));
     pruefeDialog("Kostentabelle gefuellt", /Entgangen/.test(document.getElementById("clKostenTabelle").textContent));

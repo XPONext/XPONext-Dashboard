@@ -359,25 +359,31 @@
 <section class="view" id="view-calls">
   <div class="container">
 
-    <div class="cockpit">
+    <div class="cockpit" id="clCockpit">
       <div class="cockpit-haupt">
-        <div class="cockpit-lbl">Calls heute</div>
-        <div class="cockpit-zahl">
-          <span id="clHeute">0</span><span class="cockpit-ziel" id="clZiel"> / —</span>
-        </div>
-        <div class="cockpit-bar"><div class="cockpit-fill" id="clBar" style="width:0%"></div></div>
-        <div class="cockpit-sub" id="clHeuteSub">—</div>
+        <div class="cockpit-lbl" id="clKostenSub">Entgeht dir heute</div>
+        <div class="cockpit-zahl" id="clKosten">—</div>
+        <div class="cockpit-sub" id="clKostenErklaerung">—</div>
       </div>
       <div class="cockpit-neben">
-        <div class="cockpit-karte" id="clKostenKarte">
-          <div class="cockpit-kzahl" id="clKosten">—</div>
-          <div class="cockpit-klbl" id="clKostenSub">entgehen dir heute</div>
+        <div class="cockpit-karte">
+          <div class="cockpit-kzahl">
+            <span id="clHeute">0</span><span class="cockpit-ziel" id="clZiel"> / —</span>
+          </div>
+          <div class="cockpit-klbl">Calls heute</div>
+          <div class="cockpit-bar"><div class="cockpit-fill" id="clBar" style="width:0%"></div></div>
+          <div class="cockpit-klbl" id="clHeuteSub">—</div>
         </div>
         <div class="cockpit-karte">
           <div class="cockpit-kzahl" id="clWert">—</div>
           <div class="cockpit-klbl">pro Call · <button type="button" class="cockpit-edit" id="clWertEdit">ändern</button></div>
         </div>
       </div>
+    </div>
+
+    <div class="card">
+      <h2>Was Nichtstun kostet <small>Auf Basis von <span id="clBasis">—</span> je Call</small></h2>
+      <div id="clKostenTabelle"></div>
     </div>
 
     <div class="grid4">
@@ -410,11 +416,6 @@
       </div>
       <div id="clChart"></div>
       <div class="save-msg" id="clMsg">Gespeichert ✓</div>
-    </div>
-
-    <div class="card">
-      <h2>Was Nichtstun kostet <small>Auf Basis von <span id="clBasis">—</span> je Call</small></h2>
-      <div id="clKostenTabelle"></div>
     </div>
 
   </div>

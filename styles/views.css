@@ -423,35 +423,46 @@ tr.leerzeile td{
    Dunkle Karte als Blickfang, wie im Rest der Seite der Hero. Die Zahl, um
    die es geht, ist die groesste auf dem Schirm. */
 .cockpit{
-  display:grid;grid-template-columns:2fr 1fr;gap:var(--sp-4);
+  display:grid;grid-template-columns:1.6fr 1fr;gap:var(--sp-5);
   background:var(--bg-dark);color:#fff;
   border-radius:var(--r-lg);padding:var(--sp-6);
   margin-bottom:var(--sp-5);
+  border-left:5px solid transparent;
+  transition:border-color .2s var(--ease);
 }
+/* Der Rand traegt die Aussage mit, nicht nur die Schriftfarbe — Farbe allein
+   ist fuer rot-gruen-blinde Augen kein Unterschied. */
+.cockpit.is-warnung{border-left-color:#E5554A;}
+.cockpit.is-gut{border-left-color:#3FB27F;}
+.cockpit.is-warnung .cockpit-zahl{color:#FF8F84;}
+.cockpit.is-gut .cockpit-zahl{color:#7BD9AE;}
 .cockpit-lbl{
   font-size:var(--fs-xs);font-weight:var(--fw-bold);
   text-transform:uppercase;letter-spacing:0.06em;
   color:rgba(255,255,255,0.55);margin-bottom:var(--sp-2);
 }
 .cockpit-zahl{
-  font-size:3.2rem;font-weight:var(--fw-black);
+  font-size:3.6rem;font-weight:var(--fw-black);
   line-height:1;letter-spacing:-0.03em;
 }
 .cockpit-ziel{
-  font-size:1.5rem;font-weight:var(--fw-semi);
+  font-size:1.1rem;font-weight:var(--fw-semi);
   color:rgba(255,255,255,0.45);letter-spacing:-0.01em;
 }
 .cockpit-bar{
-  height:7px;border-radius:var(--r-pill);
+  height:6px;border-radius:var(--r-pill);
   background:rgba(255,255,255,0.15);
-  margin:var(--sp-4) 0 var(--sp-3);overflow:hidden;
+  margin:var(--sp-2) 0;overflow:hidden;
 }
 .cockpit-fill{
   height:100%;border-radius:var(--r-pill);
   background:#7C9BE8;
   transition:width .3s var(--ease);
 }
-.cockpit-sub{font-size:var(--fs-sm);color:rgba(255,255,255,0.6);line-height:var(--lh-normal);}
+.cockpit-sub{
+  font-size:var(--fs-body);color:rgba(255,255,255,0.7);
+  line-height:var(--lh-normal);margin-top:var(--sp-3);
+}
 
 .cockpit-neben{display:flex;flex-direction:column;gap:var(--sp-3);}
 .cockpit-karte{
@@ -459,15 +470,12 @@ tr.leerzeile td{
   border:1px solid rgba(255,255,255,0.1);
   border-radius:var(--r-md);padding:var(--sp-4);
 }
-.cockpit-karte.is-warnung{
-  background:rgba(220,80,70,0.14);
-  border-color:rgba(220,80,70,0.35);
-}
+
 .cockpit-kzahl{
   font-size:1.5rem;font-weight:var(--fw-black);
   letter-spacing:-0.02em;line-height:1.2;
 }
-.cockpit-karte.is-warnung .cockpit-kzahl{color:#FF9A90;}
+
 .cockpit-klbl{
   font-size:var(--fs-sm);color:rgba(255,255,255,0.6);
   margin-top:var(--sp-1);

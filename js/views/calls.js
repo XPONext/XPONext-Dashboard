@@ -101,33 +101,47 @@ function renderCockpit(){
   const gemacht = callsAmTag(heute);
   const soll    = vorgabeAmTag(heute);
   const wert    = wertJeCall();
+  const offen   = soll == null ? null : Math.max(0, soll - gemacht);
+  const kosten  = (offen || 0) * wert;
+
+  // Die Opportunitaetskosten sind die Hauptzahl, nicht die Calls. Was man
+  // gemacht hat, beruhigt; was man liegen laesst, bewegt.
+  const kEl  = document.getElementById("clKosten");
+  const cock = document.getElementById("clCockpit");
+
+  if(soll == null){
+    kEl.textContent = "—";
+    document.getElementById("clKostenSub").textContent = "Noch keine Vorgabe";
+    document.getElementById("clKostenErklaerung").textContent =
+      "Für heute liegt noch keine Vorgabe aus Close vor.";
+    cock.classList.remove("is-warnung", "is-gut");
+  } else if(kosten > 0){
+    kEl.textContent = "−" + euroCent(kosten);
+    document.getElementById("clKostenSub").textContent = "Entgeht dir heute";
+    document.getElementById("clKostenErklaerung").textContent =
+      offen + (offen === 1 ? " Call" : " Calls") + " offen × " + euroCent(wert) +
+      " · hochgerechnet " + euro(kosten * 220) + " im Jahr, wenn jeder Tag so läuft";
+    cock.classList.add("is-warnung");
+    cock.classList.remove("is-gut");
+  } else {
+    kEl.textContent = euro(0);
+    document.getElementById("clKostenSub").textContent = "Heute nichts liegen gelassen";
+    document.getElementById("clKostenErklaerung").textContent =
+      "Tagesvorgabe erreicht — " + gemacht + " von " + soll + " Calls.";
+    cock.classList.add("is-gut");
+    cock.classList.remove("is-warnung");
+  }
 
   document.getElementById("clHeute").textContent = gemacht;
   document.getElementById("clZiel").textContent = soll == null ? " / —" : " / " + soll;
+  document.getElementById("clBar").style.width =
+    (soll ? Math.min(100, (gemacht / soll) * 100) : 0) + "%";
 
-  const pct = soll ? Math.min(100, (gemacht / soll) * 100) : 0;
-  document.getElementById("clBar").style.width = pct + "%";
-
-  const offen = soll == null ? null : Math.max(0, soll - gemacht);
   const art = callsNachArt(heute);
-  const artText = art ? art.warm + " warm · " + art.kalt + " kalt" : "";
   document.getElementById("clHeuteSub").textContent = [
-    soll == null
-      ? "Für heute steht noch keine Vorgabe aus Close bereit."
-      : offen === 0
-        ? "Tagesvorgabe erreicht."
-        : offen + (offen === 1 ? " Call offen" : " Calls offen"),
-    artText,
+    art ? art.warm + " warm · " + art.kalt + " kalt" : "",
     rueckstandAmTag(heute) ? rueckstandAmTag(heute) + " überfällig in Close" : ""
-  ].filter(Boolean).join(" · ");
-
-  const kosten = (offen || 0) * wert;
-  const kEl = document.getElementById("clKosten");
-  kEl.textContent = offen == null ? "—" : (kosten > 0 ? "−" + euroCent(kosten) : euro(0));
-  document.getElementById("clKostenKarte").classList.toggle("is-warnung", kosten > 0);
-  document.getElementById("clKostenSub").textContent =
-    offen == null ? "keine Vorgabe" :
-    kosten > 0 ? "entgehen dir heute" : "nichts liegen gelassen";
+  ].filter(Boolean).join(" · ") || "noch nichts erfasst";
 
   document.getElementById("clWert").textContent = wert ? euroCent(wert) : "—";
   document.getElementById("clBasis").textContent = wert ? euroCent(wert) : "—";
