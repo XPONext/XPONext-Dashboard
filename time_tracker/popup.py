@@ -27,6 +27,7 @@ weiß man sofort; was für eine Art Arbeit es war, muss man kurz überlegen.
 
 import base64
 import json
+import re
 import os
 import subprocess
 import time
@@ -255,19 +256,34 @@ def close_inbox():
 # Zahl. Eingeteilt wird am Task-Text, weil der feststeht: Ein Lead-Status
 # aendert sich DURCH den Anruf, ein vergangener Tag waere damit rueckwirkend
 # falsch eingeordnet.
-WARM_MUSTER = ("follow up", "follow-up", "followup")
+# Ein Rueckruf ist ein Gespraech mit jemandem, der sich schon gemeldet hat —
+# also warm. "RR" ist die Kurzform, die bei euch vorkommt; sie wird mit
+# Wortgrenzen gesucht, damit sie nicht mitten in anderen Woertern trifft.
+WARM_MUSTER = ("follow up", "follow-up", "followup", "rückruf", "rueckruf")
+WARM_KURZ   = (r"\brr\b",)
 KALT_MUSTER = ("cold email", "cold call", "re-engagement", "reengagement")
-KEIN_CALL   = ("zusenden", "e-mail schreiben", "email schreiben", "angebot",
-               "konzept", "lead liste", "meeting", "rechnung")
+
+# Ein Termin ist das Ergebnis von Calls, nicht selbst einer — sonst zaehlt
+# man den Erfolg doppelt.
+KEIN_CALL   = ("zusenden", "zuschicken", "e-mail schreiben", "email schreiben",
+               "e-mail erinnerung", "angebot", "konzept", "lead liste",
+               "meeting", "rechnung", "vertrag", "video", "einladung",
+               "gedanken machen", "update zur")
 
 
 def einordnen(text):
-    """'warm', 'kalt' oder None (kein Gespraech)."""
+    """'warm', 'kalt' oder None (kein Gespraech).
+
+    Eingeteilt wird ausschliesslich am Task-Text. Notizen werden nirgends
+    gelesen — ein "Rueckruf", der nur in einer Notiz steht, zaehlt also nicht.
+    """
     t = (text or "").lower()
-    if any(m in t for m in KEIN_CALL) and not any(m in t for m in WARM_MUSTER):
-        return None
-    if any(m in t for m in WARM_MUSTER):
+    warm = (any(m in t for m in WARM_MUSTER)
+            or any(re.search(m, t) for m in WARM_KURZ))
+    if warm:
         return "warm"
+    if any(m in t for m in KEIN_CALL):
+        return None
     if any(m in t for m in KALT_MUSTER):
         return "kalt"
     return None

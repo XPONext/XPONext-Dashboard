@@ -88,6 +88,22 @@ for antwort, name in [("XPO intern" + popup.SEP, "Ohne State wird nichts gespeic
     popup.main()
     pruefe(name, not gespeichert, f"hat {gespeichert} gespeichert")
 
+# ---- 2b) Einordnung der Close-Tasks ----
+# An den tatsaechlich vorkommenden Texten geprueft. Der Fall "Karriere planen"
+# ist der wichtigste: Das enthaelt "rr" und darf trotzdem kein Rueckruf sein.
+for text, erwartet in [
+    ("Follow up - Tim", "warm"), ("Follow up simon", "warm"),
+    ("Rückruf Herr Meier", "warm"), ("RR Tim", "warm"), ("RR", "warm"),
+    ("Re-Engagement — XPO Cold Email", "kalt"),
+    ("Absage klären (Anruf) — XPO Cold Email", "kalt"),
+    ("Meeting 08.09 10 Uhr", None), ("Konzept zuschicken", None),
+    ("Video zusenden", None), ("Vertrag zuschicken", None),
+    ("E-Mail schreiben", None), ("Lead Liste zusenden", None),
+    ("Karriere planen", None), ("Herr Sperrmüll anrufen", None),
+]:
+    pruefe(f"Einordnung: {text[:34]}", popup.einordnen(text) == erwartet,
+           f"war {popup.einordnen(text)}, erwartet {erwartet}")
+
 # ---- 3) Rückfall, wenn die Datenbank nicht erreichbar ist ----
 def netz_weg(*a, **k):
     raise OSError("kein Netz")
