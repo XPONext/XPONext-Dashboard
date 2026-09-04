@@ -7,7 +7,7 @@ import { showErrorBanner } from "./ui/bus.js";
 
 export async function fetchAllData(){
   const [personalRes, teamRes, timeRes, tasksRes, goalsRes, commitRes, projRes, stepRes,
-         custRes, revMonRes, revRes] = await Promise.all([
+         custRes, revMonRes, revRes, callsRes, setRes] = await Promise.all([
     db.from("daily_personal").select("*"),
     db.from("daily_team").select("*"),
     db.from("time_entries").select("*"),
@@ -18,7 +18,9 @@ export async function fetchAllData(){
     db.from("project_steps").select("*").order("created_at", { ascending: true }),
     db.from("customers").select("*").order("sort_order", { ascending: true }),
     db.from("revenue_months").select("*"),
-    db.from("revenues").select("*").order("period_start", { ascending: false })
+    db.from("revenues").select("*").order("period_start", { ascending: false }),
+    db.from("daily_calls").select("*").order("date", { ascending: true }),
+    db.from("settings").select("*")
   ]);
   if(projRes.error){ console.error(projRes.error); state.projects = []; }
   else{ state.projects = projRes.data; }
@@ -44,6 +46,15 @@ export async function fetchAllData(){
   else{ state.revenueMonths = revMonRes.data; }
   if(revRes.error){ console.error(revRes.error); state.revenues = []; }
   else{ state.revenues = revRes.data; }
+  // Calls und Einstellungen gibt es erst nach sql/004. Bis dahin bleibt der
+  // Reiter leer, statt das ganze Dashboard aufzuhalten.
+  if(callsRes.error){ console.error(callsRes.error); state.calls = []; }
+  else{ state.calls = callsRes.data; }
+  if(setRes.error){ console.error(setRes.error); state.settings = {}; }
+  else{
+    state.settings = {};
+    (setRes.data || []).forEach(r=>{ state.settings[r.key] = Number(r.value); });
+  }
 
   const dp = {};
   if(personalRes.error){ console.error(personalRes.error); showErrorBanner("Daten konnten nicht geladen werden: "+personalRes.error.message); }
@@ -199,5 +210,40 @@ export async function stundenNachtragen({ person, datum, stunden, kundenName, no
   if(!data || !data.length){
     throw new Error("Die Stunden wurden von der Datenbank nicht übernommen — bitte die Seite neu laden.");
   }
+  return data[0];
+}
+
+
+/* ---------- Calls ---------- */
+
+export async function callsSpeichern(datum, person, anzahl, target){
+  const nutzlast = {
+    date: datum, person, calls: Number(anzahl) || 0,
+    source: "dashboard", updated_at: new Date().toISOString()
+  };
+  // Die Vorgabe nur setzen, wenn sie noch fehlt — was an einem vergangenen
+  // Tag in der Inbox stand, laesst sich nachtraeglich nicht rekonstruieren
+  // und darf nicht durch einen heutigen Wert ersetzt werden.
+  if(target != null) nutzlast.target = Number(target);
+
+  const { data, error } = await db.from("daily_calls")
+    .upsert(nutzlast, { onConflict: "date,person" }).select();
+  if(error){
+    console.error(error);
+    throw new Error("Calls konnten nicht gespeichert werden: " + error.message);
+  }
+  if(!data || !data.length) throw new Error("Die Datenbank hat den Eintrag nicht übernommen — bitte die Seite neu laden.");
+  return data[0];
+}
+
+export async function einstellungSpeichern(key, wert){
+  const { data, error } = await db.from("settings")
+    .upsert({ key, value: Number(wert), updated_at: new Date().toISOString() },
+            { onConflict: "key" }).select();
+  if(error){
+    console.error(error);
+    throw new Error("Einstellung konnte nicht gespeichert werden: " + error.message);
+  }
+  if(!data || !data.length) throw new Error("Die Datenbank hat die Änderung nicht übernommen — bitte die Seite neu laden.");
   return data[0];
 }

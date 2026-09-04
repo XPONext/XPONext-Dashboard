@@ -418,3 +418,70 @@ tr.leerzeile td{
   cursor:pointer;border-bottom:1px dashed var(--text-muted);
 }
 .kd-betrag:hover{color:var(--accent-dark);border-bottom-color:var(--accent);}
+
+/* ---------- Calls: Cockpit ----------
+   Dunkle Karte als Blickfang, wie im Rest der Seite der Hero. Die Zahl, um
+   die es geht, ist die groesste auf dem Schirm. */
+.cockpit{
+  display:grid;grid-template-columns:2fr 1fr;gap:var(--sp-4);
+  background:var(--bg-dark);color:#fff;
+  border-radius:var(--r-lg);padding:var(--sp-6);
+  margin-bottom:var(--sp-5);
+}
+.cockpit-lbl{
+  font-size:var(--fs-xs);font-weight:var(--fw-bold);
+  text-transform:uppercase;letter-spacing:0.06em;
+  color:rgba(255,255,255,0.55);margin-bottom:var(--sp-2);
+}
+.cockpit-zahl{
+  font-size:3.2rem;font-weight:var(--fw-black);
+  line-height:1;letter-spacing:-0.03em;
+}
+.cockpit-ziel{
+  font-size:1.5rem;font-weight:var(--fw-semi);
+  color:rgba(255,255,255,0.45);letter-spacing:-0.01em;
+}
+.cockpit-bar{
+  height:7px;border-radius:var(--r-pill);
+  background:rgba(255,255,255,0.15);
+  margin:var(--sp-4) 0 var(--sp-3);overflow:hidden;
+}
+.cockpit-fill{
+  height:100%;border-radius:var(--r-pill);
+  background:#7C9BE8;
+  transition:width .3s var(--ease);
+}
+.cockpit-sub{font-size:var(--fs-sm);color:rgba(255,255,255,0.6);line-height:var(--lh-normal);}
+
+.cockpit-neben{display:flex;flex-direction:column;gap:var(--sp-3);}
+.cockpit-karte{
+  background:rgba(255,255,255,0.07);
+  border:1px solid rgba(255,255,255,0.1);
+  border-radius:var(--r-md);padding:var(--sp-4);
+}
+.cockpit-karte.is-warnung{
+  background:rgba(220,80,70,0.14);
+  border-color:rgba(220,80,70,0.35);
+}
+.cockpit-kzahl{
+  font-size:1.5rem;font-weight:var(--fw-black);
+  letter-spacing:-0.02em;line-height:1.2;
+}
+.cockpit-karte.is-warnung .cockpit-kzahl{color:#FF9A90;}
+.cockpit-klbl{
+  font-size:var(--fs-sm);color:rgba(255,255,255,0.6);
+  margin-top:var(--sp-1);
+}
+.cockpit-edit{
+  background:none;border:none;padding:0;
+  font:inherit;color:rgba(255,255,255,0.85);
+  cursor:pointer;text-decoration:underline;
+}
+.cockpit-edit:hover{color:#fff;}
+
+.kosten{color:var(--red);font-weight:var(--fw-semi);}
+
+@media(max-width:800px){
+  .cockpit{grid-template-columns:1fr;padding:var(--sp-5);}
+  .cockpit-zahl{font-size:2.6rem;}
+}

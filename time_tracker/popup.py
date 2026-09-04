@@ -25,6 +25,7 @@ Die Kundenfrage steht jetzt VOR der State-Frage: Für wen gearbeitet wurde,
 weiß man sofort; was für eine Art Arbeit es war, muss man kurz überlegen.
 """
 
+import base64
 import json
 import os
 import subprocess
@@ -64,6 +65,12 @@ STATES_FALLBACK = ["Deepwork", "Kommunikation", "Abarbeiten", "Planung", "Sonsti
 ZUORDNUNG_FALLBACK = ["XPO intern", "Neukunden", "Sonstiges"]
 
 SKIP_LABEL = "Überspringen"
+
+# --- Tagesabschluss: Wie viele Calls heute? ---
+# Kommt einmal taeglich ab dieser Uhrzeit, zusaetzlich zum normalen Fenster.
+CALL_FRAGE_AB_STUNDE = 18
+CALL_TARGET_FALLBACK = 20        # wenn Close nicht erreichbar ist
+CLOSE_API_KEY = os.environ.get("CLOSE_API_KEY", "").strip()
 
 
 # ─── AppleScript-Helfer ──────────────────────────────────────────────────────
@@ -201,6 +208,231 @@ def post_entry(state, zuordnung):
         return False
 
 
+# ─── Tagesabschluss: Calls ───────────────────────────────────────────────────
+
+def close_inbox():
+    """Zaehlt die Tasks in der Close-Inbox: (gesamt, davon ueberfaellig).
+
+    "Inbox" ist in Close alles, was heute oder frueher faellig ist. Die beiden
+    Zahlen bleiben getrennt, weil Rueckstand kein Tagespensum ist — sonst
+    waechst das Ziel genau dann, wenn man ohnehin hinterherhaengt.
+
+    Ohne Schluessel oder ohne Netz: (None, None). Der Tracker soll deswegen
+    nicht stehenbleiben.
+    """
+    if not CLOSE_API_KEY:
+        return (None, None)
+
+    heute = datetime.now().strftime("%Y-%m-%d")
+    kopf = {
+        "Authorization": "Basic " + base64.b64encode(
+            (CLOSE_API_KEY + ":").encode()).decode(),
+        "Accept": "application/json",
+    }
+
+    def zaehle(zusatz):
+        url = ("https://api.close.com/api/v1/task/"
+               "?is_complete=false&_limit=1&" + zusatz)
+        req = urllib.request.Request(url, headers=kopf)
+        with urllib.request.urlopen(req, timeout=15) as resp:
+            return json.loads(resp.read()).get("total_results")
+
+    try:
+        me = urllib.request.Request("https://api.close.com/api/v1/me/", headers=kopf)
+        with urllib.request.urlopen(me, timeout=15) as resp:
+            uid = json.loads(resp.read()).get("id")
+        if not uid:
+            return (None, None)
+        gesamt = zaehle(f"assigned_to={uid}&date__lte={heute}")
+        spaet  = zaehle(f"assigned_to={uid}&date__lt={heute}")
+        return (gesamt, spaet)
+    except Exception:
+        return (None, None)
+
+
+# Nicht jede erledigte Task ist ein Gespraech. "Konzept zusenden" oder
+# "E-Mail schreiben" sind Schreibtischarbeit — wer die mitzaehlt, schoent die
+# Zahl. Eingeteilt wird am Task-Text, weil der feststeht: Ein Lead-Status
+# aendert sich DURCH den Anruf, ein vergangener Tag waere damit rueckwirkend
+# falsch eingeordnet.
+WARM_MUSTER = ("follow up", "follow-up", "followup")
+KALT_MUSTER = ("cold email", "cold call", "re-engagement", "reengagement")
+KEIN_CALL   = ("zusenden", "e-mail schreiben", "email schreiben", "angebot",
+               "konzept", "lead liste", "meeting", "rechnung")
+
+
+def einordnen(text):
+    """'warm', 'kalt' oder None (kein Gespraech)."""
+    t = (text or "").lower()
+    if any(m in t for m in KEIN_CALL) and not any(m in t for m in WARM_MUSTER):
+        return None
+    if any(m in t for m in WARM_MUSTER):
+        return "warm"
+    if any(m in t for m in KALT_MUSTER):
+        return "kalt"
+    return None
+
+
+def close_erledigte_calls():
+    """Zaehlt die heute erledigten Tasks, die Gespraeche sind.
+
+    Rueckgabe: (warm, kalt, uebersprungen) oder (None, None, None), wenn
+    Close nicht erreichbar ist.
+    """
+    if not CLOSE_API_KEY:
+        return (None, None, None)
+
+    heute = datetime.now().strftime("%Y-%m-%d")
+    kopf = {
+        "Authorization": "Basic " + base64.b64encode(
+            (CLOSE_API_KEY + ":").encode()).decode(),
+        "Accept": "application/json",
+    }
+    try:
+        me = urllib.request.Request("https://api.close.com/api/v1/me/", headers=kopf)
+        with urllib.request.urlopen(me, timeout=15) as resp:
+            uid = json.loads(resp.read()).get("id")
+        if not uid:
+            return (None, None, None)
+
+        warm = kalt = weg = 0
+        # Absteigend nach Aenderungsdatum: sobald ein aelterer Tag kommt,
+        # sind wir durch und muessen nicht weiterblaettern.
+        for skip in range(0, 600, 200):
+            url = ("https://api.close.com/api/v1/task/?is_complete=true"
+                   f"&assigned_to={uid}&_limit=200&_skip={skip}"
+                   "&_order_by=-date_updated")
+            req = urllib.request.Request(url, headers=kopf)
+            with urllib.request.urlopen(req, timeout=25) as resp:
+                zeilen = json.loads(resp.read()).get("data", [])
+            if not zeilen:
+                break
+            fertig = False
+            for t in zeilen:
+                tag = (t.get("date_updated") or "")[:10]
+                if tag > heute:
+                    continue
+                if tag < heute:
+                    fertig = True
+                    break
+                art = einordnen(t.get("text"))
+                if art == "warm":
+                    warm += 1
+                elif art == "kalt":
+                    kalt += 1
+                else:
+                    weg += 1
+            if fertig or len(zeilen) < 200:
+                break
+        return (warm, kalt, weg)
+    except Exception:
+        return (None, None, None)
+
+
+def calls_schon_erfasst():
+    """Wurde die Call-Frage heute schon beantwortet?"""
+    marke = ROOT / ".tmp" / "calls.date"
+    try:
+        return marke.read_text().strip() == datetime.now().strftime("%Y-%m-%d")
+    except Exception:
+        return False
+
+
+def calls_merken():
+    (ROOT / ".tmp").mkdir(exist_ok=True)
+    (ROOT / ".tmp" / "calls.date").write_text(datetime.now().strftime("%Y-%m-%d"))
+
+
+def frage_calls():
+    """Fragt am Tagesende nach der Anzahl Calls. Gibt True zurueck, wenn die
+    Frage abgehandelt ist (auch bei Abbruch) — dann kommt sie heute nicht mehr."""
+    gesamt, spaet = close_inbox()
+    heute_faellig = None
+    if gesamt is not None and spaet is not None:
+        heute_faellig = max(0, gesamt - spaet)
+
+    if heute_faellig is not None:
+        vorgabe = heute_faellig
+        zusatz = f"Heute fällig in Close: {heute_faellig}"
+        if spaet:
+            zusatz += f" · zusätzlich {spaet} überfällig"
+    else:
+        vorgabe = CALL_TARGET_FALLBACK
+        zusatz = f"Close nicht erreichbar — Vorgabe {vorgabe}"
+
+    # Vorschlag aus den heute erledigten Close-Tasks. Vorbelegt statt
+    # automatisch gespeichert: Wer die Zahl sieht, merkt sofort, wenn Close
+    # etwas nicht mitbekommen hat.
+    warm, kalt, weg = close_erledigte_calls()
+    vorschlag = ""
+    if warm is not None:
+        vorschlag = str(warm + kalt)
+        zusatz += f"\n\nIn Close erledigt: {warm} warm · {kalt} kalt"
+        if weg:
+            zusatz += f"\n({weg} weitere Tasks sind keine Gespräche)"
+
+    frage = f"Wie viele Calls hast du heute gemacht?\n\n{zusatz}"
+    script = f'''
+        tell application "System Events"
+            activate
+            set antwort to display dialog {_as_str(frage)} default answer {_as_str(vorschlag)} ¬
+                buttons {{"Überspringen", "Speichern"}} default button "Speichern" ¬
+                with title "XPO Zeittracker — Tagesabschluss"
+            if button returned of antwort is "Überspringen" then return "SKIP"
+            return text returned of antwort
+        end tell
+    '''
+    try:
+        r = subprocess.run(["osascript", "-e", script],
+                           capture_output=True, text=True, timeout=900)
+    except Exception:
+        return False
+    if r.returncode != 0:
+        return True          # abgebrochen — heute nicht noch einmal fragen
+
+    roh = (r.stdout or "").strip()
+    if roh == "SKIP":
+        return True
+
+    ziffern = "".join(z for z in roh if z.isdigit())
+    if not ziffern:
+        return True
+    post_calls(int(ziffern), gesamt, spaet, warm, kalt)
+    return True
+
+
+def post_calls(anzahl, target, target_overdue, warm=None, kalt=None):
+    nutzlast = {
+        "date": datetime.now().strftime("%Y-%m-%d"),
+        "person": PERSON,
+        "calls": anzahl,
+        "calls_warm": warm,
+        "calls_cold": kalt,
+        "target": target,
+        "target_overdue": target_overdue,
+        "source": "popup",
+        "updated_at": datetime.now(timezone.utc).isoformat(),
+    }
+    req = urllib.request.Request(
+        f"{SUPABASE_URL}/rest/v1/daily_calls?on_conflict=date,person",
+        data=json.dumps(nutzlast).encode(),
+        headers={
+            "Content-Type": "application/json",
+            "apikey": SUPABASE_ANON_KEY,
+            "Authorization": f"Bearer {SUPABASE_ANON_KEY}",
+            "x-app-secret": APP_SECRET,
+            "Prefer": "resolution=merge-duplicates,return=minimal",
+        },
+        method="POST",
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=15) as resp:
+            return resp.status in (200, 201, 204)
+    except Exception as e:
+        show_error("Calls konnten nicht gespeichert werden: " + str(e))
+        return False
+
+
 # ─── Sperre gegen gestapelte Popups ──────────────────────────────────────────
 # Wenn der Laptop länger zu/weg war, feuert der 30-Min-Trigger trotzdem für jedes
 # verpasste Zeitfenster neu — und weil das alte Fenster ja unbeantwortet offen
@@ -245,6 +477,13 @@ def main():
         if not SUPABASE_URL or not SUPABASE_ANON_KEY or not APP_SECRET or not PERSON:
             show_error("Konfiguration fehlt — .env prüfen (SUPABASE_URL, SUPABASE_ANON_KEY, APP_SECRET, PERSON).")
             return
+
+        # Tagesabschluss zuerst: ab 18 Uhr einmal taeglich nach den Calls
+        # fragen. Laeuft unabhaengig vom normalen Zeitfenster — auch wenn
+        # danach "Feierabend" gedrueckt wird, ist die Zahl schon erfasst.
+        if datetime.now().hour >= CALL_FRAGE_AB_STUNDE and not calls_schon_erfasst():
+            if frage_calls():
+                calls_merken()
 
         result = run_flow()
         if result is None or result == "CANCELLED":

@@ -33,6 +33,15 @@ function tagRelativ(n){
   return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
 }
 const FAKE = {
+  settings: [
+    {key:"call_value_eur", value:3.35}, {key:"call_history_calls", value:1550},
+    {key:"call_history_revenue", value:5200}, {key:"call_target_default", value:20}
+  ],
+  daily_calls: [
+    {date:tagRelativ(0),  person:"tim", calls:12, calls_warm:8, calls_cold:4, target:26, target_overdue:5, source:"popup"},
+    {date:tagRelativ(-1), person:"tim", calls:20, calls_warm:14, calls_cold:6, target:20, target_overdue:0, source:"popup"},
+    {date:tagRelativ(-2), person:"tim", calls:3,  calls_warm:3,  calls_cold:0, target:18, target_overdue:2, source:"popup"}
+  ],
   customers: [
     {id:"k1", name:"Protours",   kind:"kunde",  status:"aktiv", active:true,  sort_order:10, note:null},
     {id:"k2", name:"Chuong",     kind:"kunde",  status:"aktiv", active:true,  sort_order:20, note:null},
@@ -298,6 +307,23 @@ setTimeout(async ()=>{
     pruefeDialog("Kunden-Dialog hat den Popup-Schalter", !!kdDlg.querySelector('[name="active"]'));
     kdDlg.querySelector('[data-dlg="abbruch"]').click();
     await new Promise(r=>setTimeout(r, 80));
+
+    // ---- Calls ----
+    document.querySelector('[data-view="calls"]').click();
+    await bisWahr(()=>!!document.querySelector("#clChart svg, #clChart .empty-state"));
+    pruefeDialog("Calls heute stehen im Cockpit", document.getElementById("clHeute").textContent === "12");
+    pruefeDialog("Vorgabe ist heute faellig, nicht die ganze Inbox",
+      document.getElementById("clZiel").textContent.includes("21"));
+    pruefeDialog("Warm und kalt werden genannt",
+      /8 warm · 4 kalt/.test(document.getElementById("clHeuteSub").textContent));
+    // 21 - 12 = 9 offen x 3,35 EUR = 30,15 EUR
+    pruefeDialog("Opportunitaetskosten gerechnet",
+      /30|31/.test(document.getElementById("clKosten").textContent));
+    pruefeDialog("Kostenkarte ist als Warnung markiert",
+      document.getElementById("clKostenKarte").classList.contains("is-warnung"));
+    pruefeDialog("Wert je Call wird angezeigt", /3,35/.test(document.getElementById("clWert").textContent));
+    pruefeDialog("Verlaufsdiagramm gezeichnet", !!document.querySelector("#clChart svg"));
+    pruefeDialog("Kostentabelle gefuellt", /Entgangen/.test(document.getElementById("clKostenTabelle").textContent));
 
     // ---- Projekte ----
     document.querySelector('[data-view="projekte"]').click();

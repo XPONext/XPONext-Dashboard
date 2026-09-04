@@ -20,6 +20,8 @@ export const state = {
   projects:      [], // Langzeitprojekte aus "projects"
   projectSteps:  [], // Zugehörige Schritte aus "project_steps"
   customers:     [], // Kunden und interne Zuordnungen aus "customers"
+  calls:         [], // Calls je Tag und Person aus "daily_calls"
+  settings:      {}, // Stellschrauben aus "settings", key -> Zahl
   revenues:      [], // Rohe Umsatzeintraege aus "revenues" — zum Bearbeiten
   revenueMonths: [], // Umsatz je Kunde und Monat aus der Sicht "revenue_months"
   ladeFehler:    null, // Meldung, wenn Kunden/Umsaetze nicht geladen werden konnten
@@ -189,4 +191,60 @@ export function auftragswertInWoche(i){
 
 export function auftraegeGesamt(){
   return state.revenues.length;
+}
+
+
+/* ---------- Calls und Opportunitaetskosten ----------
+
+   Der Wert je Call ist eine feste Einstellung, keine mitlaufende Rechnung.
+   Eine Zahl, die bei jedem neuen Auftrag springt, taugt nicht als Massstab —
+   die Opportunitaetskosten wuerden mitspringen und die Aussage waere jeden
+   Tag eine andere. */
+
+export function wertJeCall(){
+  const w = Number(state.settings.call_value_eur);
+  return Number.isFinite(w) && w > 0 ? w : 0;
+}
+
+export function callsAmTag(datum, person){
+  return state.calls
+    .filter(c=>c.date === datum && (!person || c.person === person))
+    .reduce((s,c)=>s + (Number(c.calls) || 0), 0);
+}
+
+/* Die Vorgabe des Tages. Gemessen wird gegen die HEUTE faelligen Tasks,
+   nicht gegen die ganze Inbox — sonst waechst das Ziel genau dann, wenn man
+   ohnehin im Rueckstand ist. */
+export function vorgabeAmTag(datum, person){
+  const zeilen = state.calls.filter(c=>c.date === datum && (!person || c.person === person));
+  if(!zeilen.length) return null;
+  return zeilen.reduce((s,c)=>{
+    const gesamt = Number(c.target);
+    const spaet  = Number(c.target_overdue) || 0;
+    if(!Number.isFinite(gesamt)) return s;
+    return s + Math.max(0, gesamt - spaet);
+  }, 0) || null;
+}
+
+export function rueckstandAmTag(datum, person){
+  return state.calls
+    .filter(c=>c.date === datum && (!person || c.person === person))
+    .reduce((s,c)=>s + (Number(c.target_overdue) || 0), 0);
+}
+
+/* Alle erfassten Tage, aufsteigend. */
+/* Warm/kalt je Tag. Alte Eintraege ohne Aufteilung liefern null — die sollen
+   nicht als "0 warm" erscheinen, das waere eine Aussage, die niemand gemacht hat. */
+export function callsNachArt(datum, person){
+  const zeilen = state.calls.filter(c=>c.date === datum && (!person || c.person === person));
+  const hat = zeilen.some(c=>c.calls_warm != null || c.calls_cold != null);
+  if(!hat) return null;
+  return {
+    warm: zeilen.reduce((s,c)=>s + (Number(c.calls_warm) || 0), 0),
+    kalt: zeilen.reduce((s,c)=>s + (Number(c.calls_cold) || 0), 0)
+  };
+}
+
+export function callTage(){
+  return [...new Set(state.calls.map(c=>c.date))].sort();
 }

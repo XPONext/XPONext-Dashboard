@@ -20,6 +20,13 @@ export function euro(n){
   return "€" + Math.round(n).toLocaleString("de-DE");
 }
 
+/* Mit Cent — fuer kleine Betraege, bei denen das Runden die Aussage
+   zerstoert: Ein Wert von 3,35 EUR je Call waere als "3 EUR" sinnlos. */
+export function euroCent(n){
+  return "€" + Number(n).toLocaleString("de-DE",
+    { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
 export function num(n, digits){
   return n.toLocaleString("de-DE",{maximumFractionDigits: digits===undefined?1:digits});
 }
