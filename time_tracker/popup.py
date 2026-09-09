@@ -28,6 +28,7 @@ weiß man sofort; was für eine Art Arbeit es war, muss man kurz überlegen.
 import base64
 import json
 import re
+import sys
 import os
 import subprocess
 import time
@@ -66,6 +67,18 @@ STATES_FALLBACK = ["Deepwork", "Kommunikation", "Abarbeiten", "Planung", "Sonsti
 ZUORDNUNG_FALLBACK = ["XPO intern", "Neukunden", "Sonstiges"]
 
 SKIP_LABEL = "Überspringen"
+
+# Ein "tell application"-Block hat in AppleScript ein Standard-Timeout von 120
+# Sekunden. Steht ein Dialog laenger offen, raeumt System Events ihn mit Fehler
+# -1712 ab: Das Fenster verschwindet, und der Klick darauf geht ins Leere.
+# Genau deshalb war ein Popup nach drei, vier Minuten nicht mehr bedienbar.
+DIALOG_TIMEOUT = 7200   # 2 Stunden — laenger steht kein Fenster sinnvoll offen
+
+# Ab wann gilt der Rechner als unbenutzt. Wer laenger nicht getippt oder die
+# Maus bewegt hat, sitzt nicht davor — dann soll kein Fenster aufgehen, das
+# sich bis zur Rueckkehr stapelt.
+LEERLAUF_GRENZE = 10 * 60   # Sekunden
+EXIT_NIEMAND_DA = 10        # Rueckgabewert an start_loop.sh
 
 # --- Tagesabschluss: Wie viele Calls heute? ---
 # Kommt einmal taeglich ab dieser Uhrzeit, zusaetzlich zum normalen Fenster.
@@ -115,6 +128,7 @@ def run_flow():
     zuordnung_optionen = fetch_options("zuordnung")
     state_optionen = fetch_options("state")
     script = f'''
+        with timeout of {DIALOG_TIMEOUT} seconds
         tell application "System Events"
             activate
             set startBtn to button returned of (display dialog "Was machst du gerade?" buttons {{"Feierabend", "Pause", "Jetzt eintragen"}} default button "Jetzt eintragen" with title "XPO Zeittracker")
@@ -126,6 +140,7 @@ def run_flow():
 
             return zuordnungVal & "{SEP}" & stateVal
         end tell
+        end timeout
     '''
     result = subprocess.run(["osascript", "-e", script], capture_output=True, text=True)
     if result.returncode != 0:
@@ -136,10 +151,12 @@ def run_flow():
 def show_error(msg=""):
     text = _as_str(f"Fehler beim Speichern.{chr(10)}{msg}")
     script = f'''
+        with timeout of {DIALOG_TIMEOUT} seconds
         tell application "System Events"
             activate
             display dialog "{text}" buttons {{"OK"}} default button "OK" with title "XPO Zeittracker — Fehler"
         end tell
+        end timeout
     '''
     subprocess.run(["osascript", "-e", script], capture_output=True, text=True)
 
@@ -207,6 +224,26 @@ def post_entry(state, zuordnung):
     except Exception as e:
         show_error(str(e))
         return False
+
+
+def leerlauf_sekunden():
+    """Wie lange die letzte Tastatur- oder Mauseingabe her ist.
+
+    Waehrend der Rechner schlaeft, laeuft diese Zeit weiter — nach dem
+    Aufklappen ist der Wert also gross und faellt beim ersten Tastendruck auf
+    null. Genau das brauchen wir: Nur fragen, wenn wirklich jemand da ist.
+
+    Bei Unklarheit 0 zurueckgeben, also lieber fragen als still verschlucken.
+    """
+    try:
+        r = subprocess.run(["ioreg", "-c", "IOHIDSystem"],
+                           capture_output=True, text=True, timeout=10)
+        for zeile in r.stdout.splitlines():
+            if "HIDIdleTime" in zeile:
+                return int(zeile.rsplit("=", 1)[1].strip()) / 1_000_000_000
+    except Exception:
+        pass
+    return 0
 
 
 # ─── Tagesabschluss: Calls ───────────────────────────────────────────────────
@@ -389,6 +426,7 @@ def frage_calls():
 
     frage = f"Wie viele Calls hast du heute gemacht?\n\n{zusatz}"
     script = f'''
+        with timeout of {DIALOG_TIMEOUT} seconds
         tell application "System Events"
             activate
             set antwort to display dialog {_as_str(frage)} default answer {_as_str(vorschlag)} ¬
@@ -397,6 +435,7 @@ def frage_calls():
             if button returned of antwort is "Überspringen" then return "SKIP"
             return text returned of antwort
         end tell
+        end timeout
     '''
     try:
         r = subprocess.run(["osascript", "-e", script],
@@ -490,6 +529,14 @@ def main():
         return  # es hängt noch ein unbeantwortetes Fenster — nichts Neues zeigen
 
     try:
+        # Sitzt ueberhaupt jemand davor? Ohne diese Pruefung feuert der Loop
+        # waehrend der Abwesenheit weiter, und beim Aufklappen stehen mehrere
+        # unbeantwortete Fenster uebereinander. Der Loop fragt danach schneller
+        # nach, damit man nach der Rueckkehr nicht bis zur naechsten halben
+        # Stunde warten muss.
+        if leerlauf_sekunden() > LEERLAUF_GRENZE:
+            sys.exit(EXIT_NIEMAND_DA)   # das finally gibt die Sperre frei
+
         if not SUPABASE_URL or not SUPABASE_ANON_KEY or not APP_SECRET or not PERSON:
             show_error("Konfiguration fehlt — .env prüfen (SUPABASE_URL, SUPABASE_ANON_KEY, APP_SECRET, PERSON).")
             return

@@ -60,6 +60,11 @@ pruefe("AppleScript kompiliert (auch mit Anführungszeichen im Kundennamen)",
 
 pruefe("Nur noch zwei Auswahlschritte", skript.count("choose from list") == 2,
        f"waren {skript.count('choose from list')}")
+
+# Ohne "with timeout" raeumt System Events einen Dialog nach 120 Sekunden mit
+# Fehler -1712 ab: Das Fenster verschwindet und der Klick geht ins Leere.
+pruefe("Dialog hat ein langes Timeout",
+       "with timeout of" in skript and "end timeout" in skript)
 pruefe("Kundenfrage kommt zuerst", skript.index("Für wen?") < skript.index("Was für Arbeit"))
 pruefe("Aktivität wird nicht mehr erfragt", "Aktivität" not in skript)
 
@@ -103,6 +108,36 @@ for text, erwartet in [
 ]:
     pruefe(f"Einordnung: {text[:34]}", popup.einordnen(text) == erwartet,
            f"war {popup.einordnen(text)}, erwartet {erwartet}")
+
+# ---- 2c) Kein Fenster, wenn niemand am Rechner sitzt ----
+# Ohne diese Pruefung feuert der Loop waehrend der Abwesenheit weiter, und beim
+# Aufklappen stehen mehrere unbeantwortete Fenster uebereinander.
+def idle(sekunden):
+    popup.subprocess.run = lambda a, **k: types.SimpleNamespace(
+        stdout=f'    "HIDIdleTime" = {int(sekunden * 1_000_000_000)}\n',
+        returncode=0, stderr="")
+
+idle(30 * 60)
+pruefe("30 Minuten inaktiv gelten als abwesend",
+       popup.leerlauf_sekunden() > popup.LEERLAUF_GRENZE)
+idle(5)
+pruefe("Wer gerade tippt, wird gefragt",
+       popup.leerlauf_sekunden() <= popup.LEERLAUF_GRENZE)
+
+popup.subprocess.run = lambda a, **k: (_ for _ in ()).throw(OSError("ioreg fehlt"))
+pruefe("Ohne ioreg lieber fragen als verschlucken", popup.leerlauf_sekunden() == 0)
+
+idle(30 * 60)
+popup.acquire_lock = lambda: True
+freigegeben = []
+popup.release_lock = lambda: freigegeben.append(True)
+try:
+    popup.main()
+    pruefe("Abwesenheit beendet mit Code 10", False, "main() lief durch")
+except SystemExit as e:
+    pruefe("Abwesenheit beendet mit Code 10", e.code == popup.EXIT_NIEMAND_DA,
+           f"war {e.code}")
+    pruefe("Sperre wird dabei freigegeben", bool(freigegeben))
 
 # ---- 3) Rückfall, wenn die Datenbank nicht erreichbar ist ----
 def netz_weg(*a, **k):

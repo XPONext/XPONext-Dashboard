@@ -77,6 +77,18 @@ Das war's. Der Tracker läuft sofort los und ab dann bei jeder Anmeldung.
 - **Feierabend** im Popup → Schluss für heute; am nächsten Morgen läuft er wieder
 - **Pause** im Popup → trackt eine Pause, der Loop läuft weiter
 
+## Wenn du länger weg warst
+
+Der Tracker fragt nur, wenn jemand am Rechner sitzt. Waren Tastatur und Maus
+länger als 10 Minuten unberührt, geht **kein** Fenster auf — dadurch stapelt
+sich während einer Besprechung oder über Nacht nichts mehr.
+
+Nach der Rückkehr schaut der Loop alle 3 Minuten nach, statt die vollen 30
+abzuwarten. Du bekommst also **ein** Fenster, und zwar zügig.
+
+Ein Fenster kann beliebig lange offen stehen. Früher räumte macOS es nach zwei
+Minuten selbst ab — das Fenster war dann noch da, reagierte aber nicht mehr.
+
 ## Wie das "von selbst" funktioniert
 
 Aufklappen ist für macOS kein Anmelden — ein LaunchAgent mit `RunAtLoad` allein

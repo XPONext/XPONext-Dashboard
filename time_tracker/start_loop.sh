@@ -44,8 +44,12 @@ fi
 
 osascript -e 'display notification "Zeittracking läuft — alle 30 Min ein Popup." with title "XPO Zeittracker"'
 
+TAKT=1800          # regulaerer Abstand zwischen zwei Fenstern
+NACHFASSEN=180     # kurz nachschauen, solange niemand am Rechner ist
+
 while true; do
   python3 "$DIR/popup.py"
+  ERGEBNIS=$?
   # "Feierabend" im Popup legt diese Datei an — dann für heute Schluss. Den Tag
   # merkt sich popup.py separat in .tmp/feierabend.date; check_loop.sh startet
   # den Loop deshalb erst morgen früh wieder.
@@ -54,5 +58,13 @@ while true; do
     osascript -e 'display notification "Zeittracking gestoppt. Läuft morgen früh wieder." with title "XPO Zeittracker"'
     exit 0
   fi
-  sleep 1800
+  # Rueckgabewert 10: Es sass niemand am Rechner, es wurde nichts gefragt.
+  # Dann nicht die vollen 30 Minuten warten — sonst kaeme das erste Fenster
+  # nach der Rueckkehr mit bis zu einer halben Stunde Verspaetung. Umgekehrt
+  # stapelt sich nichts mehr, weil waehrend der Abwesenheit gar nichts aufgeht.
+  if [ "$ERGEBNIS" -eq 10 ]; then
+    sleep "$NACHFASSEN"
+  else
+    sleep "$TAKT"
+  fi
 done
