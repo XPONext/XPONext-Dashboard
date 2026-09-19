@@ -51,6 +51,10 @@ Datenquelle:
 | Arbeit | Woran arbeiten wir? | Hebel-Stand, Aufgaben-Board und Projekte als Umschalter |
 | Verlauf | Wie entwickelt es sich? | Stunden je Woche, Hebel je Woche, Tabellen, CSV |
 
+**Im Kunden-Reiter seit 19.09.2026:** Stundensatz je Leistung (Webseite vs.
+Ads vs. GEO), Stundenbudget je Auftrag (Betrag ÷ Ziel-Stundensatz, Warnung ab
+80 %) und Zeit-Mix je Kunde (Anteil Kommunikation). Braucht `sql/006`.
+
 **„+ Nachtragen"** in der Seitenleiste öffnet einen Dialog mit allem, was ein
 verpasstes Popup nicht erfasst hat: Termine, Lead-Gen-Stunden, Hebel, Calls.
 

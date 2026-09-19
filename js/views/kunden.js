@@ -14,13 +14,15 @@
 import { euro, num, escapeHtml, fmtDate, todayIso } from "../utils/format.js";
 import {
   state, kundeNach, monatsStart, letzterTagDesMonats,
-  umsatzImZeitraum, stundenImZeitraum
+  umsatzImZeitraum, stundenImZeitraum,
+  zeitMixFuerKunde, leistungsSaetze, budgetFuerAuftrag, zielStundensatz
 } from "../state.js";
 import {
   kundeSpeichern, kundeLoeschen,
-  umsatzSpeichern, umsatzLoeschen, stundenNachtragen,
+  umsatzSpeichern, umsatzLoeschen, stundenNachtragen, einstellungSpeichern,
   fetchAllData
 } from "../data.js";
+import { serienFarbe } from "../ui/chart.js";
 import { openModal, confirmDialog } from "../ui/modal.js";
 import { onRender, renderAll, showErrorBanner } from "../ui/bus.js";
 import { emptyState, PERSON_OPTIONS } from "../ui/components.js";
@@ -146,6 +148,9 @@ async function umsatzDialog(customerId, vorhandener){
       { name:"kind", label:"Art", type:"select",
         options:[["retainer","Retainer (monatlich)"],["einmalig","Einmaliger Auftrag"]],
         value:"retainer" },
+      { name:"service", label:"Leistung", type:"select",
+        options: state.leistungen.map(l=>[l, l]), value: state.leistungen[0] || "",
+        hint:"Wofür der Umsatz ist — daraus entsteht der Stundensatz je Leistung." },
       { name:"amount", label:"Betrag in €", type:"number", min:"0", step:"0.01",
         required:true,
         hint:"Beim Retainer der Betrag pro Monat, beim Einzelauftrag der Gesamtbetrag." },
@@ -212,6 +217,84 @@ async function stundenDialog(customerId){
   if(ergebnis) await neuLaden();
 }
 
+/* ---------- Bausteine ---------- */
+
+/* Feste Farbe je Arbeitsart, damit "Kommunikation" in jeder Zeile dieselbe
+   Farbe hat — Kategorien, deshalb Serienfarben und keine Ampel. */
+const ARTEN = ["Deepwork","Abarbeiten","Kommunikation","Planung","Hebel","Sonstiges"];
+function artFarbe(art){
+  const i = ARTEN.indexOf(art);
+  return serienFarbe(i >= 0 ? i : ARTEN.length);
+}
+
+/* Gestapelter Balken: woraus die Zeit eines Kunden besteht. Der Anteil
+   Kommunikation steht daneben, weil er die Frage beantwortet, die hier
+   zaehlt: Ist das ein Kunde, der viel Abstimmung frisst? */
+function mixBalken(customerId, von, bis){
+  const mix = zeitMixFuerKunde(customerId, von, bis);
+  if(!mix.stunden) return '<span class="t-muted">–</span>';
+  const komm = mix.anteile.find(([art])=>art === "Kommunikation");
+  const kommPct = komm ? Math.round(komm[1] * 100) : 0;
+  const segmente = mix.anteile.map(([art, anteil])=>
+    `<span class="mix-seg" style="width:${(anteil*100).toFixed(1)}%;background:${artFarbe(art)}"
+           title="${escapeHtml(art)} ${Math.round(anteil*100)} %"></span>`).join("");
+  return `<div class="mix-wrap" title="${escapeHtml(mix.anteile.map(([a,p])=>a + " " + Math.round(p*100) + " %").join(" · "))}">
+    <div class="mix-bar">${segmente}</div>
+    <span class="mix-txt${kommPct >= 25 ? " is-hoch" : ""}">${kommPct} % Komm.</span>
+  </div>`;
+}
+
+/* Stundenbudget eines Auftrags: Betrag / Ziel-Stundensatz gegen die
+   zugerechneten Stunden. Ampel, weil hier bewertet wird. */
+function budgetBalken(r){
+  const b = budgetFuerAuftrag(r);
+  if(!(b.budget > 0)) return '<span class="t-muted">–</span>';
+  const pct = (b.verbraucht / b.budget) * 100;
+  const klasse = pct >= 100 ? "low" : pct >= 80 ? "warn" : "ok";
+  return `<div class="budget">
+    <div class="bar-track"><div class="bar-fill ${klasse}" style="width:${Math.min(100, pct)}%"></div></div>
+    <span class="budget-txt">${escapeHtml(num(b.verbraucht,1))} / ${escapeHtml(num(b.budget,1))} Std. ${escapeHtml(b.einheit)}
+      · ${Math.round(pct)} %${b.laeuft ? "" : " · abgeschlossen"}</span>
+  </div>`;
+}
+
+/* Welche Leistung bezahlt sich pro Stunde am besten. */
+function renderLeistungen(von, bis, name){
+  const el = document.getElementById("kdLeistung");
+  document.getElementById("kdLeistungSub").textContent =
+    "Realisierter Umsatz je zugerechneter Stunde — " + name;
+  if(state.ladeFehler){ el.innerHTML = ""; return; }
+
+  const zeilen = leistungsSaetze(von, bis);
+  if(!zeilen.length){
+    el.innerHTML = emptyState("", "Sobald Umsätze mit Leistungsart und getrackte Zeit vorliegen, steht hier, was sich pro Stunde am besten bezahlt.", { inline:true });
+    return;
+  }
+  const max = Math.max(1, ...zeilen.map(z=>z.satz || 0));
+  el.innerHTML = zeilen.map((z, i)=>`<div class="row-metric">
+    <div class="top">
+      <span class="name">${escapeHtml(z.name)}</span>
+      <span class="vals">${z.satz == null
+        ? `<span class="t-muted">${escapeHtml(euro(z.umsatz))} · keine Zeit erfasst</span>`
+        : `${escapeHtml(euro(z.satz))} / Std. · ${z.n} Auftr${z.n === 1 ? "ag" : "äge"} · ${escapeHtml(num(z.stunden,1))} Std.`}</span>
+    </div>
+    <div class="bar-track"><div class="bar-fill" style="width:${z.satz ? (z.satz / max) * 100 : 0}%;background:${serienFarbe(i)}"></div></div>
+  </div>`).join("");
+}
+
+async function zielSatzDialog(){
+  const ergebnis = await openModal({
+    title: "Ziel-Stundensatz",
+    submitLabel: "Übernehmen",
+    fields: [{ name:"satz", label:"Euro je Stunde", type:"number", min:"1", step:"1",
+               value: String(zielStundensatz()), required:true, width:"full",
+               hint:"Daraus wird das Stundenbudget je Auftrag: Betrag ÷ Satz." }],
+    validate: w=> Number(w.satz) > 0 ? null : "Bitte einen Satz über 0 € eintragen.",
+    onSubmit: async w=>{ await einstellungSpeichern("target_hourly_rate_eur", w.satz); }
+  });
+  if(ergebnis) await neuLaden();
+}
+
 /* ---------- Rendern ---------- */
 
 function renderKunden(){
@@ -228,6 +311,8 @@ function renderKunden(){
     fmtDate(von) + von.slice(0,4) + " – " + fmtDate(bisAnzeige) + bis.slice(0,4);
   document.getElementById("kdTableSub").textContent =
     "Umsatz und getrackte Zeit — " + name;
+  document.getElementById("kdZielSatz").textContent = euro(zielStundensatz());
+  renderLeistungen(von, bis, name);
 
   // Beendete Kunden stehen nicht mehr in der Liste. Ihre Stunden bleiben in
   // der Datenbank, aber eine Tabelle "Kunden nach Stundenlohn" soll die
@@ -307,7 +392,7 @@ function renderKunden(){
 
   list.innerHTML = `<div class="table-wrap"><table>
     <thead><tr>
-      <th>Kunde</th><th>Umsatz</th><th>Getrackt</th><th>Stundenlohn</th><th>Status</th><th></th>
+      <th>Kunde</th><th>Umsatz</th><th>Getrackt</th><th>Stundenlohn</th><th>Zeit-Mix</th><th>Status</th><th></th>
     </tr></thead>
     <tbody>${sortiert.map(z=>`
       <tr>
@@ -323,6 +408,7 @@ function renderKunden(){
                   z.umsatz > 0 ? "keine Zeit erfasst" :
                   z.stunden > 0 ? "kein Umsatz erfasst" : "–"}</span>`
               : `<span class="lohn-badge lohn-${lohnKlasse(z.lohn)}">${escapeHtml(euro(z.lohn))} / Std.</span>`}</td>
+        <td>${mixBalken(z.c.id, von, bis)}</td>
         <td>${z.c.status === "aktiv" ? "" : `<span class="status-badge st-${escapeHtml(z.c.status)}">${escapeHtml(statusLabel(z.c.status))}</span>`}</td>
         <td class="kd-actions">
           <button type="button" class="kd-btn" data-kd="umsatz" data-id="${escapeHtml(z.c.id)}">+ Umsatz</button>
@@ -353,17 +439,18 @@ function renderUmsaetze(){
   }
 
   el.innerHTML = `<div class="table-wrap"><table>
-    <thead><tr><th>Kunde</th><th>Art</th><th>Betrag</th><th>Zeitraum</th><th>Bezeichnung</th><th></th></tr></thead>
+    <thead><tr><th>Kunde</th><th>Leistung</th><th>Art</th><th>Betrag</th><th>Zeitraum</th><th>Budget</th><th></th></tr></thead>
     <tbody>${state.revenues.map(r=>{
       const k = kundeNach(r.customer_id);
       return `<tr>
         <td><span class="kd-name">${escapeHtml(k ? k.name : "—")}</span></td>
+        <td>${escapeHtml(r.service || "–")}${r.title ? `<br><span class="t-muted">${escapeHtml(r.title)}</span>` : ""}</td>
         <td>${r.kind === "retainer" ? "Retainer" : "Einmalig"}</td>
         <td>${escapeHtml(euro(r.amount))}${r.kind === "retainer" ? " <span class=\"t-muted\">/ Monat</span>" : ""}</td>
         <td>${escapeHtml(fmtDate(r.period_start))}${r.period_start.slice(0,4)}${
               r.period_end ? " – " + escapeHtml(fmtDate(r.period_end)) + r.period_end.slice(0,4)
                            : ' <span class="t-muted">(laufend)</span>'}</td>
-        <td>${escapeHtml(r.title || "")}</td>
+        <td>${budgetBalken(r)}</td>
         <td class="kd-actions">
           <button type="button" class="kd-btn" data-kd="rev-edit" data-id="${escapeHtml(r.id)}">Bearbeiten</button>
         </td>
@@ -377,6 +464,7 @@ function renderUmsaetze(){
 document.getElementById("kdZeitraum").addEventListener("change", renderKunden);
 document.getElementById("kdAddCustomer").addEventListener("click", ()=>kundeDialog(null));
 document.getElementById("kdAddRevenue").addEventListener("click", ()=>umsatzDialog(null, null));
+document.getElementById("kdZielSatzEdit").addEventListener("click", zielSatzDialog);
 
 /* Vom Betrag in der Kundenzeile direkt in den passenden Umsatzeintrag.
    Vorher fuehrte "Bearbeiten" zum Kunden und der Umsatz war nur ueber einen

@@ -35,7 +35,13 @@ function tagRelativ(n){
 const FAKE = {
   settings: [
     {key:"call_value_eur", value:3.35}, {key:"call_history_calls", value:1550},
-    {key:"call_history_revenue", value:5200}, {key:"call_target_default", value:20}
+    {key:"call_history_revenue", value:5200}, {key:"call_target_default", value:20},
+    {key:"target_hourly_rate_eur", value:100}
+  ],
+  tracker_options: [
+    {kind:"leistung", name:"Webseite", active:true, sort_order:10},
+    {kind:"leistung", name:"GEO-Optimierung", active:true, sort_order:30},
+    {kind:"state", name:"Deepwork", active:true, sort_order:10}
   ],
   daily_calls: [
     {date:tagRelativ(0),  person:"tim", calls:12, calls_warm:8, calls_cold:4, target:26, target_overdue:5, source:"popup"},
@@ -49,8 +55,8 @@ const FAKE = {
     {id:"i1", name:"XPO intern", kind:"intern", status:"aktiv", active:true,  sort_order:90, note:null}
   ],
   revenues: [
-    {id:"r1", customer_id:"k1", kind:"retainer", title:"Betreuung", amount:3000, period_start:M+"-01", period_end:null, note:null},
-    {id:"r2", customer_id:"k2", kind:"einmalig", title:"Relaunch",  amount:800,  period_start:M+"-01", period_end:M+"-28", note:null}
+    {id:"r1", customer_id:"k1", kind:"retainer", service:"Webseite", title:"Betreuung", amount:3000, period_start:M+"-01", period_end:null, note:null},
+    {id:"r2", customer_id:"k2", kind:"einmalig", service:"GEO-Optimierung", title:"Relaunch",  amount:800,  period_start:M+"-01", period_end:M+"-28", note:null}
   ],
   revenue_months: [
     // Protours: Retainer 3.000 EUR im laufenden Monat
@@ -240,6 +246,16 @@ setTimeout(async ()=>{
     pruefeDialog("Schnitt-Stundenlohn stimmt", /177/.test(document.getElementById("kdSchnitt").textContent));
     pruefeDialog("Ampelschwellen werden genannt", /50/.test(document.getElementById("kdSchnittSub").textContent));
     pruefeDialog("Umsatzeintraege sind aufgelistet", document.querySelectorAll('#kdRevenues [data-kd="rev-edit"]').length === 2);
+    // Stundensatz je Leistung: Webseite 3000/1,5 = 2.000, GEO 800/20 = 40
+    const lst = document.getElementById("kdLeistung").textContent;
+    pruefeDialog("Stundensatz je Leistung: Webseite vorn", /Webseite[^€]*€2\.000/.test(lst));
+    pruefeDialog("Stundensatz je Leistung: GEO hinten", /GEO-Optimierung[^€]*€40/.test(lst));
+    // Budget: Chuong 800/100 = 8 Std, 20 verbraucht -> rot; Protours 30 Std/Monat, 1,5 -> gruen
+    pruefeDialog("Budget ueberzogen wird rot", !!document.querySelector('#kdRevenues .budget .bar-fill.low'));
+    pruefeDialog("Budget im Rahmen wird gruen", !!document.querySelector('#kdRevenues .budget .bar-fill.ok'));
+    pruefeDialog("Ziel-Stundensatz wird genannt", /100/.test(document.getElementById("kdZielSatz").textContent));
+    // Zeit-Mix je Kunde
+    pruefeDialog("Zeit-Mix-Balken je Kunde", document.querySelectorAll('#kdList .mix-bar').length >= 2);
 
     const dlgJetzt = ()=>document.querySelector("dialog.dlg[open]");
     const warte = (ms)=>new Promise(r=>setTimeout(r, ms));
@@ -278,6 +294,8 @@ setTimeout(async ()=>{
     pruefeDialog("Umsatz-Dialog oeffnet vorbelegt",
       !!revDlg && Number(revDlg.querySelector('[name="amount"]').value) > 0);
     pruefeDialog("Umsatz laesst sich loeschen", !!revDlg.querySelector('[data-dlg="delete"]'));
+    pruefeDialog("Umsatz-Dialog fragt die Leistung ab",
+      !!revDlg.querySelector('[name="service"] option[value="Webseite"]'));
 
     // Speichern muss die Liste sichtbar aktualisieren. Genau das fehlte: Der
     // Eintrag landete in der Datenbank, die Ansicht blieb stehen — und man

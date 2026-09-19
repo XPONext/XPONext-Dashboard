@@ -7,7 +7,7 @@ import { showErrorBanner } from "./ui/bus.js";
 
 export async function fetchAllData(){
   const [personalRes, teamRes, timeRes, tasksRes, goalsRes, commitRes, projRes, stepRes,
-         custRes, revMonRes, revRes, callsRes, setRes] = await Promise.all([
+         custRes, revMonRes, revRes, callsRes, setRes, leistRes] = await Promise.all([
     db.from("daily_personal").select("*"),
     db.from("daily_team").select("*"),
     db.from("time_entries").select("*"),
@@ -20,7 +20,8 @@ export async function fetchAllData(){
     db.from("revenue_months").select("*"),
     db.from("revenues").select("*").order("period_start", { ascending: false }),
     db.from("daily_calls").select("*").order("date", { ascending: true }),
-    db.from("settings").select("*")
+    db.from("settings").select("*"),
+    db.from("tracker_options").select("name").eq("kind","leistung").eq("active", true).order("sort_order", { ascending: true })
   ]);
   if(projRes.error){ console.error(projRes.error); state.projects = []; }
   else{ state.projects = projRes.data; }
@@ -50,6 +51,14 @@ export async function fetchAllData(){
   // Reiter leer, statt das ganze Dashboard aufzuhalten.
   if(callsRes.error){ console.error(callsRes.error); state.calls = []; }
   else{ state.calls = callsRes.data; }
+  // Leistungsarten gibt es erst nach sql/006 — bis dahin die feste Liste.
+  const LEISTUNGEN_FALLBACK = ["Webseite","Google Ads","GEO-Optimierung","Google Ads + GEO","Beratung","Sonstiges"];
+  if(leistRes.error || !leistRes.data || !leistRes.data.length){
+    if(leistRes.error) console.error(leistRes.error);
+    state.leistungen = LEISTUNGEN_FALLBACK;
+  } else {
+    state.leistungen = leistRes.data.map(r=>r.name);
+  }
   if(setRes.error){ console.error(setRes.error); state.settings = {}; }
   else{
     state.settings = {};
@@ -160,6 +169,7 @@ export async function umsatzSpeichern(werte, id){
     customer_id: werte.customer_id,
     kind: werte.kind,
     title: werte.title || null,
+    service: werte.service || null,
     amount: Number(werte.amount) || 0,
     period_start: werte.period_start,
     period_end: werte.period_end || null,

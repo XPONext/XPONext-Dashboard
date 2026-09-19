@@ -291,7 +291,8 @@ section.view.active{display:block;}
 }
 
 .kd-name{font-weight:var(--fw-semi);color:var(--text-primary);}
-.kd-actions{white-space:nowrap;text-align:right;}
+.kd-actions{text-align:right;}
+.kd-actions .kd-btn{white-space:nowrap;}
 .kd-btn{
   background:none;border:none;
   color:var(--text-muted);cursor:pointer;
@@ -547,3 +548,25 @@ tr.leerzeile td{
 @media(max-width:800px){
   .dlg-nachtragen{width:100vw;max-height:100vh;border-radius:0;}
 }
+
+/* ---------- Kunden: Zeit-Mix, Budget, Leistung ---------- */
+.mix-wrap{display:flex;align-items:center;gap:var(--sp-2);}
+.mix-bar{
+  display:flex;height:8px;width:64px;flex:0 0 auto;
+  border-radius:var(--r-pill);overflow:hidden;
+  background:var(--border);
+}
+.mix-seg{display:block;height:100%;}
+.mix-txt{font-size:var(--fs-xs);color:var(--text-muted);white-space:nowrap;}
+/* Ab einem Viertel Abstimmung faellt es auf — die Schwelle ist eine Setzung,
+   keine Messung, und steht deshalb im Titel des Balkens dabei. */
+.mix-txt.is-hoch{color:var(--amber);font-weight:var(--fw-semi);}
+
+.budget{min-width:190px;}
+.budget .bar-track{margin:0 0 4px;}
+.budget-txt{font-size:var(--fs-xs);color:var(--text-muted);white-space:nowrap;}
+.budget-basis{
+  font-size:var(--fs-sm);color:var(--text-muted);
+  margin:0 0 var(--sp-3);line-height:var(--lh-normal);
+}
+.budget-basis strong{color:var(--text-primary);}

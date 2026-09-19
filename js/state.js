@@ -22,6 +22,7 @@ export const state = {
   customers:     [], // Kunden und interne Zuordnungen aus "customers"
   calls:         [], // Calls je Tag und Person aus "daily_calls"
   settings:      {}, // Stellschrauben aus "settings", key -> Zahl
+  leistungen:    [], // Leistungsarten aus tracker_options (kind = leistung)
   revenues:      [], // Rohe Umsatzeintraege aus "revenues" — zum Bearbeiten
   revenueMonths: [], // Umsatz je Kunde und Monat aus der Sicht "revenue_months"
   ladeFehler:    null, // Meldung, wenn Kunden/Umsaetze nicht geladen werden konnten
@@ -292,4 +293,98 @@ export function callsNachArt(datum, person){
 
 export function callTage(){
   return [...new Set(state.calls.map(c=>c.date))].sort();
+}
+
+
+/* ---------- Auftraege: Stunden, Budget, Leistung ----------
+
+   Die Zeit eines Kunden laesst sich nicht eindeutig einem Auftrag zuordnen —
+   der Tracker fragt nach dem Kunden, nicht nach dem Auftrag. Zugerechnet wird
+   deshalb ueber den Zeitraum: Was waehrend eines Auftrags auf den Kunden
+   gebucht wurde, gehoert zum Auftrag. Laufen mehrere Auftraege desselben
+   Kunden gleichzeitig, wird jeder Eintrag gleich auf sie verteilt. */
+
+function heuteStr(){ return localDateStr(new Date()); }
+
+function auftragLaeuftAm(r, tag){
+  return tag >= r.period_start && tag <= (r.period_end || "9999-12-31");
+}
+
+export function stundenFuerAuftrag(r, von, bis){
+  let summe = 0;
+  state.timeEntries.forEach(e=>{
+    if(e.state === "Pause") return;
+    if(String(e.customer_id || "") !== String(r.customer_id)) return;
+    const tag = localDateStr(e.ts);
+    if(!auftragLaeuftAm(r, tag)) return;
+    if(von && tag < von) return;
+    if(bis && tag > bis) return;
+    const parallel = state.revenues.filter(x=>
+      String(x.customer_id) === String(r.customer_id) && auftragLaeuftAm(x, tag)).length || 1;
+    summe += (Number(e.duration_minutes) || 0) / 60 / parallel;
+  });
+  return summe;
+}
+
+export function zielStundensatz(){
+  const w = Number(state.settings.target_hourly_rate_eur);
+  return Number.isFinite(w) && w > 0 ? w : 100;
+}
+
+/* Budget in Stunden. Einmalig: Gesamtbetrag / Satz fuer den ganzen Auftrag.
+   Retainer: Monatsbetrag / Satz je Monat, verbraucht = Stunden im laufenden
+   (oder letzten) Monat. */
+export function budgetFuerAuftrag(r){
+  const satz = zielStundensatz();
+  const heute = heuteStr();
+  const laeuft = !r.period_end || r.period_end >= heute;
+  if(r.kind === "retainer"){
+    const ende = laeuft ? heute : r.period_end;
+    const vonM = monatsStart(ende), bisM = letzterTagDesMonats(vonM);
+    return { budget: Number(r.amount) / satz, verbraucht: stundenFuerAuftrag(r, vonM, bisM),
+             einheit: "im Monat", laeuft };
+  }
+  return { budget: Number(r.amount) / satz, verbraucht: stundenFuerAuftrag(r),
+           einheit: "im Auftrag", laeuft };
+}
+
+/* Stundensatz je Leistungsart im Fenster [vonMonat, bisMonat]:
+   realisierter Umsatz aus revenue_months / zugerechnete Stunden. */
+export function leistungsSaetze(vonMonat, bisMonat){
+  const bisEnde = letzterTagDesMonats(bisMonat);
+  const gruppen = {};
+  state.revenues.forEach(r=>{
+    const name = r.service || "Ohne Leistungsart";
+    const umsatz = state.revenueMonths
+      .filter(m=>String(m.revenue_id) === String(r.id) && m.month_start >= vonMonat && m.month_start <= bisMonat)
+      .reduce((s,m)=>s + (Number(m.amount) || 0), 0);
+    const stunden = stundenFuerAuftrag(r, vonMonat, bisEnde);
+    if(!umsatz && !stunden) return;
+    const g = gruppen[name] || (gruppen[name] = { name, umsatz:0, stunden:0, n:0 });
+    g.umsatz += umsatz; g.stunden += stunden; g.n++;
+  });
+  return Object.values(gruppen)
+    .map(g=>({ ...g, satz: g.stunden > 0 && g.umsatz > 0 ? g.umsatz / g.stunden : null }))
+    .sort((a,b)=>(b.satz || 0) - (a.satz || 0));
+}
+
+/* Zeit-Mix je Kunde: Anteil der Arbeitsarten an der Zeit im Fenster. */
+export function zeitMixFuerKunde(customerId, vonMonat, bisMonat){
+  const bisEnde = letzterTagDesMonats(bisMonat);
+  const minuten = {};
+  let gesamt = 0;
+  state.timeEntries.forEach(e=>{
+    if(e.state === "Pause") return;
+    if(String(e.customer_id || "") !== String(customerId)) return;
+    const tag = localDateStr(e.ts);
+    if(tag < vonMonat || tag > bisEnde) return;
+    const m = Number(e.duration_minutes) || 0;
+    const art = e.state || "Unbekannt";
+    minuten[art] = (minuten[art] || 0) + m;
+    gesamt += m;
+  });
+  return {
+    stunden: gesamt / 60,
+    anteile: Object.entries(minuten).map(([art, m])=>[art, gesamt ? m / gesamt : 0]).sort((a,b)=>b[1]-a[1])
+  };
 }

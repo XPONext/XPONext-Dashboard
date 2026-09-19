@@ -409,8 +409,15 @@
       <div id="kdList"></div>
     </div>
 
+    <div class="card">
+      <h2>Stundensatz je Leistung <small id="kdLeistungSub">Realisierter Umsatz je zugerechneter Stunde</small></h2>
+      <div id="kdLeistung"></div>
+    </div>
+
     <details class="card zt-details" id="kdRevenueCard" open>
       <summary><span class="zt-summary-title">Umsatzeinträge</span><span class="zt-summary-hint"></span></summary>
+      <p class="budget-basis">Stundenbudget je Auftrag: Betrag ÷ <strong id="kdZielSatz">—</strong> je Stunde
+        · <button type="button" class="kd-btn" id="kdZielSatzEdit">Ziel-Stundensatz ändern</button></p>
       <div id="kdRevenues"></div>
     </details>
 
