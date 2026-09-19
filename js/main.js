@@ -9,6 +9,7 @@ import { state } from "./state.js";
 import { findCurrentWeekIndex } from "./utils/weeks.js";
 import { renderAll, showErrorBanner } from "./ui/bus.js";
 import { initRouter } from "./router.js";
+import { initShell } from "./ui/shell.js";
 
 import "./views/dashboard.js";
 import "./views/verlauf.js";
@@ -41,6 +42,7 @@ async function init(){
   loadDayIntoForm();
   loadDayIntoHebelForm();
   initRouter();
+  initShell();
   renderAll();
 }
 init();

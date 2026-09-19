@@ -38,6 +38,26 @@ im Dashboard, das Popup zieht sie automatisch.
 3. **Umsätze eintragen**, sonst bleibt der Stundenlohn leer.
 4. **Durchklicken:** [CHECKLIST.md](CHECKLIST.md).
 
+## Aufbau seit 19.09.2026
+
+Fünf Reiter, sortiert nach der Frage, die sie beantworten — nicht nach der
+Datenquelle:
+
+| Reiter | Frage | Enthält |
+|---|---|---|
+| Heute | Wo stehe ich jetzt? | Opportunitätskosten, Calls heute, Zeit heute, Wochenfokus, Commitments |
+| Vertrieb | Kommen wir ans Ziel? | Wochenkacheln, Umsatz gegen Ziel, Vertrieb je Woche, Calls, Kostentabelle, Bestenliste |
+| Kunden | Wer lohnt sich? | Stundenlohn je Kunde, Umsätze, Zeiterfassung nach Kunde |
+| Arbeit | Woran arbeiten wir? | Hebel-Stand, Aufgaben-Board und Projekte als Umschalter |
+| Verlauf | Wie entwickelt es sich? | Stunden je Woche, Hebel je Woche, Tabellen, CSV |
+
+**„+ Nachtragen"** in der Seitenleiste öffnet einen Dialog mit allem, was ein
+verpasstes Popup nicht erfasst hat: Termine, Lead-Gen-Stunden, Hebel, Calls.
+
+**Was automatisch kommt:** Zeit je Kunde, Hebel-Stunden und Lead-Gen-Stunden
+(Zeit auf „Neukunden") aus dem Zeittracker; Calls und die Tagesvorgabe aus
+Close. Von Hand bleiben nur Termine gebucht und Show-ups.
+
 ## Kurzbefehle
 
 ```bash

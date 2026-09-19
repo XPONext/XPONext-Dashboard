@@ -493,3 +493,57 @@ tr.leerzeile td{
   .cockpit{grid-template-columns:1fr;padding:var(--sp-5);}
   .cockpit-zahl{font-size:2.6rem;}
 }
+
+/* ---------- Rahmen: fuenf Reiter, Umschalter, Nachtragen ---------- */
+.nachtragen-btn{
+  display:block;width:100%;margin-top:var(--sp-4);
+  text-align:center;
+}
+
+/* Aufgaben | Projekte im Reiter "Arbeit". Ein Umschalter statt zweier Reiter:
+   beides ist "woran arbeiten wir", nur in verschiedener Fluggehoehe. */
+.arbeit-switch{
+  display:inline-flex;
+  border:1px solid var(--border);border-radius:var(--r-pill);
+  background:var(--bg);overflow:hidden;
+  margin:var(--sp-2) 0 var(--sp-4);
+}
+.arbeit-switch button{
+  background:none;border:none;
+  padding:0.45rem 1.1rem;
+  font:inherit;font-weight:var(--fw-semi);color:var(--text-muted);
+  cursor:pointer;
+}
+.arbeit-switch button.active{background:var(--accent);color:#fff;}
+.arbeit-switch button:focus-visible{outline:2px solid var(--accent);outline-offset:-2px;}
+
+.abschnitt-titel{
+  font-size:var(--fs-h2);font-weight:var(--fw-black);
+  letter-spacing:-0.01em;color:var(--text-primary);
+  margin:var(--sp-6) 0 var(--sp-3);
+}
+
+/* Nachtragen: ein Dialog fuer alles, was ein verpasstes Fenster nicht
+   erfasst hat. Die Karten darin sind die frueheren Eingabemasken. */
+.dlg-nachtragen{
+  /* Der globale Reset setzt margin:0 — damit klebt ein <dialog> links oben.
+     margin:auto stellt die Browser-Zentrierung wieder her. */
+  margin:auto;
+  border:none;padding:0;
+  width:min(760px, 94vw);max-height:92vh;
+  border-radius:var(--r-lg);
+  box-shadow:var(--shadow-md);
+  background:var(--bg-subtle);
+}
+.dlg-nachtragen::backdrop{background:rgba(13,13,13,0.45);}
+.dlg-nachtragen-box{padding:var(--sp-5);max-height:92vh;overflow:auto;}
+.dlg-nachtragen .card{box-shadow:none;border:1px solid var(--border);}
+.dlg-hinweis{
+  font-size:var(--fs-sm);color:var(--text-muted);
+  line-height:var(--lh-normal);margin:0 0 var(--sp-4);
+}
+.dlg-sprung{display:flex;gap:var(--sp-2);flex-wrap:wrap;margin-bottom:var(--sp-4);}
+
+@media(max-width:800px){
+  .dlg-nachtragen{width:100vw;max-height:100vh;border-radius:0;}
+}

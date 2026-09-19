@@ -59,6 +59,17 @@ export function buildWeeklyAggregates(){
     dataTeam[wi].closesCount += closes.length;
     dataTeam[wi].closesSum += closes.reduce((s,v)=>s+(Number(v)||0),0);
   });
+  // Lead-Gen-Stunden aus dem Zeittracker: alles, was im Popup auf
+  // "Neukunden" gebucht wurde, ist Akquise. Die Handeingabe bleibt additiv
+  // fuers Nachtragen — vorher war sie der einzige Weg und wurde vergessen.
+  state.timeEntries.forEach(e=>{
+    if(e.state === "Pause") return;
+    if(!/neukunden/i.test(String(e.zuordnung || ""))) return;
+    const wi = weekIndexForDate(localDateStr(e.ts));
+    if(wi < 0 || !data[wi][e.person]) return;
+    data[wi][e.person].leadGenHours += (Number(e.duration_minutes) || 0) / 60;
+  });
+
   // Getrackte Hebel-Stunden aus dem Popup dazu. Seit "Hebel" eine Auswahl im
   // Zeittracker ist, kommt der Grossteil von dort; die Handeingabe im
   // Dashboard bleibt nur noch zum Nachtragen.

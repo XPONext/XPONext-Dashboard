@@ -48,6 +48,15 @@ test/               Rauchtest und visueller Vergleich
 und Kategorien in `js/config.js`. Alles, was einen Reiter betrifft, in der
 passenden Datei unter `js/views/`.
 
+## Reiter
+
+Die Seite hat fünf Reiter (Heute, Vertrieb, Kunden, Arbeit, Verlauf) und einen
+„+ Nachtragen"-Dialog. Die Module unter `js/views/` sind nach Datenquelle
+geschnitten (calls.js, hebel.js, zeittracking.js …) und finden ihre Elemente
+über IDs — ein Block darf deshalb in `index.html` zwischen Reitern umziehen,
+ohne dass sich am JavaScript etwas ändert. Genau so ist der Umbau vom
+19.09.2026 gelaufen (siehe [STAND.md](STAND.md)).
+
 ## Prüfen vor dem Committen
 
 Es gibt keine klassischen Tests, aber zwei Skripte, die den größten Teil abdecken.

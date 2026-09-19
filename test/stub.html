@@ -313,7 +313,7 @@ setTimeout(async ()=>{
     await new Promise(r=>setTimeout(r, 80));
 
     // ---- Calls ----
-    document.querySelector('[data-view="calls"]').click();
+    document.querySelector('[data-view="heute"]').click();
     await bisWahr(()=>!!document.querySelector("#clChart svg, #clChart .empty-state"));
     pruefeDialog("Calls heute stehen im Cockpit", document.getElementById("clHeute").textContent === "12");
     pruefeDialog("Vorgabe ist heute faellig, nicht die ganze Inbox",
@@ -334,7 +334,7 @@ setTimeout(async ()=>{
     pruefeDialog("Kostentabelle gefuellt", /Entgangen/.test(document.getElementById("clKostenTabelle").textContent));
 
     // ---- Hebel: Stunden kommen aus dem Zeittracker ----
-    document.querySelector('[data-view="hebel"]').click();
+    document.querySelector('[data-view="verlauf"]').click();
     await bisWahr(()=>/Coachings/.test(document.getElementById("hebelPreview").textContent));
     const hebText = document.getElementById("hebelPreview").textContent;
     pruefeDialog("Getrackte Hebel-Stunden erscheinen in der Aufteilung", /Coachings[^·]*1 Std/.test(hebText));
@@ -342,7 +342,7 @@ setTimeout(async ()=>{
     pruefeDialog("Wochenstand zaehlt getrackte Stunden mit", /1,5/.test(document.getElementById("hebWeekNum").textContent));
 
     // ---- Projekte ----
-    document.querySelector('[data-view="projekte"]').click();
+    document.querySelector('[data-view="arbeit"]').click();
     await new Promise(r=>setTimeout(r, 250));
     pruefeDialog("Laufende Projekte gezaehlt", document.getElementById("projStatActive").textContent === "1");
     pruefeDialog("Fortschritt gerechnet (1 von 3)", /33/.test(document.getElementById("projStatProgress").textContent));
@@ -402,7 +402,7 @@ setTimeout(async ()=>{
   // — landet sie mitten in einem Neuzeichnen, meldet sie Fehler, die keine
   // sind. Genau das ist einmal passiert.
   try{
-    document.querySelector('[data-view="aufgaben"]').click();
+    document.querySelector('[data-view="arbeit"]').click();
     await new Promise(r=>setTimeout(r, 600));
   }catch(e){ /* egal, der Bericht folgt trotzdem */ }
   window.__dialogFertig = true;
