@@ -38,7 +38,8 @@ def pruefe(name, bedingung, zusatz=""):
 ECHTES_FETCH = popup.fetch_options   # fuer Test 3 aufheben
 popup.fetch_options = lambda kind: (
     ['Kunde "Müller" & Co', 'Back\\slash', 'XPO intern'] if kind == "zuordnung"
-    else ['Deepwork', 'Sonstiges']
+    else ['Coachings', 'Offer "Plus"'] if kind == "hebel"
+    else ['Deepwork', 'Hebel', 'Sonstiges']
 )
 
 erzeugt = {}
@@ -58,8 +59,11 @@ os.unlink(pfad)
 pruefe("AppleScript kompiliert (auch mit Anführungszeichen im Kundennamen)",
        ergebnis.returncode == 0, ergebnis.stderr.strip())
 
-pruefe("Nur noch zwei Auswahlschritte", skript.count("choose from list") == 2,
+# Zwei feste Schritte plus die Hebel-Frage, die nur hinter "Hebel" aufgeht.
+pruefe("Zwei feste Auswahlschritte plus Hebel-Frage", skript.count("choose from list") == 3,
        f"waren {skript.count('choose from list')}")
+pruefe("Hebel-Frage steht hinter einer Bedingung",
+       'if stateVal is "Hebel" then' in skript and "Welcher Hebel?" in skript)
 
 # Ohne "with timeout" raeumt System Events einen Dialog nach 120 Sekunden mit
 # Fehler -1712 ab: Das Fenster verschwindet und der Klick geht ins Leere.
@@ -70,14 +74,16 @@ pruefe("Aktivität wird nicht mehr erfragt", "Aktivität" not in skript)
 
 # ---- 2) Auswertung der Antwort ----
 gespeichert = []
-popup.post_entry = lambda state, zuordnung: gespeichert.append((state, zuordnung))
+popup.post_entry = lambda state, zuordnung, hebel=None: gespeichert.append((state, zuordnung, hebel))
 popup.acquire_lock = lambda: True
 popup.release_lock = lambda: None
 
 faelle = [
-    ("XPO intern" + popup.SEP + "Deepwork", ("Deepwork", "XPO intern"), "Normalfall"),
-    ("PAUSE", ("Pause", None), "Pause"),
-    (popup.SEP + "Deepwork", ("Deepwork", None), "Zuordnung übersprungen"),
+    ("XPO intern" + popup.SEP + "Deepwork", ("Deepwork", "XPO intern", None), "Normalfall"),
+    ("XPO intern" + popup.SEP + "Hebel" + popup.SEP + "Coachings",
+     ("Hebel", "XPO intern", "Coachings"), "Hebel mit Unterauswahl"),
+    ("PAUSE", ("Pause", None, None), "Pause"),
+    (popup.SEP + "Deepwork", ("Deepwork", None, None), "Zuordnung übersprungen"),
 ]
 for antwort, erwartet, name in faelle:
     gespeichert.clear()

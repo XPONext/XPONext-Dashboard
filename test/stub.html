@@ -74,6 +74,10 @@ const FAKE = {
     {id:5, person:"simon", ts:new Date().toISOString(), duration_minutes:30, state:"Abarbeiten",    zuordnung:"Protours",   customer_id:"k1", aktivitaet:"Admin"},
     // Chuong: 40 x 30 Min = 20 Std. -> 800/20 = 40 EUR/Std. (rot)
     ...Array.from({length:40},(_,i)=>({id:100+i, person:"simon", ts:new Date().toISOString(), duration_minutes:30, state:"Abarbeiten", zuordnung:"Chuong", customer_id:"k2", aktivitaet:"Beratung"})),
+    // Hebel aus dem Popup: 1 Std. Coachings + 0,5 Std. mit unbekanntem Namen
+    {id:7, person:"tim", ts:new Date().toISOString(), duration_minutes:30, state:"Hebel", hebel:"Coachings", zuordnung:"XPO intern", customer_id:"i1", aktivitaet:null},
+    {id:8, person:"tim", ts:new Date().toISOString(), duration_minutes:30, state:"Hebel", hebel:"Coachings", zuordnung:"XPO intern", customer_id:"i1", aktivitaet:null},
+    {id:9, person:"tim", ts:new Date().toISOString(), duration_minutes:30, state:"Hebel", hebel:"Irgendwas Neues", zuordnung:"XPO intern", customer_id:"i1", aktivitaet:null},
     // Intern und Pause
     {id:2, person:"simon", ts:new Date().toISOString(), duration_minutes:30, state:"Kommunikation", zuordnung:"XPO intern", customer_id:"i1", aktivitaet:"Vertrieb"},
     {id:3, person:"tim",   ts:new Date().toISOString(), duration_minutes:30, state:"Pause",         zuordnung:null,         customer_id:null, aktivitaet:null},
@@ -328,6 +332,14 @@ setTimeout(async ()=>{
     pruefeDialog("Wert je Call wird angezeigt", /3,35/.test(document.getElementById("clWert").textContent));
     pruefeDialog("Verlaufsdiagramm gezeichnet", !!document.querySelector("#clChart svg"));
     pruefeDialog("Kostentabelle gefuellt", /Entgangen/.test(document.getElementById("clKostenTabelle").textContent));
+
+    // ---- Hebel: Stunden kommen aus dem Zeittracker ----
+    document.querySelector('[data-view="hebel"]').click();
+    await bisWahr(()=>/Coachings/.test(document.getElementById("hebelPreview").textContent));
+    const hebText = document.getElementById("hebelPreview").textContent;
+    pruefeDialog("Getrackte Hebel-Stunden erscheinen in der Aufteilung", /Coachings[^·]*1 Std/.test(hebText));
+    pruefeDialog("Unbekannter Hebel-Name landet unter Sonstige statt zu verschwinden", /Sonstige[^·]*0,5 Std/.test(hebText));
+    pruefeDialog("Wochenstand zaehlt getrackte Stunden mit", /1,5/.test(document.getElementById("hebWeekNum").textContent));
 
     // ---- Projekte ----
     document.querySelector('[data-view="projekte"]').click();

@@ -63,7 +63,12 @@ PERSON = os.environ.get("PERSON", "")  # "tim" oder "simon"
 # Beide Listen werden live aus Supabase geladen. Die Konstanten hier greifen
 # nur, wenn die Datenbank nicht erreichbar ist — dann soll das Popup trotzdem
 # etwas Sinnvolles anbieten statt gar nicht aufzugehen.
-STATES_FALLBACK = ["Deepwork", "Kommunikation", "Abarbeiten", "Planung", "Sonstiges"]
+STATES_FALLBACK = ["Deepwork", "Kommunikation", "Abarbeiten", "Planung", "Hebel", "Sonstiges"]
+HEBEL_FALLBACK  = ["Call-Breakdowns", "Cold-Call-Breakdowns", "Coachings",
+                   "Offer-Verbesserung", "Zielgruppenverständnis"]
+
+# Der Listeneintrag, hinter dem sich die Hebel-Frage oeffnet.
+HEBEL_STATE = "Hebel"
 ZUORDNUNG_FALLBACK = ["XPO intern", "Neukunden", "Sonstiges"]
 
 SKIP_LABEL = "Überspringen"
@@ -127,6 +132,7 @@ def run_flow():
     """
     zuordnung_optionen = fetch_options("zuordnung")
     state_optionen = fetch_options("state")
+    hebel_optionen = fetch_options("hebel")
     script = f'''
         with timeout of {DIALOG_TIMEOUT} seconds
         tell application "System Events"
@@ -138,7 +144,14 @@ def run_flow():
             {_choose_step("zuordnungVal", zuordnung_optionen, "Für wen?", step_no=1, total=2)}
             {_choose_step("stateVal", state_optionen, "Was für Arbeit war das?", step_no=2, total=2)}
 
-            return zuordnungVal & "{SEP}" & stateVal
+            -- Nur beim Hebel oeffnet sich eine dritte Frage. Die Hebel-Stunden
+            -- laufen damit ueber den Tracker statt ueber die Handeingabe.
+            set hebelVal to ""
+            if stateVal is "{_as_str(HEBEL_STATE)}" then
+                {_choose_step("hebelVal", hebel_optionen, "Welcher Hebel?")}
+            end if
+
+            return zuordnungVal & "{SEP}" & stateVal & "{SEP}" & hebelVal
         end tell
         end timeout
     '''
@@ -175,6 +188,9 @@ def fetch_options(kind):
     if kind == "zuordnung":
         url = f"{SUPABASE_URL}/rest/v1/zuordnung_optionen?select=name&active=eq.true&order=sort_order.asc"
         fallback = ZUORDNUNG_FALLBACK
+    elif kind == "hebel":
+        url = f"{SUPABASE_URL}/rest/v1/tracker_options?select=name&kind=eq.hebel&active=eq.true&order=sort_order.asc"
+        fallback = HEBEL_FALLBACK
     else:
         url = f"{SUPABASE_URL}/rest/v1/tracker_options?select=name&kind=eq.state&active=eq.true&order=sort_order.asc"
         fallback = STATES_FALLBACK
@@ -195,13 +211,14 @@ def fetch_options(kind):
         return fallback
 
 
-def post_entry(state, zuordnung):
+def post_entry(state, zuordnung, hebel=None):
     payload = {
         "person": PERSON,
         "ts": datetime.now(timezone.utc).isoformat(),
         "duration_minutes": 30,
         "state": state,
         "zuordnung": zuordnung,
+        "hebel": hebel,
         # aktivitaet wird nicht mehr erfragt. Die Spalte bleibt in der Datenbank,
         # damit die bisherigen Einträge lesbar bleiben.
         "aktivitaet": None,
@@ -572,11 +589,11 @@ def main():
         # einfach leer lassen statt eine Fehlermeldung zu zeigen — besser ein unvollständiger
         # Eintrag als ein nerviger Error-Dialog.
         parts = result.split(SEP)
-        parts += [""] * (2 - len(parts))
-        zuordnung, state = parts[:2]
+        parts += [""] * (3 - len(parts))
+        zuordnung, state, hebel = parts[:3]
         if not state:
             return  # nichts Sinnvolles zum Speichern
-        post_entry(state, zuordnung or None)
+        post_entry(state, zuordnung or None, hebel or None)
     finally:
         release_lock()
 

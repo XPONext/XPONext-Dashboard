@@ -59,8 +59,40 @@ export function buildWeeklyAggregates(){
     dataTeam[wi].closesCount += closes.length;
     dataTeam[wi].closesSum += closes.reduce((s,v)=>s+(Number(v)||0),0);
   });
+  // Getrackte Hebel-Stunden aus dem Popup dazu. Seit "Hebel" eine Auswahl im
+  // Zeittracker ist, kommt der Grossteil von dort; die Handeingabe im
+  // Dashboard bleibt nur noch zum Nachtragen.
+  state.timeEntries.forEach(e=>{
+    if(String(e.state || "").trim().toLowerCase() !== "hebel") return;
+    const wi = weekIndexForDate(localDateStr(e.ts));
+    if(wi < 0 || !data[wi][e.person]) return;
+    const key = hebelKey(e.hebel);
+    data[wi][e.person].hebel[key] =
+      (data[wi][e.person].hebel[key] || 0) + (Number(e.duration_minutes) || 0) / 60;
+  });
+
   state.data = data;
   state.dataTeam = dataTeam;
+}
+
+/* Ordnet den im Popup gewaehlten Hebel-Namen dem Schluessel aus LEVERS zu.
+   Unbekannte Namen (jemand hat in der Datenbank umbenannt) landen unter
+   "sonstige" statt still zu verschwinden. */
+export const HEBEL_SONSTIGE = "sonstige";
+export function hebelKey(name){
+  const n = String(name || "").trim().toLowerCase();
+  const treffer = LEVERS.find(([, label])=>label.toLowerCase() === n);
+  return treffer ? treffer[0] : HEBEL_SONSTIGE;
+}
+
+/* Alle Hebel-Kategorien eines Eintrags: die festen aus LEVERS plus alles,
+   was zusaetzlich in den Daten steckt. */
+export function hebelKategorien(entry){
+  const feste = LEVERS.map(([k,l])=>[k,l]);
+  const extra = Object.keys(entry.hebel || {})
+    .filter(k=>!LEVERS.some(([lk])=>lk === k))
+    .map(k=>[k, k === HEBEL_SONSTIGE ? "Sonstige" : k]);
+  return feste.concat(extra);
 }
 
 export function personEntry(i, person){
@@ -82,7 +114,9 @@ export function teamEntry(i){
 }
 
 export function hebelHours(entry){
-  return LEVERS.reduce((s,[k])=>s+(Number(entry.hebel[k])||0),0);
+  // Ueber ALLE Schluessel, nicht nur LEVERS — sonst fielen getrackte Stunden
+  // unter "sonstige" aus der Summe.
+  return Object.values(entry.hebel || {}).reduce((s,v)=>s+(Number(v)||0),0);
 }
 
 export function combinedEntry(i){

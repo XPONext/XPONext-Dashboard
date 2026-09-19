@@ -1,6 +1,11 @@
 /* Ansicht: Hebel — die Stunden, die nicht direkt Umsatz bringen, aber die
    Qualität der Arbeit heben. Ziel sind 7 Std. je Woche und Person.
 
+   Die Stunden kommen seit September 2026 aus dem Zeittracker ("Was für
+   Arbeit war das?" → Hebel → "Welcher Hebel?") und werden in state.js in die
+   Wochenwerte eingerechnet. Die Eingabe hier unten ist nur noch zum
+   Nachtragen — etwa wenn ein Popup verpasst wurde.
+
    Bewusst KEIN Ziel je einzelnem Hebel: festgelegt sind 7 Std. pro Woche
    insgesamt, wie die sich auf die fünf Hebel verteilen, entscheidet ihr.
    Vorher stand hier "/ 1 Std." je Hebel — eine Zahl, die nirgends herkam. */
@@ -8,7 +13,7 @@
 import { LEVERS, N_WEEKS, WEEKLY_TARGET, PERSONS, WEEKS } from "../config.js";
 import { num, barClass, escapeHtml, fmtDate } from "../utils/format.js";
 import { weekIndexForDate, findCurrentWeekIndex } from "../utils/weeks.js";
-import { state, personEntry, hebelHours, buildWeeklyAggregates } from "../state.js";
+import { state, personEntry, hebelHours, hebelKategorien, buildWeeklyAggregates } from "../state.js";
 import { upsertDailyPersonal, fetchAllData } from "../data.js";
 import { onRender, speichern } from "../ui/bus.js";
 import { linienChart, chartTabelle, serienFarbe } from "../ui/chart.js";
@@ -186,7 +191,7 @@ function renderAufteilung(person, wochenIdx){
   if(wochenIdx < 0){ el.innerHTML = ""; return; }
 
   const e = personEntry(wochenIdx, person);
-  const werte = LEVERS.map(([key,label])=> [label, Number(e.hebel[key]) || 0]);
+  const werte = hebelKategorien(e).map(([key,label])=> [label, Number(e.hebel[key]) || 0]);
   const summe = werte.reduce((s,[,v])=>s+v, 0);
 
   if(summe <= 0){

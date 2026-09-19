@@ -7,7 +7,10 @@ morgens einfach nur aufklappst. Kein Icon zum Draufdrücken. Ab dann poppt alle
 
 1. **Feierabend**, **Pause** oder **Jetzt eintragen** — bei Pause wird alles andere übersprungen und eine Pause getrackt, bei Feierabend hört er für heute auf
 2. **Für wen?** — die Kundenliste
-3. **Was für Arbeit war das?** — Deepwork, Kommunikation, Abarbeiten, Planung, Sonstiges
+3. **Was für Arbeit war das?** — Deepwork, Kommunikation, Abarbeiten, Planung, Hebel, Sonstiges
+4. **Welcher Hebel?** — nur wenn du „Hebel" gewählt hast: Call-Breakdowns,
+   Cold-Call-Breakdowns, Coachings, Offer-Verbesserung, Zielgruppenverständnis.
+   Die Hebel-Stunden im Dashboard füllen sich damit von selbst.
 
 Die Antworten landen direkt in der geteilten Supabase-Datenbank und tauchen im
 XPONext-Dashboard (`index.html` eine Ebene höher) im Zeittracking-Tab auf.
@@ -20,7 +23,10 @@ XPONext-Dashboard (`index.html` eine Ebene höher) im Zeittracking-Tab auf.
 
 - **Kunden** pflegst du im Dashboard unter „Kunden". Sie tauchen sofort im
   Popup auf.
-- **Arbeitsarten** stehen in der Tabelle `tracker_options` (`kind = 'state'`).
+- **Arbeitsarten** stehen in der Tabelle `tracker_options` (`kind = 'state'`),
+  die **Hebel** ebenfalls dort (`kind = 'hebel'`). Die Hebel-Namen müssen zu
+  `LEVERS` in `js/config.js` passen — sonst landen die Stunden im Dashboard
+  unter „Sonstige".
 
 Ist die Datenbank nicht erreichbar, greifen die Rückfall-Listen oben in
 `popup.py` — das Popup geht dann trotzdem auf, statt die Zeit verfallen zu
