@@ -15,7 +15,7 @@ export const state = {
   dataTeam:      {}, // Wochen-Aggregate aus dailyTeam
   timeEntries:   [], // Rohe Zeittracking-Einträge aus "time_entries"
   tasks:         [], // Rohe Aufgaben aus "tasks"
-  goals:         [], // Wochenfokus aus "weekly_goals"
+  goals:         [], // Wochenprojekt (Ueberschrift + Beschreibung) aus "weekly_goals"
   commitments:   [], // Wochen-Commitments aus "weekly_commitments"
   projects:      [], // Langzeitprojekte aus "projects"
   projectSteps:  [], // Zugehörige Schritte aus "project_steps"
@@ -28,7 +28,8 @@ export const state = {
   ladeFehler:    null, // Meldung, wenn Kunden/Umsaetze nicht geladen werden konnten
 
   boardWeekIdx: 0,    // aktuell im Aufgaben-Board angezeigte Woche (Index in WEEKS)
-  ztWeekIdx: null     // aktuell im Zeittracking angezeigte Woche; null = noch nicht gesetzt
+  ztWeekIdx: null,    // aktuell im Zeittracking angezeigte Woche; null = noch nicht gesetzt
+  fokusWeekIdx: null  // Woche fuer Wochenprojekt und Commitments auf "Heute"; null = laufende Woche
 };
 
 /* Rechnet die Tageswerte zu Wochenwerten hoch.

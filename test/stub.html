@@ -28,6 +28,13 @@ function wochenStart(){
   return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
 }
 
+// Wochenanfang relativ zur laufenden Woche: -1 = Vorwoche
+function wochenStartRel(n){
+  const d = new Date(wochenStart() + "T12:00:00");
+  d.setDate(d.getDate() + 7 * n);
+  return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
+}
+
 function tagRelativ(n){
   const d = new Date(); d.setDate(d.getDate()+n);
   return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
@@ -94,8 +101,10 @@ const FAKE = {
     {id:"t1", text:"Angebot <b>schreiben</b>", status:"inarbeit", assignee:"tim", priority:"hoch", done:false, week_start:wochenStart(), project_id:"p1", created_at:"2026-08-10T08:00:00Z"},
     {id:"t2", text:"Landingpage", status:"done", assignee:"simon", priority:"niedrig", done:true, week_start:wochenStart(), created_at:"2026-08-10T09:00:00Z"}
   ],
-  weekly_goals: [{week_start:wochenStart(), goal:"Fokus auf Neukunden"}],
-  weekly_commitments: [{id:"c1", week_start:wochenStart(), text:"3x Cold Call", assignee:"simon", done:false, created_at:"2026-08-10T08:00:00Z"},
+  weekly_goals: [{week_start:wochenStart(), goal:"Fokus auf Neukunden", description:"Drei Erstgespräche führen\nund das Angebot nachfassen"},
+                 {week_start:wochenStartRel(-1), goal:"Fokus der Vorwoche"}],
+  weekly_commitments: [{id:"c0", week_start:wochenStartRel(-1), text:"Commitment der Vorwoche", assignee:"tim", done:true, created_at:"2026-08-03T08:00:00Z"},
+    {id:"c1", week_start:wochenStart(), text:"3x Cold Call", assignee:"simon", done:false, created_at:"2026-08-10T08:00:00Z"},
     {id:"c2", week_start:wochenStart(), text:"Altes Commitment ohne Zuweisung", done:true, created_at:"2026-08-10T09:00:00Z"}],
   projects: [
     {id:"p1", title:"Website-Relaunch <b>2026</b>", description:"Neue Seite", status:"aktiv", owner:"tim", due_date:tagRelativ(45), customer_id:"k1", created_at:"2026-08-01T08:00:00Z"},
@@ -350,6 +359,51 @@ setTimeout(async ()=>{
     pruefeDialog("Wert je Call wird angezeigt", /3,35/.test(document.getElementById("clWert").textContent));
     pruefeDialog("Verlaufsdiagramm gezeichnet", !!document.querySelector("#clChart svg"));
     pruefeDialog("Kostentabelle gefuellt", /Entgangen/.test(document.getElementById("clKostenTabelle").textContent));
+
+    // ---- Heute: Woche wechseln ----
+    // Regression aus dem Reiter-Umbau: Das Datumsfeld, an dem Fokus und
+    // Commitments hingen, liegt jetzt im Nachtragen-Dialog. Ohne eigene
+    // Navigation kam man auf "Heute" nicht mehr zur Vorwoche.
+    // Wochenprojekt: Ueberschrift und Beschreibung
+    pruefeDialog("Wochenprojekt zeigt die Ueberschrift", /Fokus auf Neukunden/.test(document.getElementById("goalDisplay").textContent));
+    pruefeDialog("Wochenprojekt zeigt die Beschreibung", /Erstgespräche/.test(document.getElementById("goalDesc").textContent));
+    pruefeDialog("Banner heisst Wochenprojekt", /Wochenprojekt/.test(document.querySelector(".focus-label").textContent));
+    document.getElementById("editGoalBtn").click();
+    await bisWahr(()=>!!dlgJetzt());
+    const wpDlg = dlgJetzt();
+    pruefeDialog("Dialog hat Ueberschrift und Beschreibung",
+      !!wpDlg.querySelector('[name="goal"]') && !!wpDlg.querySelector('textarea[name="description"]'));
+    pruefeDialog("Dialog ist vorbelegt", /Erstgespräche/.test(wpDlg.querySelector('[name="description"]').value));
+    // Beschreibung ohne Ueberschrift wird abgelehnt
+    wpDlg.querySelector('[name="goal"]').value = "";
+    wpDlg.querySelector('[data-dlg="submit"]').click();
+    pruefeDialog("Beschreibung ohne Ueberschrift wird abgelehnt",
+      await bisWahr(()=>!!dlgJetzt() && !wpDlg.querySelector(".dlg-error").hidden));
+    wpDlg.querySelector('[data-dlg="abbruch"]').click();
+    await bisWahr(()=>!dlgJetzt());
+
+    const cl = ()=>document.getElementById("commitmentsList").textContent;
+    pruefeDialog("Laufende Woche zeigt ihr Commitment", /3x Cold Call/.test(cl()) && !/Vorwoche/.test(cl()));
+    document.getElementById("fokusPrevWeek").click();
+    await bisWahr(()=>/Commitment der Vorwoche/.test(cl()));
+    pruefeDialog("Vorwoche zeigt ihre Commitments", /Commitment der Vorwoche/.test(cl()) && !/3x Cold Call/.test(cl()));
+    pruefeDialog("Vorwoche zeigt ihr Wochenprojekt", /Fokus der Vorwoche/.test(document.getElementById("goalDisplay").textContent));
+    pruefeDialog("Ueberschrift nennt die Vorwoche", /Letzte Woche/.test(document.getElementById("fokusWeekHeading").textContent));
+    pruefeDialog("Datum im Nachtragen-Dialog bleibt unberuehrt",
+      document.getElementById("entryDate").value === tagRelativ(0));
+    document.getElementById("fokusHeuteBtn").click();
+    await bisWahr(()=>/3x Cold Call/.test(cl()));
+    pruefeDialog("Zurueck zur laufenden Woche", /3x Cold Call/.test(cl()) && document.getElementById("fokusHeuteBtn").hidden);
+
+    // Zweite Regression: Blaettern in der Zeiterfassung (Kunden-Reiter) hat
+    // "Zeit heute" auf der Heute-Seite ausgeblendet.
+    document.getElementById("ztPrevWeek").click();
+    await warte(150);
+    pruefeDialog("Zeit heute bleibt sichtbar, wenn die Zeiterfassung blaettert",
+      document.getElementById("ztTodayCard").style.display !== "none" &&
+      document.getElementById("ztTodayHours").textContent === "24");
+    document.getElementById("ztNextWeek").click();
+    await warte(100);
 
     // ---- Hebel: Stunden kommen aus dem Zeittracker ----
     document.querySelector('[data-view="verlauf"]').click();

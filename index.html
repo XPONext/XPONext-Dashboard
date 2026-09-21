@@ -54,24 +54,32 @@
           <div class="cockpit-kzahl" id="clWert">—</div>
           <div class="cockpit-klbl">pro Call · <button type="button" class="cockpit-edit" id="clWertEdit">ändern</button></div>
         </div>
+        <div class="cockpit-karte" id="ztTodayCard">
+          <div class="cockpit-kzahl"><span id="ztTodayHours">0</span><span class="cockpit-ziel"> Std.</span></div>
+          <div class="cockpit-klbl" id="ztTodaySub">Zeit heute</div>
+        </div>
       </div>
     </div>
 
-    <div class="grid2">
-      <div class="stat" id="ztTodayCard">
-        <div class="lbl">Zeit heute</div>
-        <div class="num" id="ztTodayHours">0</div>
-        <div class="pct" id="ztTodaySub">Stunden</div>
+    <div class="board-head">
+      <h2 id="fokusWeekHeading">Diese Woche</h2>
+      <div class="week-nav">
+        <button type="button" class="kd-btn" id="fokusHeuteBtn" hidden>zur laufenden Woche</button>
+        <button type="button" class="wk-btn" id="fokusPrevWeek" title="Vorherige Woche">‹</button>
+        <span id="fokusWeekLabel">diese Woche</span>
+        <button type="button" class="wk-btn" id="fokusNextWeek" title="Nächste Woche">›</button>
       </div>
-    <div class="focus-banner">
-      <div class="focus-label">Wochenfokus · <span id="goalWeekLabel">diese Woche</span></div>
-      <div class="focus-text empty" id="goalDisplay">Noch kein Fokus für diese Woche gesetzt</div>
-      <div class="focus-stroke"></div>
     </div>
+
+    <div class="focus-banner">
+      <div class="focus-label">Wochenprojekt · <span id="goalWeekLabel">diese Woche</span></div>
+      <div class="focus-text empty" id="goalDisplay">Noch kein Wochenprojekt für diese Woche gesetzt</div>
+      <div class="focus-desc" id="goalDesc"></div>
+      <div class="focus-stroke"></div>
     </div>
 
     <div class="board-actions">
-      <button class="btn-outline" id="editGoalBtn">Wochenfokus ändern</button>
+      <button class="btn-outline" id="editGoalBtn">Wochenprojekt bearbeiten</button>
       <button class="btn" id="openAddCommitmentBtn">+ Commitment hinzufügen</button>
     </div>
 

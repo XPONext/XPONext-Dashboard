@@ -31,7 +31,8 @@ laden ES-Module nicht mehr über `file://`). Browser-Konsole offen lassen:
 - [ ] Termine/Show-up speichern funktioniert
 - [ ] Close hinzufügen (mit Auftragswert) → erscheint in der Liste
 - [ ] Close löschen funktioniert
-- [ ] Wochenfokus setzen (Modal) → Banner zeigt den Text
+- [ ] Wochenprojekt setzen (Überschrift + Beschreibung) → Banner zeigt beides
+- [ ] Auf „Heute" mit ‹ › zur Vorwoche blättern → Wochenprojekt und Commitments der Vorwoche erscheinen
 - [ ] Commitment hinzufügen, abhaken, löschen
 - [ ] Vorschau unten aktualisiert sich nach dem Speichern
 

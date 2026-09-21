@@ -1,4 +1,4 @@
-/* Ansicht: Wochen-Eingabe — Termine, Lead-Gen-Stunden, Wochenfokus, Commitments.
+/* Ansicht: Wochen-Eingabe — Termine, Lead-Gen-Stunden, Wochenprojekt, Commitments.
 
    Umsatz und Auftraege stehen hier bewusst NICHT mehr: Sie kommen aus den
    Kundeneintraegen im Reiter "Kunden". Zwei Eingabeorte fuer dieselbe Zahl
@@ -74,31 +74,61 @@ function renderPreview(i){
     </div>`;
   }).join("");
 }
-/* ---------- Wochenfokus & Commitments ----------
-   Beides hängt an der Woche des im Eingabe-Tab gewählten Tages — wer dort einen
-   anderen Tag wählt, sieht Fokus und Commitments der zugehörigen Woche. */
-function entryWeekIdx(){
-  const wi = weekIndexForDate(document.getElementById("entryDate").value);
-  return wi >= 0 ? wi : findCurrentWeekIndex();
+/* ---------- Wochenprojekt & Commitments ----------
+   Beides steht auf "Heute" und hat dort eine eigene Wochen-Navigation.
+
+   Frueher hing die Woche am Datumsfeld der Wochen-Eingabe. Seit dieses Feld im
+   Nachtragen-Dialog liegt, gab es auf "Heute" keinen Weg mehr zur Vorwoche —
+   und eine versteckte Kopplung zwischen zwei Bildschirmen waere auch dann
+   falsch, wenn sie funktionierte: Wer die Vorwoche ansieht, will nicht, dass
+   sich dabei das Datum im Nachtragen-Dialog verstellt. */
+function fokusWeekIdx(){
+  return state.fokusWeekIdx == null ? findCurrentWeekIndex() : state.fokusWeekIdx;
+}
+
+function renderFokusNav(){
+  const wi = fokusWeekIdx(), cur = findCurrentWeekIndex();
+  document.getElementById("fokusWeekHeading").textContent =
+    wi === cur ? "Diese Woche" :
+    wi === cur - 1 ? "Letzte Woche" :
+    wi === cur + 1 ? "Nächste Woche" : "Woche";
+  document.getElementById("fokusWeekLabel").textContent = weekLabel(wi);
+  document.getElementById("fokusPrevWeek").disabled = wi <= 0;
+  document.getElementById("fokusNextWeek").disabled = wi >= N_WEEKS - 1;
+  document.getElementById("fokusHeuteBtn").hidden = wi === cur;
+}
+
+function fokusWechsel(delta){
+  const neu = fokusWeekIdx() + delta;
+  if(neu < 0 || neu >= N_WEEKS) return;
+  // Die laufende Woche bleibt "null", damit die Ansicht am Montag von selbst
+  // in die neue Woche mitgeht, statt auf der alten stehenzubleiben.
+  state.fokusWeekIdx = neu === findCurrentWeekIndex() ? null : neu;
+  renderGoal();
+  renderCommitments();
 }
 
 function renderGoal(){
-  const wi = entryWeekIdx();
+  renderFokusNav();
+  const wi = fokusWeekIdx();
   const weekStart = WEEKS[wi][0];
   document.getElementById("goalWeekLabel").textContent = weekLabel(wi);
   const goal = state.goals.find(g=>g.week_start===weekStart);
   const disp = document.getElementById("goalDisplay");
+  const desc = document.getElementById("goalDesc");
   if(goal && goal.goal && goal.goal.trim()){
     disp.textContent = goal.goal;
     disp.classList.remove("empty");
+    desc.textContent = goal.description || "";
   } else {
-    disp.textContent = "Noch kein Fokus für diese Woche gesetzt";
+    disp.textContent = "Noch kein Wochenprojekt für diese Woche gesetzt";
     disp.classList.add("empty");
+    desc.textContent = "";
   }
 }
 
 function renderCommitments(){
-  const wi = entryWeekIdx();
+  const wi = fokusWeekIdx();
   const weekStart = WEEKS[wi][0];
   document.getElementById("commitmentsWeekLabel").textContent = "worauf ihr euch in "+weekLabel(wi)+" festlegt";
 
@@ -161,22 +191,52 @@ document.getElementById("saveTeamBtn").addEventListener("click", async ()=>{
     buildWeeklyAggregates();
   }, "saveTeamMsg", fetchAllData);
 });
-/* ---------- Wochenfokus ---------- */
+/* ---------- Wochen-Navigation auf "Heute" ---------- */
+document.getElementById("fokusPrevWeek").addEventListener("click", ()=>fokusWechsel(-1));
+document.getElementById("fokusNextWeek").addEventListener("click", ()=>fokusWechsel(+1));
+document.getElementById("fokusHeuteBtn").addEventListener("click", ()=>{
+  state.fokusWeekIdx = null;
+  renderGoal();
+  renderCommitments();
+});
+
+/* ---------- Wochenprojekt ----------
+   Eine Ueberschrift und darunter Platz, das Projekt naeher zu beschreiben.
+   In der Datenbank bleibt `goal` die Ueberschrift (alle alten Eintraege
+   bleiben gueltig), `description` kommt mit sql/007 dazu. */
 document.getElementById("editGoalBtn").addEventListener("click", async ()=>{
-  const weekStart = WEEKS[entryWeekIdx()][0];
+  const weekStart = WEEKS[fokusWeekIdx()][0];
   const vorhanden = state.goals.find(g=>g.week_start===weekStart);
   await openModal({
-    title: "Wochenfokus",
-    submitLabel: "Fokus speichern",
-    fields: [{
-      name:"goal", label:"Worauf liegt der Fokus in "+weekLabel(entryWeekIdx())+"?",
-      type:"text", width:"full", placeholder:"z.B. 20 Erstgespräche führen"
-    }],
-    initial: vorhanden ? { goal: vorhanden.goal } : null,
+    title: "Wochenprojekt · " + weekLabel(fokusWeekIdx()),
+    submitLabel: "Wochenprojekt speichern",
+    fields: [
+      { name:"goal", label:"Überschrift", type:"text", width:"full",
+        placeholder:"z.B. Landingpage für Zittrich live bringen" },
+      { name:"description", label:"Beschreibung", type:"textarea", width:"full",
+        placeholder:"Was gehört dazu, und woran merkt ihr, dass es geschafft ist? (optional)" }
+    ],
+    initial: vorhanden ? { goal: vorhanden.goal, description: vorhanden.description || "" } : null,
+    // Beides leer heisst: Wochenprojekt zuruecknehmen. Nur eine Beschreibung
+    // ohne Ueberschrift ergibt dagegen keinen Sinn.
+    validate: werte=> (werte.description && !String(werte.goal || "").trim())
+      ? "Bitte eine Überschrift eintragen — die Beschreibung steht sonst ohne Titel da." : null,
     onSubmit: async werte=>{
-      const { data, error } = await db.from("weekly_goals")
-        .upsert({ week_start: weekStart, goal: werte.goal }, { onConflict: "week_start" }).select();
-      pruefe(error, "Wochenfokus konnte nicht gespeichert werden");
+      const kopf = { week_start: weekStart, goal: werte.goal };
+      let { data, error } = await db.from("weekly_goals")
+        .upsert({ ...kopf, description: werte.description || null }, { onConflict: "week_start" }).select();
+
+      // Die Spalte `description` gibt es erst nach sql/007. Bis dahin
+      // wenigstens die Ueberschrift retten, statt das Speichern ganz
+      // scheitern zu lassen — und sagen, was fehlt.
+      if(error && (error.code === "PGRST204" || error.code === "42703" || /description/i.test(error.message || ""))){
+        ({ data, error } = await db.from("weekly_goals").upsert(kopf, { onConflict: "week_start" }).select());
+        if(!error && werte.description){
+          showErrorBanner("Die Überschrift ist gespeichert. Für die Beschreibung fehlt noch sql/007_wochenprojekt.sql.");
+        }
+      }
+      pruefe(error, "Wochenprojekt konnte nicht gespeichert werden");
+      if(!data || !data.length) throw new Error("Die Datenbank hat den Eintrag nicht übernommen — bitte die Seite neu laden.");
       const idx = state.goals.findIndex(g=>g.week_start===weekStart);
       if(idx>=0) state.goals[idx] = data[0]; else state.goals.push(data[0]);
       renderGoal();
@@ -189,12 +249,12 @@ document.getElementById("openAddCommitmentBtn").addEventListener("click", async 
     title: "Neues Commitment",
     submitLabel: "Commitment hinzufügen",
     fields: [
-      {name:"text",     label:"Worauf legst du dich diese Woche fest?", type:"text", required:true, width:"full", placeholder:"z.B. 12 Std. Lead-Gen"},
+      {name:"text",     label:"Worauf legst du dich in "+weekLabel(fokusWeekIdx())+" fest?", type:"text", required:true, width:"full", placeholder:"z.B. 12 Std. Lead-Gen"},
       {name:"assignee", label:"Zugewiesen an", type:"select", options:PERSON_OPTIONS, value:"tim"}
     ],
     onSubmit: async werte=>{
       const { data, error } = await db.from("weekly_commitments")
-        .insert({ week_start: WEEKS[entryWeekIdx()][0], text: werte.text, assignee: werte.assignee, done: false }).select();
+        .insert({ week_start: WEEKS[fokusWeekIdx()][0], text: werte.text, assignee: werte.assignee, done: false }).select();
       pruefe(error, "Commitment konnte nicht gespeichert werden");
       state.commitments.push(data[0]);
       renderCommitments();
@@ -228,4 +288,4 @@ onRender("eingabe", ()=>{
   renderPreview(weekIndexForDate(document.getElementById("entryDate").value));
 });
 
-export { populateEntryControls, loadDayIntoForm, entryWeekIdx };
+export { populateEntryControls, loadDayIntoForm };

@@ -64,7 +64,7 @@ section.view.active{display:block;}
 .grid2 .card{margin-bottom:0;}
 @media(max-width:800px){.grid4{grid-template-columns:repeat(2,1fr);} .grid2{grid-template-columns:1fr;}}
 
-/* ---------- Dunkle Flaechen: Hero-Fortschritt und Wochenfokus ---------- */
+/* ---------- Dunkle Flaechen: Hero-Fortschritt und Wochenprojekt ---------- */
 .hero-progress{
   background:var(--bg-dark);
   border-radius:16px;
@@ -570,3 +570,13 @@ tr.leerzeile td{
   margin:0 0 var(--sp-3);line-height:var(--lh-normal);
 }
 .budget-basis strong{color:var(--text-primary);}
+
+/* ---------- Wochenprojekt: Beschreibung unter der Ueberschrift ---------- */
+.focus-desc{
+  margin-top:var(--sp-3);
+  font-size:var(--fs-body);line-height:var(--lh-normal);
+  color:rgba(255,255,255,0.72);
+  white-space:pre-line;          /* Zeilenumbrueche aus der Eingabe erhalten */
+  max-width:70ch;
+}
+.focus-desc:empty{display:none;}

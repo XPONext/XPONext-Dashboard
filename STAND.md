@@ -45,7 +45,7 @@ Datenquelle:
 
 | Reiter | Frage | Enthält |
 |---|---|---|
-| Heute | Wo stehe ich jetzt? | Opportunitätskosten, Calls heute, Zeit heute, Wochenfokus, Commitments |
+| Heute | Wo stehe ich jetzt? | Opportunitätskosten, Calls heute, Zeit heute, Wochenprojekt, Commitments (Woche mit ‹ › blätterbar) |
 | Vertrieb | Kommen wir ans Ziel? | Wochenkacheln, Umsatz gegen Ziel, Vertrieb je Woche, Calls, Kostentabelle, Bestenliste |
 | Kunden | Wer lohnt sich? | Stundenlohn je Kunde, Umsätze, Zeiterfassung nach Kunde |
 | Arbeit | Woran arbeiten wir? | Hebel-Stand, Aufgaben-Board und Projekte als Umschalter |

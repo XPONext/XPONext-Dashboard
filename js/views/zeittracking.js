@@ -110,14 +110,14 @@ function renderZeittracking(){
   document.getElementById("ztWeekSimonSub").textContent =
     arbeit > 0 ? num((simon/arbeit)*100, 0) + "% der Zeit" : "Stunden";
 
-  // Die Heute-Karte ergibt nur Sinn, solange man auf der laufenden Woche steht.
-  const heuteKarte = document.getElementById("ztTodayCard");
-  heuteKarte.style.display = isCurrentWeek ? "" : "none";
-  if(isCurrentWeek){
-    const todayAll = filterTimeEntries({dateFrom: todayStr, dateTo: todayStr});
-    document.getElementById("ztTodayHours").textContent = num(sumMinutes(todayAll, true)/60, 1);
-    document.getElementById("ztTodaySub").textContent = fmtDate(todayStr) + " Stunden";
-  }
+  // "Zeit heute" steht seit dem Reiter-Umbau im Cockpit auf "Heute" und hat mit
+  // der hier gewaehlten Woche nichts mehr zu tun. Frueher wurde die Karte
+  // ausgeblendet, sobald man in der Zeiterfassung zurueckblaetterte — damit
+  // verschwand sie auf einer ganz anderen Seite.
+  const todayAll = filterTimeEntries({dateFrom: todayStr, dateTo: todayStr});
+  document.getElementById("ztTodayCard").style.display = "";
+  document.getElementById("ztTodayHours").textContent = num(sumMinutes(todayAll, true)/60, 1);
+  document.getElementById("ztTodaySub").textContent = "Zeit heute · " + fmtDate(todayStr);
 
   renderAufteilung(weekAll, "zuordnung", "ztByZuordnung",
     "In dieser Woche wurde noch keine Zeit einem Kunden zugeordnet.");
