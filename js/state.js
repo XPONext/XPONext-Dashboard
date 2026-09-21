@@ -20,6 +20,7 @@ export const state = {
   projects:      [], // Langzeitprojekte aus "projects"
   projectSteps:  [], // Zugehörige Schritte aus "project_steps"
   customers:     [], // Kunden und interne Zuordnungen aus "customers"
+  meetings:      [], // Termine je Tag und Person aus Close ("daily_meetings")
   calls:         [], // Calls je Tag und Person aus "daily_calls"
   settings:      {}, // Stellschrauben aus "settings", key -> Zahl
   leistungen:    [], // Leistungsarten aus tracker_options (kind = leistung)
@@ -61,6 +62,16 @@ export function buildWeeklyAggregates(){
     dataTeam[wi].closesCount += closes.length;
     dataTeam[wi].closesSum += closes.reduce((s,v)=>s+(Number(v)||0),0);
   });
+  // Termine aus Close: gebuchte Meetings und Show-ups kommen automatisch aus
+  // dem Abgleich (time_tracker/close_sync.py). Die Handeingabe bleibt additiv
+  // fuer Korrekturen — wer beides pflegt, zaehlt doppelt.
+  state.meetings.forEach(m=>{
+    const wi = weekIndexForDate(m.date);
+    if(wi < 0) return;
+    dataTeam[wi].termineGebucht += Number(m.booked) || 0;
+    dataTeam[wi].termineShowup  += Number(m.showup) || 0;
+  });
+
   // Lead-Gen-Stunden aus dem Zeittracker: alles, was im Popup auf
   // "Neukunden" gebucht wurde, ist Akquise. Die Handeingabe bleibt additiv
   // fuers Nachtragen — vorher war sie der einzige Weg und wurde vergessen.
@@ -259,18 +270,23 @@ export function callsAmTag(datum, person){
     .reduce((s,c)=>s + (Number(c.calls) || 0), 0);
 }
 
-/* Die Vorgabe des Tages. Gemessen wird gegen die HEUTE faelligen Tasks,
-   nicht gegen die ganze Inbox — sonst waechst das Ziel genau dann, wenn man
-   ohnehin im Rueckstand ist. */
+/* Die Vorgabe des Tages: alle Call-Tasks, die heute oder frueher faellig
+   waren — die noch offenen plus die heute erledigten.
+
+   Eine fruehere Fassung hat nur die HEUTE faelligen Tasks gezaehlt, mit der
+   Begruendung, Rueckstand sei kein Tagespensum. In der Praxis lag sie damit
+   daneben: Bei 137 ueberfaelligen und 6 heute faelligen Tasks waeren 27
+   gemachte Calls als "450 % Zielerreichung" erschienen. Wer seine Inbox
+   abarbeitet, arbeitet am Rueckstand — also ist die Inbox das Mass. Der
+   ueberfaellige Anteil steht daneben. */
 export function vorgabeAmTag(datum, person){
   const zeilen = state.calls.filter(c=>c.date === datum && (!person || c.person === person));
   if(!zeilen.length) return null;
-  return zeilen.reduce((s,c)=>{
+  const summe = zeilen.reduce((s,c)=>{
     const gesamt = Number(c.target);
-    const spaet  = Number(c.target_overdue) || 0;
-    if(!Number.isFinite(gesamt)) return s;
-    return s + Math.max(0, gesamt - spaet);
-  }, 0) || null;
+    return Number.isFinite(gesamt) ? s + gesamt : s;
+  }, 0);
+  return summe || null;
 }
 
 export function rueckstandAmTag(datum, person){

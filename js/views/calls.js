@@ -3,10 +3,10 @@
 
    Zwei Dinge, die hier bewusst so sind:
 
-   1. Gemessen wird gegen die HEUTE fälligen Tasks aus Close, nicht gegen die
-      gesamte Inbox. Die Inbox enthält auch den Rückstand — wer sie als
-      Tagesziel nimmt, wird für Rückstand doppelt bestraft: Das Ziel wächst
-      genau dann, wenn man ohnehin hinterherhängt.
+   1. Gemessen wird gegen die Inbox: alle Call-Tasks, die heute oder frueher
+      faellig waren (offen plus heute erledigt). Die Zahlen kommen alle 30
+      Minuten automatisch aus Close (time_tracker/close_sync.py) — nicht mehr
+      ueber ein Fenster um 18 Uhr, das in der Praxis nie kam.
 
    2. Der Wert je Call ist eine feste Einstellung (Startwert 3,35 € aus
       5.200 € bei 1.550 Calls) und keine mitlaufende Rechnung. Eine Zahl, die
@@ -113,7 +113,7 @@ function renderCockpit(){
     kEl.textContent = "—";
     document.getElementById("clKostenSub").textContent = "Noch keine Vorgabe";
     document.getElementById("clKostenErklaerung").textContent =
-      "Für heute liegt noch keine Vorgabe aus Close vor.";
+      "Für heute liegt noch kein Abgleich mit Close vor — er läuft alle 30 Minuten.";
     cock.classList.remove("is-warnung", "is-gut");
   } else if(kosten > 0){
     kEl.textContent = "−" + euroCent(kosten);
@@ -174,8 +174,8 @@ function renderVerlauf(){
   if(!state.calls.length){
     el.innerHTML = emptyState(
       "Noch keine Calls erfasst",
-      "Ab 18 Uhr fragt der Zeittracker einmal täglich, wie viele Calls du gemacht hast. " +
-      "Frühere Tage trägst du über „Calls nachtragen“ ein."
+      "Die Zahlen kommen alle 30 Minuten automatisch aus Close. Steht hier nichts, " +
+      "läuft der Abgleich noch nicht — einmal time_tracker/install.sh ausführen."
     );
     return;
   }

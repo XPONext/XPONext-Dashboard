@@ -7,7 +7,7 @@ import { showErrorBanner } from "./ui/bus.js";
 
 export async function fetchAllData(){
   const [personalRes, teamRes, timeRes, tasksRes, goalsRes, commitRes, projRes, stepRes,
-         custRes, revMonRes, revRes, callsRes, setRes, leistRes] = await Promise.all([
+         custRes, revMonRes, revRes, callsRes, setRes, leistRes, meetRes] = await Promise.all([
     db.from("daily_personal").select("*"),
     db.from("daily_team").select("*"),
     db.from("time_entries").select("*"),
@@ -21,7 +21,8 @@ export async function fetchAllData(){
     db.from("revenues").select("*").order("period_start", { ascending: false }),
     db.from("daily_calls").select("*").order("date", { ascending: true }),
     db.from("settings").select("*"),
-    db.from("tracker_options").select("name").eq("kind","leistung").eq("active", true).order("sort_order", { ascending: true })
+    db.from("tracker_options").select("name").eq("kind","leistung").eq("active", true).order("sort_order", { ascending: true }),
+    db.from("daily_meetings").select("*")
   ]);
   if(projRes.error){ console.error(projRes.error); state.projects = []; }
   else{ state.projects = projRes.data; }
@@ -59,6 +60,9 @@ export async function fetchAllData(){
   } else {
     state.leistungen = leistRes.data.map(r=>r.name);
   }
+  // Termine aus Close gibt es erst nach sql/008.
+  if(meetRes.error){ console.error(meetRes.error); state.meetings = []; }
+  else{ state.meetings = meetRes.data; }
   if(setRes.error){ console.error(setRes.error); state.settings = {}; }
   else{
     state.settings = {};

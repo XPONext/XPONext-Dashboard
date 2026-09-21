@@ -50,6 +50,10 @@ const FAKE = {
     {kind:"leistung", name:"GEO-Optimierung", active:true, sort_order:30},
     {kind:"state", name:"Deepwork", active:true, sort_order:10}
   ],
+  daily_meetings: [
+    {date:tagRelativ(0), person:"tim",   booked:2, showup:1, noshow:1, source:"close"},
+    {date:tagRelativ(0), person:"simon", booked:1, showup:1, noshow:0, source:"close"}
+  ],
   daily_calls: [
     {date:tagRelativ(0),  person:"tim", calls:12, calls_warm:8, calls_cold:4, target:26, target_overdue:5, source:"popup"},
     {date:tagRelativ(-1), person:"tim", calls:20, calls_warm:14, calls_cold:6, target:20, target_overdue:0, source:"popup"},
@@ -343,13 +347,13 @@ setTimeout(async ()=>{
     document.querySelector('[data-view="heute"]').click();
     await bisWahr(()=>!!document.querySelector("#clChart svg, #clChart .empty-state"));
     pruefeDialog("Calls heute stehen im Cockpit", document.getElementById("clHeute").textContent === "12");
-    pruefeDialog("Vorgabe ist heute faellig, nicht die ganze Inbox",
-      document.getElementById("clZiel").textContent.includes("21"));
+    pruefeDialog("Vorgabe ist die Inbox (offen + erledigt), nicht nur das heute Faellige",
+      document.getElementById("clZiel").textContent.includes("26"));
     pruefeDialog("Warm und kalt werden genannt",
       /8 warm · 4 kalt/.test(document.getElementById("clHeuteSub").textContent));
-    // 21 - 12 = 9 offen x 3,35 EUR = 30,15 EUR
+    // 26 - 12 = 14 offen x 3,35 EUR = 46,90 EUR
     pruefeDialog("Opportunitaetskosten gerechnet",
-      /30|31/.test(document.getElementById("clKosten").textContent));
+      /46,90/.test(document.getElementById("clKosten").textContent));
     pruefeDialog("Cockpit ist als Warnung markiert",
       document.getElementById("clCockpit").classList.contains("is-warnung"));
     pruefeDialog("Kosten stehen als Hauptzahl im Cockpit",

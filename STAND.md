@@ -59,8 +59,10 @@ Ads vs. GEO), Stundenbudget je Auftrag (Betrag ÷ Ziel-Stundensatz, Warnung ab
 verpasstes Popup nicht erfasst hat: Termine, Lead-Gen-Stunden, Hebel, Calls.
 
 **Was automatisch kommt:** Zeit je Kunde, Hebel-Stunden und Lead-Gen-Stunden
-(Zeit auf „Neukunden") aus dem Zeittracker; Calls und die Tagesvorgabe aus
-Close. Von Hand bleiben nur Termine gebucht und Show-ups.
+(Zeit auf „Neukunden") aus dem Zeittracker-Popup. Calls, Tagesvorgabe,
+gebuchte Termine und Show-ups aus Close — über `time_tracker/close_sync.py`,
+alle 30 Minuten als eigener LaunchAgent (braucht `sql/008` und `install.sh`).
+Von Hand bleibt nichts mehr außer Korrekturen.
 
 ## Kurzbefehle
 

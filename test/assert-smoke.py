@@ -76,8 +76,10 @@ if int(m.group(1)) != ERWARTETE_DIALOGPRUEFUNGEN:
 # aus der Summe der Closes in der Wochen-Eingabe: 3.000 Retainer + 800 einmalig.
 check("Umsatz gesamt", text_of("dashUmsatzIst"), "€3.800")
 check("Closes", text_of("statCloses"), "2")
-check("Termine gebucht", text_of("statTermineGebucht"), "7")
-check("Termine Show-up", text_of("statTermineShowup"), "5")
+# 7 von Hand (daily_team) + 3 aus dem Close-Abgleich (daily_meetings: 2 Tim, 1 Simon)
+check("Termine gebucht", text_of("statTermineGebucht"), "10")
+# 5 von Hand + 2 Show-ups aus Close; der No-Show zaehlt nicht mit
+check("Termine Show-up", text_of("statTermineShowup"), "7")
 # 2: die Testwoche aus daily_personal plus die laufende Woche, in der die
 # getrackten Hebel-Stunden aus dem Zeittracker liegen.
 check("Erfasste Wochen", text_of("streakWeeksLogged"), "2")

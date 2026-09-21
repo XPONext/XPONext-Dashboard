@@ -83,6 +83,32 @@ Das war's. Der Tracker läuft sofort los und ab dann bei jeder Anmeldung.
 - **Feierabend** im Popup → Schluss für heute; am nächsten Morgen läuft er wieder
 - **Pause** im Popup → trackt eine Pause, der Loop läuft weiter
 
+## Calls, Termine und Show-ups — automatisch aus Close
+
+Neben dem Popup läuft ein zweiter Hintergrunddienst: `close_sync.py`. Er holt
+alle 30 Minuten die Tageszahlen aus Close und schreibt sie ins Dashboard —
+unabhängig davon, ob du am Rechner sitzt oder schon Feierabend gedrückt hast.
+Du musst dafür nichts eintragen.
+
+| Zahl | Woher |
+|---|---|
+| **Calls** | heute abgehakte Tasks: „Follow up", „Rückruf"/„RR" = warm · „… Cold Email", „Re-Engagement" = kalt. „Konzept zusenden", „Meeting …" usw. zählen nicht |
+| **Vorgabe** | alle Call-Tasks, die heute oder früher fällig waren (offen + heute erledigt) |
+| **Termine gebucht** | heute angelegte Tasks, die mit „Meeting" beginnen — je Lead einmal |
+| **Show-ups** | heute fällige „Meeting …"-Tasks. Gilt als stattgefunden, außer der Lead steht auf **No Show** oder es gibt von heute eine Notiz mit „verschoben", „nicht aufgetaucht", „nicht erreicht", „abgesagt". Wird erst **ab 17 Uhr** bewertet |
+
+Damit das funktioniert, braucht jede Person ihren eigenen `CLOSE_API_KEY` in
+der `.env` (Close → Settings → Developer → API Keys).
+
+```bash
+python3 ~/.xpo-time-tracker/close_sync.py      # sofort abgleichen
+tail ~/.xpo-time-tracker/.tmp/close_sync.log   # was zuletzt gezählt wurde
+```
+
+Eine im Dashboard von Hand korrigierte Call-Zahl überschreibt der Abgleich
+nicht. Termine, die du zusätzlich im Nachtragen-Dialog einträgst, zählen
+**obendrauf** — also nur noch für Korrekturen nutzen.
+
 ## Wenn du länger weg warst
 
 Der Tracker fragt nur, wenn jemand am Rechner sitzt. Waren Tastatur und Maus
