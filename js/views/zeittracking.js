@@ -10,7 +10,7 @@
 import { WEEKS, N_WEEKS } from "../config.js";
 import { num, fmtDate, weekLabel, localDateStr, escapeHtml } from "../utils/format.js";
 import { findCurrentWeekIndex } from "../utils/weeks.js";
-import { state } from "../state.js";
+import { state, gewaehlterTag } from "../state.js";
 import { onRender } from "../ui/bus.js";
 import { emptyState } from "../ui/components.js";
 import { serienFarbe } from "../ui/chart.js";
@@ -114,10 +114,13 @@ function renderZeittracking(){
   // der hier gewaehlten Woche nichts mehr zu tun. Frueher wurde die Karte
   // ausgeblendet, sobald man in der Zeiterfassung zurueckblaetterte — damit
   // verschwand sie auf einer ganz anderen Seite.
-  const todayAll = filterTimeEntries({dateFrom: todayStr, dateTo: todayStr});
+  // Folgt dem auf "Heute" gewaehlten Tag, nicht der hier gewaehlten Woche.
+  const tag = gewaehlterTag();
+  const tagAll = filterTimeEntries({dateFrom: tag, dateTo: tag});
   document.getElementById("ztTodayCard").style.display = "";
-  document.getElementById("ztTodayHours").textContent = num(sumMinutes(todayAll, true)/60, 1);
-  document.getElementById("ztTodaySub").textContent = "Zeit heute · " + fmtDate(todayStr);
+  document.getElementById("ztTodayHours").textContent = num(sumMinutes(tagAll, true)/60, 1);
+  document.getElementById("ztTodaySub").textContent =
+    (tag === todayStr ? "Zeit heute · " : "Zeit am ") + fmtDate(tag);
 
   renderAufteilung(weekAll, "zuordnung", "ztByZuordnung",
     "In dieser Woche wurde noch keine Zeit einem Kunden zugeordnet.");

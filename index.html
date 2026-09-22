@@ -35,6 +35,16 @@
 <!-- DASHBOARD -->
 <section class="view active" id="view-heute">
   <div class="container">
+    <div class="board-head">
+      <h2 id="tagHeading">Heute</h2>
+      <div class="week-nav">
+        <button type="button" class="kd-btn" id="tagHeuteBtn" hidden>zu heute</button>
+        <button type="button" class="wk-btn" id="tagPrev" title="Vorheriger Tag">‹</button>
+        <span id="tagLabel">heute</span>
+        <button type="button" class="wk-btn" id="tagNext" title="Nächster Tag">›</button>
+      </div>
+    </div>
+
     <div class="cockpit" id="clCockpit">
       <div class="cockpit-haupt">
         <div class="cockpit-lbl" id="clKostenSub">Entgeht dir heute</div>
@@ -46,7 +56,7 @@
           <div class="cockpit-kzahl">
             <span id="clHeute">0</span><span class="cockpit-ziel" id="clZiel"> / —</span>
           </div>
-          <div class="cockpit-klbl">Calls heute</div>
+          <div class="cockpit-klbl" id="clCallsLbl">Calls heute</div>
           <div class="cockpit-bar"><div class="cockpit-fill" id="clBar" style="width:0%"></div></div>
           <div class="cockpit-klbl" id="clHeuteSub">—</div>
         </div>

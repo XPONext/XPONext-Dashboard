@@ -30,7 +30,8 @@ export const state = {
 
   boardWeekIdx: 0,    // aktuell im Aufgaben-Board angezeigte Woche (Index in WEEKS)
   ztWeekIdx: null,    // aktuell im Zeittracking angezeigte Woche; null = noch nicht gesetzt
-  fokusWeekIdx: null  // Woche fuer Wochenprojekt und Commitments auf "Heute"; null = laufende Woche
+  fokusWeekIdx: null, // Woche fuer Wochenprojekt und Commitments auf "Heute"; null = laufende Woche
+  heuteTag: null      // Tag fuer das Cockpit auf "Heute" (YYYY-MM-DD); null = heute
 };
 
 /* Rechnet die Tageswerte zu Wochenwerten hoch.
@@ -404,4 +405,11 @@ export function zeitMixFuerKunde(customerId, vonMonat, bisMonat){
     stunden: gesamt / 60,
     anteile: Object.entries(minuten).map(([art, m])=>[art, gesamt ? m / gesamt : 0]).sort((a,b)=>b[1]-a[1])
   };
+}
+
+
+/* Der auf "Heute" gewaehlte Tag. null steht fuer den aktuellen Tag — damit die
+   Ansicht nach Mitternacht von selbst mitgeht, statt auf gestern stehenzubleiben. */
+export function gewaehlterTag(){
+  return state.heuteTag || localDateStr(new Date());
 }

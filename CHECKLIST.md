@@ -33,6 +33,7 @@ laden ES-Module nicht mehr über `file://`). Browser-Konsole offen lassen:
 - [ ] Close löschen funktioniert
 - [ ] Wochenprojekt setzen (Überschrift + Beschreibung) → Banner zeigt beides
 - [ ] Auf „Heute" mit ‹ › zur Vorwoche blättern → Wochenprojekt und Commitments der Vorwoche erscheinen
+- [ ] Auf „Heute" oben mit ‹ › einen Tag zurück → Calls, Kosten und Zeit des Vortags; nach vorn geht es nur bis heute
 - [ ] Commitment hinzufügen, abhaken, löschen
 - [ ] Vorschau unten aktualisiert sich nach dem Speichern
 

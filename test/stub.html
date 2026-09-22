@@ -364,6 +364,27 @@ setTimeout(async ()=>{
     pruefeDialog("Verlaufsdiagramm gezeichnet", !!document.querySelector("#clChart svg"));
     pruefeDialog("Kostentabelle gefuellt", /Entgangen/.test(document.getElementById("clKostenTabelle").textContent));
 
+    // ---- Heute: Tag wechseln ----
+    // Vorher war das Cockpit fest auf heute — nur die Woche liess sich wechseln.
+    document.getElementById("tagPrev").click();
+    await bisWahr(()=>document.getElementById("clHeute").textContent === "20");
+    pruefeDialog("Gestern: Calls des Vortags im Cockpit", document.getElementById("clHeute").textContent === "20");
+    pruefeDialog("Gestern: Vorgabe erreicht, keine Kosten", document.getElementById("clCockpit").classList.contains("is-gut"));
+    pruefeDialog("Ueberschrift sagt Gestern", document.getElementById("tagHeading").textContent === "Gestern");
+    pruefeDialog("Zeit am Vortag statt heute", document.getElementById("ztTodayHours").textContent === "0");
+    pruefeDialog("Nach vorn geht es wieder", !document.getElementById("tagNext").disabled);
+    // Sieben Tage zurueck landet sicher in der Vorwoche — der Wochenteil geht mit
+    for(let i=0;i<6;i++){ document.getElementById("tagPrev").click(); await warte(60); }
+    await bisWahr(()=>/Commitment der Vorwoche/.test(document.getElementById("commitmentsList").textContent));
+    pruefeDialog("Wochenteil folgt dem gewaehlten Tag",
+      /Commitment der Vorwoche/.test(document.getElementById("commitmentsList").textContent));
+    document.getElementById("tagHeuteBtn").click();
+    await bisWahr(()=>document.getElementById("clHeute").textContent === "12");
+    pruefeDialog("Zurueck zu heute: Cockpit und Woche",
+      document.getElementById("clHeute").textContent === "12" &&
+      document.getElementById("tagNext").disabled &&
+      /3x Cold Call/.test(document.getElementById("commitmentsList").textContent));
+
     // ---- Heute: Woche wechseln ----
     // Regression aus dem Reiter-Umbau: Das Datumsfeld, an dem Fokus und
     // Commitments hingen, liegt jetzt im Nachtragen-Dialog. Ohne eigene

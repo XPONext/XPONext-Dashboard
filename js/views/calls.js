@@ -14,12 +14,13 @@
       Opportunitätskosten würden mitspringen. */
 
 import { euro, euroCent, num, escapeHtml, fmtDate, todayIso } from "../utils/format.js";
-import { PERSONS } from "../config.js";
-import { state, wertJeCall, callsAmTag, vorgabeAmTag, rueckstandAmTag, callTage,
+import { PERSONS, WEEKS } from "../config.js";
+import { state, wertJeCall, callsAmTag, vorgabeAmTag, rueckstandAmTag, callTage, gewaehlterTag,
          callsNachArt } from "../state.js";
 import { callsSpeichern, einstellungSpeichern, fetchAllData } from "../data.js";
 import { openModal } from "../ui/modal.js";
 import { onRender, renderAll, showErrorBanner, flashSaved } from "../ui/bus.js";
+import { weekIndexForDate, findCurrentWeekIndex } from "../utils/weeks.js";
 import { balkenChart, linienChart } from "../ui/chart.js";
 import { emptyState } from "../ui/components.js";
 
@@ -96,8 +97,51 @@ async function wertDialog(){
 
 /* ---------- Rendern ---------- */
 
-function renderCockpit(){
+/* ---------- Tages-Navigation ----------
+   Das Cockpit zeigt einen Tag. Wer zurueckblaettert, sieht, was an dem Tag
+   gemacht und was liegen gelassen wurde; der Wochenteil darunter geht in die
+   Woche dieses Tages mit. Nach vorn geht es nur bis heute — fuer morgen gibt
+   es noch nichts zu zeigen. */
+const WOCHENTAG = ["So","Mo","Di","Mi","Do","Fr","Sa"];
+
+function tagPlus(tag, n){
+  const d = new Date(tag + "T12:00:00");
+  d.setDate(d.getDate() + n);
+  return d.getFullYear() + "-" + String(d.getMonth()+1).padStart(2,"0") + "-" + String(d.getDate()).padStart(2,"0");
+}
+
+function tagText(tag){
+  return WOCHENTAG[new Date(tag + "T12:00:00").getDay()] + " " + fmtDate(tag);
+}
+
+function renderTagNav(){
+  const tag = gewaehlterTag(), heute = todayIso();
+  const istHeute = tag === heute, gestern = tagPlus(heute, -1);
+  document.getElementById("tagHeading").textContent =
+    istHeute ? "Heute" : tag === gestern ? "Gestern" : tagText(tag);
+  document.getElementById("tagLabel").textContent = tagText(tag);
+  document.getElementById("tagNext").disabled = tag >= heute;
+  document.getElementById("tagPrev").disabled = tag <= WEEKS[0][0];
+  document.getElementById("tagHeuteBtn").hidden = istHeute;
+}
+
+function tagWechsel(neu){
   const heute = todayIso();
+  if(neu > heute) neu = heute;
+  if(neu < WEEKS[0][0]) neu = WEEKS[0][0];
+  // Heute bleibt "null", damit die Ansicht um Mitternacht von selbst mitgeht.
+  state.heuteTag = neu === heute ? null : neu;
+  // Der Wochenteil folgt dem Tag. Die laufende Woche bleibt ebenfalls null.
+  const wi = weekIndexForDate(neu);
+  if(wi >= 0) state.fokusWeekIdx = wi === findCurrentWeekIndex() ? null : wi;
+  renderAll();
+}
+
+function renderCockpit(){
+  renderTagNav();
+  const heute = gewaehlterTag();
+  const istHeute = heute === todayIso();
+  const amTag = istHeute ? "heute" : "am " + fmtDate(heute);
   const gemacht = callsAmTag(heute);
   const soll    = vorgabeAmTag(heute);
   const wert    = wertJeCall();
@@ -113,11 +157,12 @@ function renderCockpit(){
     kEl.textContent = "—";
     document.getElementById("clKostenSub").textContent = "Noch keine Vorgabe";
     document.getElementById("clKostenErklaerung").textContent =
-      "Für heute liegt noch kein Abgleich mit Close vor — er läuft alle 30 Minuten.";
+      istHeute ? "Für heute liegt noch kein Abgleich mit Close vor — er läuft alle 30 Minuten."
+               : "Für diesen Tag gibt es keine Call-Zahlen.";
     cock.classList.remove("is-warnung", "is-gut");
   } else if(kosten > 0){
     kEl.textContent = "−" + euroCent(kosten);
-    document.getElementById("clKostenSub").textContent = "Entgeht dir heute";
+    document.getElementById("clKostenSub").textContent = istHeute ? "Entgeht dir heute" : "Entgangen " + amTag;
     document.getElementById("clKostenErklaerung").textContent =
       offen + (offen === 1 ? " Call" : " Calls") + " offen × " + euroCent(wert) +
       " · hochgerechnet " + euro(kosten * 220) + " im Jahr, wenn jeder Tag so läuft";
@@ -125,13 +170,14 @@ function renderCockpit(){
     cock.classList.remove("is-gut");
   } else {
     kEl.textContent = euro(0);
-    document.getElementById("clKostenSub").textContent = "Heute nichts liegen gelassen";
+    document.getElementById("clKostenSub").textContent = (istHeute ? "Heute" : "Am " + fmtDate(heute)) + " nichts liegen gelassen";
     document.getElementById("clKostenErklaerung").textContent =
       "Tagesvorgabe erreicht — " + gemacht + " von " + soll + " Calls.";
     cock.classList.add("is-gut");
     cock.classList.remove("is-warnung");
   }
 
+  document.getElementById("clCallsLbl").textContent = istHeute ? "Calls heute" : "Calls " + amTag;
   document.getElementById("clHeute").textContent = gemacht;
   document.getElementById("clZiel").textContent = soll == null ? " / —" : " / " + soll;
   document.getElementById("clBar").style.width =
@@ -252,6 +298,9 @@ function renderCalls(){
 }
 
 document.getElementById("clNachtragen").addEventListener("click", nachtragenDialog);
+document.getElementById("tagPrev").addEventListener("click", ()=>tagWechsel(tagPlus(gewaehlterTag(), -1)));
+document.getElementById("tagNext").addEventListener("click", ()=>tagWechsel(tagPlus(gewaehlterTag(), +1)));
+document.getElementById("tagHeuteBtn").addEventListener("click", ()=>tagWechsel(todayIso()));
 document.getElementById("clWertEdit").addEventListener("click", wertDialog);
 
 onRender("calls", renderCalls);
