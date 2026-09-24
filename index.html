@@ -22,6 +22,7 @@
     <button class="tab-btn" data-view="kunden">Kunden</button>
     <button class="tab-btn" data-view="arbeit">Arbeit</button>
     <button class="tab-btn" data-view="verlauf">Verlauf</button>
+    <button class="tab-btn" data-view="auftraege">Aufträge</button>
   </nav>
   <button type="button" class="btn nachtragen-btn" id="nachtragenBtn">+ Nachtragen</button>
 </aside>
@@ -478,6 +479,25 @@
       <div id="ztByState"></div>
       <div class="zt-legacy" id="ztLegacy"></div>
     </details>
+  </div>
+</section>
+
+<!-- Aufträge: Leistungsvereinbarung zusammenklicken.
+     Baut sich vollständig aus js/views/auftraege.js auf — die Bausteine kommen
+     vom Server, damit der Vertragstext an genau einer Stelle gepflegt wird
+     (bausteine.py im Workflow-Repo) und nicht hier noch einmal. -->
+<section class="view" id="view-auftraege">
+  <div class="auftrag-hinweis" id="auftragHinweis" hidden></div>
+  <div class="auftrag-raster" id="auftragRaster" hidden>
+    <div class="auftrag-formular" id="auftragFormular"></div>
+    <div class="auftrag-vorschau">
+      <div class="card">
+        <h2>Vorschau <small>Was hier steht, steht gleich im PDF.</small></h2>
+        <pre class="auftrag-pre" id="auftragVorschau">Wähle ein Paket, um zu beginnen.</pre>
+        <button class="btn" id="auftragErzeugen" disabled>Vertrag erzeugen</button>
+        <div class="auftrag-ergebnis" id="auftragErgebnis" hidden></div>
+      </div>
+    </div>
   </div>
 </section>
 

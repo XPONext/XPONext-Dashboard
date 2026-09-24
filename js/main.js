@@ -20,6 +20,10 @@ import "./views/projekte.js";
 import "./views/calls.js";
 import "./views/kunden.js";
 import "./views/zeittracking.js";
+// Baut sich erst beim ersten Öffnen des Reiters auf und meldet sich bewusst
+// nicht bei onRender() an — ein Reiterwechsel würde sonst ein halb
+// ausgefülltes Formular zurücksetzen.
+import "./views/auftraege.js";
 
 window.addEventListener("error", ev=>{
   showErrorBanner("Es ist ein Fehler aufgetreten: "+(ev.message||"unbekannt")+" — bitte die Seite neu laden.");

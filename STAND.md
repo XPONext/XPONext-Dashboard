@@ -50,6 +50,28 @@ Datenquelle:
 | Kunden | Wer lohnt sich? | Stundenlohn je Kunde, Umsätze, Zeiterfassung nach Kunde |
 | Arbeit | Woran arbeiten wir? | Hebel-Stand, Aufgaben-Board und Projekte als Umschalter |
 | Verlauf | Wie entwickelt es sich? | Stunden je Woche, Hebel je Woche, Tabellen, CSV |
+| Aufträge | Wie wird daraus ein Vertrag? | Leistungsvereinbarung zusammenklicken, Markdown + PDF |
+
+**Aufträge-Reiter seit 23.09.2026.** Paket wählen, Bausteine anhaken, Laufzeit
+und Preise eintragen — heraus kommt die Leistungsvereinbarung als Markdown und
+PDF in `vertraege/{Kunde}/` im Workflow-Repo. Es wird **nichts formuliert**:
+Jeder Satz steht wortgleich in einem bereits geschlossenen Vertrag, bei jedem
+Baustein steht die Quelle daneben und „Wortlaut" klappt den Volltext auf. Kein
+Sprachmodell, kein API-Schlüssel.
+
+Fünf Klauseln haben bewusst keinen Vorgabewert (Nutzungsrechte, Verlängerung,
+Kostenträger, Datenschutz, Referenznennung) — ohne Auswahl wird kein Vertrag
+erzeugt. Bei den Nutzungsrechten gibt es fünf einander ausschließende Fassungen
+im Bestand, bei der Verlängerung steht es 6:5. Es gibt keinen Mehrheitsfall, der
+als Standard taugt.
+
+**Dafür ist `serve.sh` kein reiner Dateiserver mehr.** Ein PDF kann nicht im
+Browser entstehen, deshalb liefert [serve.py](serve.py) jetzt beides aus: die
+Dateien des Dashboards und unter `/api/vertrag/*` den Generator, der im
+Workflow-Repo unter `tools/vertrag_formular/` liegt — dort, wo auch die
+Verträge, die Vorlage und `md_to_pdf.py` sind. Fehlt das Repo, läuft das
+Dashboard normal weiter und nur der Auftrags-Reiter erklärt, was fehlt. Liegt es
+woanders: `XPO_WORKFLOW_REPO=/pfad ./serve.sh`.
 
 **Im Kunden-Reiter seit 19.09.2026:** Stundensatz je Leistung (Webseite vs.
 Ads vs. GEO), Stundenbudget je Auftrag (Betrag ÷ Ziel-Stundensatz, Warnung ab

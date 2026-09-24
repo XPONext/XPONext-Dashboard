@@ -55,3 +55,18 @@ export const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiO
 
 export const SECRET_STORAGE_KEY = "xponext_kpi_secret";
 export const PERSON_STORAGE_KEY = "xponext_kpi_person";
+
+/* ---------- Vertragsgenerator ----------
+   Der Auftrags-Reiter braucht einen Server, der rechnet: Verträge entstehen als
+   Markdown und werden mit reportlab zu PDF, beides geht nicht im Browser.
+
+   Lokal über ./serve.sh liefert derselbe Server auch die Dateien aus — dann
+   sind die Pfade relativ und der Vertrag landet versioniert in vertraege/.
+   Gehostet auf GitHub Pages gibt es keinen solchen Server; dort übernimmt der
+   Railway-Service, der ohnehin für den Instantly-Webhook läuft, und das PDF
+   kommt als Download zurück (Railway vergisst Dateien beim nächsten Deploy).
+
+   Geschützt ist das mit demselben Team-Passwort wie Supabase. */
+export const VERTRAG_API = location.hostname === "localhost" || location.hostname === "127.0.0.1"
+  ? ""
+  : "https://web-production-c5d0a.up.railway.app";

@@ -580,3 +580,120 @@ tr.leerzeile td{
   max-width:70ch;
 }
 .focus-desc:empty{display:none;}
+
+/* ═══ Aufträge ═══════════════════════════════════════════════════════════
+   Vertragsformular. Zurückhaltend gehalten: Der Reiter soll den Vertragstext
+   zeigen, nicht sich selbst. Die Vorschau steht rechts und bleibt beim
+   Scrollen stehen, damit man beim Anhaken sieht, was sich ändert. */
+
+.auftrag-raster{
+  display:grid; grid-template-columns:minmax(0,1fr) minmax(0,440px);
+  gap:var(--sp-4); align-items:start;
+}
+@media (max-width:1100px){ .auftrag-raster{ grid-template-columns:1fr; } }
+
+.auftrag-vorschau{ position:sticky; top:var(--sp-4); }
+.auftrag-pre{
+  margin:0 0 var(--sp-3); max-height:62vh; overflow:auto; padding:var(--sp-3);
+  background:var(--bg-subtle); border:1px solid var(--border); border-radius:var(--r-sm);
+  font:12px/1.6 ui-monospace,SFMono-Regular,Menlo,monospace;
+  white-space:pre-wrap; word-break:break-word; color:var(--text-primary);
+}
+.auftrag-vorschau .btn{ width:100%; }
+
+.auftrag-hinweis{
+  background:var(--amber-bg); border:1px solid var(--amber); border-radius:var(--r-md);
+  padding:var(--sp-4); color:var(--text-primary); max-width:720px;
+}
+.auftrag-hinweis p{ margin:var(--sp-2) 0 0; color:var(--text-body); font-size:14px; }
+.auftrag-hinweis code{
+  background:var(--bg-subtle); padding:1px 5px; border-radius:4px; font-size:12.5px;
+}
+
+/* Paket-Kacheln */
+.auftrag-kacheln{
+  display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:var(--sp-2);
+}
+.auftrag-kachel{
+  text-align:left; padding:var(--sp-3); border:1px solid var(--border);
+  border-radius:var(--r-sm); background:var(--bg); cursor:pointer;
+  font:inherit; color:var(--text-primary); transition:border-color .12s,background .12s;
+}
+.auftrag-kachel:hover{ border-color:var(--accent); }
+.auftrag-kachel[aria-pressed="true"]{
+  border-color:var(--accent); background:var(--accent-light);
+  box-shadow:inset 0 0 0 1px var(--accent);
+}
+.auftrag-kachel b{ display:block; font-size:14px; font-weight:600; margin-bottom:2px; }
+.auftrag-kachel small{ color:var(--text-muted); font-size:11.5px; }
+
+/* Bausteine */
+.auftrag-baustein{ border-bottom:1px solid var(--border); padding:var(--sp-2) 0; }
+.auftrag-baustein:last-child{ border-bottom:0; }
+.auftrag-baustein-kopf{ display:flex; gap:var(--sp-2); align-items:baseline; }
+.auftrag-baustein-kopf input{
+  margin:0; width:15px; height:15px; accent-color:var(--accent);
+  flex:none; position:relative; top:2px;
+}
+.auftrag-baustein-kopf label{ flex:1; font-size:14px; cursor:pointer; }
+.auftrag-quelle{
+  font-size:11px; color:var(--text-muted); font-variant-numeric:tabular-nums; white-space:nowrap;
+}
+.auftrag-baustein details summary,
+.auftrag-freitext summary{
+  font-size:11.5px; color:var(--accent); cursor:pointer; width:fit-content; list-style:none;
+}
+.auftrag-baustein details summary{ margin:3px 0 0 25px; }
+.auftrag-baustein details summary::-webkit-details-marker,
+.auftrag-freitext summary::-webkit-details-marker{ display:none; }
+.auftrag-baustein details summary::before,
+.auftrag-freitext summary::before{ content:"▸ "; }
+.auftrag-baustein details[open] summary::before,
+.auftrag-freitext[open] summary::before{ content:"▾ "; }
+.auftrag-volltext{
+  margin:var(--sp-2) 0 var(--sp-1) 25px; padding:var(--sp-2) var(--sp-3);
+  font-size:12.5px; line-height:1.5; white-space:pre-wrap;
+  background:var(--bg-subtle); border-left:2px solid var(--border);
+  border-radius:0 var(--r-sm) var(--r-sm) 0; color:var(--text-body);
+}
+#aBausteinFelder:not(:empty){ margin-top:var(--sp-3); }
+
+/* Klausel-Schalter */
+.auftrag-schalter{ margin-bottom:var(--sp-4); }
+.auftrag-schalter:last-child{ margin-bottom:0; }
+.auftrag-schalter h3{ font-size:13.5px; font-weight:600; margin:0 0 2px; }
+.auftrag-notiz{ font-size:12px; color:var(--text-muted); margin:0 0 var(--sp-2); }
+.auftrag-option{ display:flex; gap:var(--sp-2); align-items:baseline; padding:4px 0; }
+.auftrag-option input{ accent-color:var(--accent); margin:0; flex:none; position:relative; top:2px; }
+.auftrag-option label{ font-size:13.5px; cursor:pointer; flex:1; }
+.auftrag-offen{ color:var(--amber); font-size:12px; margin-top:var(--sp-1); }
+
+/* Ergebnis und Close-Vorschläge */
+.auftrag-ergebnis{ font-size:13px; padding:var(--sp-2) var(--sp-3); border-radius:var(--r-sm); }
+.auftrag-ergebnis.ist-gut{ background:var(--green-bg); color:var(--green); }
+.auftrag-ergebnis.ist-schlecht{ background:var(--amber-bg); color:var(--text-primary); }
+.auftrag-ergebnis code{ font-size:11.5px; word-break:break-all; }
+
+.auftrag-vorschlaege{
+  border:1px solid var(--border); border-radius:var(--r-sm); margin-top:var(--sp-1); overflow:hidden;
+}
+.auftrag-vorschlaege button{
+  display:block; width:100%; text-align:left; padding:6px var(--sp-3); font:inherit;
+  font-size:13px; background:var(--bg); border:0; border-bottom:1px solid var(--border);
+  cursor:pointer; color:var(--text-primary);
+}
+.auftrag-vorschlaege button:last-child{ border-bottom:0; }
+.auftrag-vorschlaege button:hover{ background:var(--bg-subtle); }
+
+.auftrag-freitext textarea{ width:100%; margin-top:var(--sp-2); font-family:inherit; }
+.form-grid-3{ grid-template-columns:repeat(3,minmax(0,1fr)); }
+@media (max-width:700px){ .form-grid-3{ grid-template-columns:1fr; } }
+
+/* Download-Knöpfe im Ergebniskasten — nur gehostet, wo es keinen
+   Vertragsordner gibt, in den der Server schreiben könnte. */
+.auftrag-download{
+  display:inline-block; margin:var(--sp-2) var(--sp-2) 0 0; padding:6px var(--sp-3);
+  background:var(--accent); color:#fff; border-radius:var(--r-sm);
+  font-size:13px; font-weight:600; text-decoration:none;
+}
+.auftrag-download:hover{ background:var(--accent-hover); color:#fff; }

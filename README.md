@@ -12,13 +12,19 @@ die Dateien nur über eine echte Adresse, nicht über `file://`. Zwei Wege:
 **Im Alltag:** die gehostete Adresse aufrufen und das Team-Passwort eingeben.
 Das Passwort wird im Browser gespeichert und danach nicht mehr abgefragt.
 
-**Zum Entwickeln auf dem eigenen Rechner:**
+**Auf dem eigenen Rechner:**
 
 ```bash
 ./serve.sh
 ```
 
 Dann [http://localhost:8000](http://localhost:8000) öffnen. Beenden mit `Ctrl+C`.
+
+Seit dem Auftrags-Reiter ist das kein reiner Dateiserver mehr: [serve.py](serve.py)
+liefert daneben den Vertragsgenerator aus. **Der Auftrags-Reiter funktioniert
+deshalb nur lokal** — unter der gehosteten Adresse gibt es kein Python und keinen
+Zugriff auf den Vertragsordner. Der Reiter erklärt das dort selbst, die übrigen
+fünf Reiter laufen normal weiter.
 
 ## Aufbau
 
@@ -39,7 +45,8 @@ js/
   ui/               modal, chart, bus, components
   utils/            format, weeks
   views/            dashboard, eingabe, aufgaben, projekte,
-                    hebel, verlauf, zeittracking
+                    hebel, verlauf, zeittracking, auftraege
+serve.py            lokaler Server: Dateien + /api/vertrag/* (nur lokal)
 time_tracker/       macOS-Popup, das die Zeiten erfasst (eigenes README)
 test/               Rauchtest und visueller Vergleich
 ```
@@ -50,12 +57,22 @@ passenden Datei unter `js/views/`.
 
 ## Reiter
 
-Die Seite hat fünf Reiter (Heute, Vertrieb, Kunden, Arbeit, Verlauf) und einen
-„+ Nachtragen"-Dialog. Die Module unter `js/views/` sind nach Datenquelle
+Die Seite hat sechs Reiter (Heute, Vertrieb, Kunden, Arbeit, Verlauf, Aufträge)
+und einen „+ Nachtragen"-Dialog. Die Module unter `js/views/` sind nach Datenquelle
 geschnitten (calls.js, hebel.js, zeittracking.js …) und finden ihre Elemente
 über IDs — ein Block darf deshalb in `index.html` zwischen Reitern umziehen,
 ohne dass sich am JavaScript etwas ändert. Genau so ist der Umbau vom
 19.09.2026 gelaufen (siehe [STAND.md](STAND.md)).
+
+**Aufträge** ist die Ausnahme von zwei Regeln. Er meldet sich nicht bei
+`onRender()` an, weil ein Reiterwechsel sonst ein halb ausgefülltes Formular
+zurücksetzen würde — er baut sich einmal auf, wenn man ihn zum ersten Mal
+öffnet. Und er ist der einzige Reiter, der einen Server braucht: Verträge
+entstehen als Markdown und werden mit reportlab zu PDF, beides geht nicht im
+Browser. Der Generator selbst liegt im Workflow-Repo unter
+`tools/vertrag_formular/`, wo auch die Verträge und die Vorlage sind; dieser
+Reiter holt die Bausteine über `/api/vertrag/katalog`, damit ein Wortlaut an
+genau einer Stelle gepflegt wird.
 
 ## Prüfen vor dem Committen
 
