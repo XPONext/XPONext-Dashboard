@@ -697,3 +697,5 @@ tr.leerzeile td{
   font-size:13px; font-weight:600; text-decoration:none;
 }
 .auftrag-download:hover{ background:var(--accent-hover); color:#fff; }
+.auftrag-ergebnis a{ color:inherit; text-decoration:underline; }
+.auftrag-drive-fehler{ color:var(--amber); }

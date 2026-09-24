@@ -466,10 +466,27 @@ async function erzeuge(){
 
   if(ablage === "download") return meldeDownload(e);
 
-  melde(e.erfolg, e.erfolg
+  melde(e.erfolg, (e.erfolg
     ? "Fertig.<br><code>" + escapeHtml(e.pdf_datei) + "</code>"
     : "Markdown liegt, PDF nicht erzeugt.<br><code>"
-      + escapeHtml(e.markdown_datei || "") + "</code><br>" + escapeHtml(e.fehler || ""));
+      + escapeHtml(e.markdown_datei || "") + "</code><br>" + escapeHtml(e.fehler || ""))
+    + driveZeile(e.drive));
+}
+
+/* Wohin der Vertrag in Google Drive gewandert ist — oder warum nicht.
+   Eine fehlgeschlagene Ablage ist kein Grund zur Panik: Der Vertrag liegt
+   trotzdem vor, als Datei oder als Download. */
+function driveZeile(drive){
+  if(!drive) return "";
+  if(drive.erfolg){
+    const neu = drive.ordner_neu ? " (neu angelegt)" : "";
+    const link = drive.link
+      ? ` <a href="${escapeHtml(drive.link)}" target="_blank" rel="noopener">öffnen</a>`
+      : "";
+    return `<br>In Drive: <strong>${escapeHtml(drive.ordner)}</strong>${neu}${link}`;
+  }
+  return `<br><span class="auftrag-drive-fehler">Nicht in Drive abgelegt: `
+       + `${escapeHtml(drive.fehler || "unbekannt")}</span>`;
 }
 
 /* Gehostet gibt es keinen Vertragsordner, in den der Server schreiben könnte.
@@ -481,9 +498,10 @@ function meldeDownload(e){
   }
   const kasten = $("auftragErgebnis");
   kasten.className = "auftrag-ergebnis " + (e.erfolg ? "ist-gut" : "ist-schlecht");
-  kasten.innerHTML = e.erfolg
+  kasten.innerHTML = (e.erfolg
     ? "<strong>Fertig.</strong> "
-    : "<strong>PDF nicht erzeugt</strong> (" + escapeHtml(e.fehler || "") + "). Markdown geht: ";
+    : "<strong>PDF nicht erzeugt</strong> (" + escapeHtml(e.fehler || "") + "). Markdown geht: ")
+    + driveZeile(e.drive);
   kasten.hidden = false;
 
   if(e.pdf_base64){
