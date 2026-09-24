@@ -185,6 +185,11 @@ export async function umsatzSpeichern(werte, id){
     : await db.from("revenues").insert(nutzlast).select();
   if(antwort.error){
     console.error(antwort.error);
+    // Fehlt die Spalte, ist sql/006 in Supabase noch nicht gelaufen. Supabase
+    // meldet das als "schema cache" — damit weiss niemand, was zu tun ist.
+    if(/service/.test(antwort.error.message || "")){
+      throw new Error("Die Leistungsart fehlt noch in der Datenbank. Dafür einmal sql/006_leistung_und_budget.sql im Supabase-SQL-Editor ausführen.");
+    }
     throw new Error("Umsatz konnte nicht gespeichert werden: " + antwort.error.message);
   }
   return antwort.data[0];
