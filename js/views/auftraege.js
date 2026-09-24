@@ -23,6 +23,7 @@ let katalog = null;
 let paket = null;
 let aufgebaut = false;
 let ablage = "datei";   // "datei" lokal, "download" gehostet — s. hole()
+let formulierhilfe = false;   // ob ein ANTHROPIC_API_KEY hinterlegt ist
 
 const $ = id => document.getElementById(id);
 
@@ -68,6 +69,7 @@ async function oeffne(){
     return zeigeHinweis(escapeHtml(status.fehler || "Der Vertragsgenerator ist nicht verfügbar."));
   }
   ablage = status.ablage || "datei";
+  formulierhilfe = !!status.formulieren;
 
   try{
     katalog = await hole("/api/vertrag/katalog");
@@ -164,9 +166,21 @@ function baueFormular(){
       <details class="auftrag-freitext">
         <summary>Individuelle Vereinbarungen</summary>
         <p class="auftrag-notiz">Kommt als eigener Absatz in die Sondervereinbarungen.
-           Der Wortlaut wird unverändert übernommen — hier formuliert niemand nach.</p>
-        <textarea id="aFreitext" rows="4"
-          placeholder="Nur ausfüllen, wenn wirklich etwas Besonderes vereinbart wurde."></textarea>
+           Stichworte genügen — „Formulieren lassen" macht daraus Vertragssprache.</p>
+        <textarea id="aFreitext" rows="3"
+          placeholder="z. B.: monatlicher Jour fixe, Kunde stellt Projektfotos"></textarea>
+        <div class="auftrag-formulierzeile">
+          <button type="button" class="btn btn-outline" id="aFormulieren">Formulieren lassen</button>
+          <span class="auftrag-notiz" id="aFormulierStatus"></span>
+        </div>
+        <div id="aFormuliertBlock" hidden>
+          <label class="auftrag-formuliert-label" for="aFormuliert">
+            Formulierter Absatz — <strong>bitte lesen</strong>, Änderungen hier möglich
+          </label>
+          <textarea id="aFormuliert" rows="6"></textarea>
+          <p class="auftrag-notiz">Dieser Text geht in den Vertrag. Leeren, um
+             stattdessen die Stichworte oben zu verwenden.</p>
+        </div>
       </details>
     </div>`;
 
@@ -344,8 +358,15 @@ function rechneEnde(){
 /* ---------- Verdrahtung ---------- */
 
 function verdrahte(){
-  ["aFirma","aStrasse","aPlzOrt","aAgbStand","aFreitext"]
+  ["aFirma","aStrasse","aPlzOrt","aAgbStand","aFreitext","aFormuliert"]
     .forEach(id=>$(id).addEventListener("input", aktualisiere));
+
+  $("aFormulieren").addEventListener("click", formulieren);
+  if(!formulierhilfe){
+    $("aFormulieren").disabled = true;
+    $("aFormulierStatus").textContent =
+      "Kein Schlüssel hinterlegt — die Stichworte gehen unverändert in den Vertrag.";
+  }
   ["aStart","aLaufzeit"].forEach(id=>
     $(id).addEventListener("change", ()=>{ rechneEnde(); aktualisiere(); }));
   $("aEnde").addEventListener("input", ()=>{ endeVonHand = true; aktualisiere(); });
@@ -416,7 +437,10 @@ function sammle(){
       setup: v("setup"), raten_anzahl: v("raten_anzahl"), raten_betrag: v("raten_betrag"),
     },
     agb_stand: $("aAgbStand").value,
-    freitext: $("aFreitext").value,
+    // Der formulierte Absatz hat Vorrang, sobald er dasteht — aber nur, solange
+    // er nicht geleert wurde. So kommt man mit einem leeren Feld zurück zu den
+    // eigenen Stichworten, ohne den Reiter neu zu laden.
+    freitext: ($("aFormuliert").value.trim() || $("aFreitext").value),
   };
 }
 
@@ -434,6 +458,46 @@ function aktualisiere(){
     }catch(e){ antwort = { fehler: String(e.message || e) }; }
     $("auftragVorschau").textContent = antwort.markdown || ("Fehler: " + antwort.fehler);
   }, 180);
+}
+
+/* ---------- Formulierhilfe ----------
+   Die einzige Stelle im Reiter, an der ein Sprachmodell arbeitet. Überall sonst
+   gibt es einen Präzedenzfall aus einem geschlossenen Vertrag; bei individuellen
+   Vereinbarungen nicht.
+
+   Das Ergebnis landet bewusst in einem editierbaren Feld und nicht direkt im
+   Vertrag — und der Knopf heißt danach „Nochmal formulieren", damit klar ist,
+   dass man es mehrfach versuchen kann. */
+
+async function formulieren(){
+  const stichworte = $("aFreitext").value.trim();
+  if(!stichworte){
+    $("aFormulierStatus").textContent = "Erst ein paar Stichworte eintippen.";
+    return;
+  }
+  const knopf = $("aFormulieren");
+  knopf.disabled = true;
+  $("aFormulierStatus").textContent = "Formuliere …";
+
+  let e;
+  try{
+    e = await hole("/api/vertrag/formulieren", {
+      method:"POST", headers:{"Content-Type":"application/json"},
+      body: JSON.stringify({ stichworte }),
+    });
+  }catch(err){ e = { erfolg:false, fehler:String(err.message || err) }; }
+
+  knopf.disabled = false;
+  if(!e.erfolg){
+    $("aFormulierStatus").textContent = e.fehler || "Hat nicht geklappt.";
+    return;
+  }
+
+  $("aFormuliert").value = e.text;
+  $("aFormuliertBlock").hidden = false;
+  knopf.textContent = "Nochmal formulieren";
+  $("aFormulierStatus").textContent = "Fertig — bitte durchlesen.";
+  aktualisiere();
 }
 
 /* ---------- Erzeugen ---------- */

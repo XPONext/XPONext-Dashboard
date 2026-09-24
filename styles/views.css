@@ -699,3 +699,7 @@ tr.leerzeile td{
 .auftrag-download:hover{ background:var(--accent-hover); color:#fff; }
 .auftrag-ergebnis a{ color:inherit; text-decoration:underline; }
 .auftrag-drive-fehler{ color:var(--amber); }
+.auftrag-formulierzeile{ display:flex; gap:var(--sp-3); align-items:center; margin-top:var(--sp-2); flex-wrap:wrap; }
+.auftrag-formulierzeile .btn{ flex:none; }
+.auftrag-formuliert-label{ display:block; margin:var(--sp-3) 0 var(--sp-1); font-size:12.5px; color:var(--text-body); }
+#aFormuliert{ width:100%; font-family:inherit; }

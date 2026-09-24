@@ -62,6 +62,15 @@ def lade_generator():
 GENERATOR_MODUL, GENERATOR_FEHLER = lade_generator()
 
 
+def _formulierhilfe_da() -> bool:
+    """Ob ein ANTHROPIC_API_KEY hinterlegt ist — fuer den Knopf im Reiter."""
+    try:
+        import formulierung
+        return formulierung.verfuegbar()
+    except Exception:
+        return False
+
+
 class Handler(SimpleHTTPRequestHandler):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, directory=str(HIER), **kwargs)
@@ -103,6 +112,7 @@ class Handler(SimpleHTTPRequestHandler):
                 # Lokal gibt es einen Vertragsordner, der bleibt — der Reiter
                 # zeigt hinterher den Pfad statt eines Downloads.
                 "ablage": "datei",
+                "formulieren": _formulierhilfe_da(),
             })
 
         if GENERATOR_MODUL is None:
@@ -133,6 +143,13 @@ class Handler(SimpleHTTPRequestHandler):
                 return self._json({"markdown": bauer.baue_vertrag(daten)})
             except Exception as e:
                 return self._json({"fehler": str(e)}, code=400)
+
+        if self.path == "/api/vertrag/formulieren":
+            try:
+                import formulierung
+                return self._json(formulierung.formuliere(daten.get("stichworte", "")))
+            except Exception as e:
+                return self._json({"erfolg": False, "fehler": str(e)}, code=500)
 
         if self.path == "/api/vertrag/erzeugen":
             try:
