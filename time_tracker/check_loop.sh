@@ -18,11 +18,9 @@ DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PIDFILE="$DIR/.tmp/loop.pid"
 FEIERABEND_FILE="$DIR/.tmp/feierabend.date"
 
-# Zeitfenster, in dem der Loop von selbst anspringen darf. Ohne das würde nach
-# einem Feierabend um 22 Uhr um 00:05 (neuer Tag) sofort wieder ein Popup
-# aufgehen, wenn der Rechner noch wach ist.
-START_HOUR=6
-END_HOUR=22
+# Ab wann der Rechner als unbenutzt gilt. Dieselbe Grenze wie in popup.py: wer
+# so lange nicht getippt und die Maus nicht bewegt hat, sitzt nicht davor.
+LEERLAUF_GRENZE=600   # Sekunden
 
 mkdir -p "$DIR/.tmp"
 
@@ -37,14 +35,32 @@ if [ -f "$PIDFILE" ]; then
   rm -f "$PIDFILE"
 fi
 
-# 2. Heute schon Feierabend gedrückt? Dann bis morgen Ruhe.
+# 2. Heute schon Feierabend gedrückt? Dann bis morgen Ruhe. Der Vergleich ist
+#    auf den Tag genau: um Mitternacht verfällt die Marke von selbst, der
+#    Tracker steht ab 0 Uhr also wieder bereit. Die Datei bleibt liegen und
+#    wird beim nächsten Feierabend überschrieben.
 if [ -f "$FEIERABEND_FILE" ] && [ "$(cat "$FEIERABEND_FILE" 2>/dev/null)" = "$(date +%F)" ]; then
   exit 0
 fi
 
-# 3. Außerhalb der Arbeitszeit nicht von selbst anspringen.
-HOUR=$(date +%-H)
-if [ "$HOUR" -lt "$START_HOUR" ] || [ "$HOUR" -ge "$END_HOUR" ]; then
+# 3. Sitzt gerade jemand am Rechner? Wenn nicht, nicht anspringen.
+#
+#    Das steht hier statt eines festen Zeitfensters (früher 6–22 Uhr). Das
+#    Fenster hat zwei Dinge verwechselt: "es ist Nacht" und "es arbeitet
+#    niemand". Wer um 5 Uhr anfängt, bekam bis 6 Uhr kein Popup; wer nach einem
+#    Feierabend um 22 Uhr den Laptop anließ, ab 00:05 sofort wieder eins.
+#    Der Leerlauf beantwortet direkt, worum es geht — und läuft im Ruhezustand
+#    weiter, ist nach dem Aufklappen also groß und fällt beim ersten
+#    Tastendruck auf null.
+#
+#    Bewusst hier und nicht erst in popup.py: der Loop meldet sich beim Start
+#    mit einer Notification. Die soll nachts nicht aufgehen, nur weil launchd
+#    alle fünf Minuten nachsieht.
+LEERLAUF=$(ioreg -c IOHIDSystem 2>/dev/null \
+  | awk '/HIDIdleTime/ { print int($NF / 1000000000); exit }')
+# Bei Unklarheit lieber starten als still bleiben — popup.py prüft den Leerlauf
+# ohnehin noch einmal, bevor wirklich ein Fenster aufgeht.
+if [ -n "$LEERLAUF" ] && [ "$LEERLAUF" -gt "$LEERLAUF_GRENZE" ]; then
   exit 0
 fi
 

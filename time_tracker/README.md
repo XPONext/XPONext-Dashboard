@@ -133,13 +133,20 @@ Jeder Trigger landet in `check_loop.sh`, das drei Dinge prüft, bevor es den Loo
 anwirft:
 
 1. Läuft der Loop schon? (dann nichts tun)
-2. Wurde heute schon Feierabend gedrückt? (`.tmp/feierabend.date`)
-3. Ist gerade Arbeitszeit? (6–22 Uhr, `START_HOUR`/`END_HOUR` in `check_loop.sh`)
+2. Wurde **heute** schon Feierabend gedrückt? (`.tmp/feierabend.date`)
+3. Sitzt gerade jemand am Rechner? (Leerlauf unter 10 Min, `LEERLAUF_GRENZE`)
 
-Ohne Punkt 3 würde nach einem Feierabend um 22 Uhr um 00:05 sofort wieder ein
-Popup aufgehen, sobald der Tag wechselt und der Rechner noch wach ist. Wer
-früher anfängt oder später aufhört, ändert die beiden Werte und führt
-`./install.sh` erneut aus.
+Punkt 2 ist auf den Tag genau: Die Feierabend-Marke verfällt um Mitternacht von
+selbst, der Tracker steht ab 0 Uhr also wieder bereit — auch wenn der Laptop
+die ganze Nacht anblieb.
+
+Damit daraus nachts um 00:05 kein Popup wird, entscheidet Punkt 3 über den
+Start. Früher stand hier ein festes Zeitfenster (6–22 Uhr), das zwei Dinge
+verwechselte: „es ist Nacht“ und „es arbeitet niemand“. Wer um 5 Uhr anfing,
+bekam bis 6 Uhr kein Popup. Der Leerlauf beantwortet direkt, worum es geht — er
+läuft im Ruhezustand weiter, ist nach dem Aufklappen also groß und fällt beim
+ersten Tastendruck auf null. Ergebnis: nachts Ruhe, aber sobald du dich an den
+Rechner setzt, ist der Tracker innerhalb von fünf Minuten da.
 
 Es ist bewusst **ein** Agent für beides: launchd startet einen Job nie doppelt,
 solange die erste Instanz läuft — während der Loop läuft, laufen die
