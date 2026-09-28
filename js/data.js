@@ -7,7 +7,8 @@ import { showErrorBanner } from "./ui/bus.js";
 
 export async function fetchAllData(){
   const [personalRes, teamRes, timeRes, tasksRes, goalsRes, commitRes, projRes, stepRes,
-         custRes, revMonRes, revRes, callsRes, setRes, leistRes, meetRes] = await Promise.all([
+         custRes, revMonRes, revRes, callsRes, setRes, leistRes, meetRes,
+         monthRes] = await Promise.all([
     db.from("daily_personal").select("*"),
     db.from("daily_team").select("*"),
     db.from("time_entries").select("*"),
@@ -22,7 +23,8 @@ export async function fetchAllData(){
     db.from("daily_calls").select("*").order("date", { ascending: true }),
     db.from("settings").select("*"),
     db.from("tracker_options").select("name").eq("kind","leistung").eq("active", true).order("sort_order", { ascending: true }),
-    db.from("daily_meetings").select("*")
+    db.from("daily_meetings").select("*"),
+    db.from("monthly_goals").select("*")
   ]);
   if(projRes.error){ console.error(projRes.error); state.projects = []; }
   else{ state.projects = projRes.data; }
@@ -34,6 +36,10 @@ export async function fetchAllData(){
   else{ state.tasks = tasksRes.data; }
   if(goalsRes.error){ console.error(goalsRes.error); state.goals = []; }
   else{ state.goals = goalsRes.data; }
+  // Die Tabelle gibt es erst nach sql/009. Fehlt sie, bleibt das Monatsprojekt
+  // leer — das Dashboard soll deswegen nicht stehen bleiben.
+  if(monthRes.error){ state.monthGoals = []; }
+  else{ state.monthGoals = monthRes.data; }
   if(commitRes.error){ console.error(commitRes.error); state.commitments = []; }
   else{ state.commitments = commitRes.data; }
   // Kunden und Umsaetze gibt es erst, nachdem sql/001 gelaufen ist. Bis dahin

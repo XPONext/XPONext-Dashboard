@@ -15,7 +15,8 @@ export const state = {
   dataTeam:      {}, // Wochen-Aggregate aus dailyTeam
   timeEntries:   [], // Rohe Zeittracking-Einträge aus "time_entries"
   tasks:         [], // Rohe Aufgaben aus "tasks"
-  goals:         [], // Wochenprojekt (Ueberschrift + Beschreibung) aus "weekly_goals"
+  goals:         [], // Wochenprojekt + Engpass je Woche aus "weekly_goals"
+  monthGoals:    [], // Monatsprojekt aus "monthly_goals" (erst nach sql/009)
   commitments:   [], // Wochen-Commitments aus "weekly_commitments"
   projects:      [], // Langzeitprojekte aus "projects"
   projectSteps:  [], // Zugehörige Schritte aus "project_steps"

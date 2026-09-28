@@ -8,7 +8,7 @@ import { WEEKS, N_WEEKS, WEEKLY_TARGET, PERSON_STORAGE_KEY } from "../config.js"
 import { num, euro, weekLabel, barClass, escapeHtml, todayIso } from "../utils/format.js";
 import { weekIndexForDate, findCurrentWeekIndex } from "../utils/weeks.js";
 import { db } from "../supabase.js";
-import { state, combinedEntry, buildWeeklyAggregates } from "../state.js";
+import { state, combinedEntry, buildWeeklyAggregates, gewaehlterTag } from "../state.js";
 import { upsertDailyPersonal, upsertDailyTeam, fetchAllData } from "../data.js";
 import { openModal, confirmDialog } from "../ui/modal.js";
 import { onRender, renderAll, showErrorBanner, speichern } from "../ui/bus.js";
@@ -105,6 +105,7 @@ function fokusWechsel(delta){
   // in die neue Woche mitgeht, statt auf der alten stehenzubleiben.
   state.fokusWeekIdx = neu === findCurrentWeekIndex() ? null : neu;
   renderGoal();
+  renderEngpass();
   renderCommitments();
 }
 
@@ -197,7 +198,134 @@ document.getElementById("fokusNextWeek").addEventListener("click", ()=>fokusWech
 document.getElementById("fokusHeuteBtn").addEventListener("click", ()=>{
   state.fokusWeekIdx = null;
   renderGoal();
+  renderEngpass();
   renderCommitments();
+});
+
+/* ---------- Monatsprojekt ----------
+   Das groessere Vorhaben, auf das die Wochenprojekte einzahlen. Haengt am Monat
+   des auf "Heute" gewaehlten Tages, nicht an der geblaetterten Woche: Wer eine
+   Woche zurueckblaettert, will das Wochenprojekt von damals sehen, aber nicht
+   das Monatsprojekt wechseln. */
+
+function monatsStart(){
+  return gewaehlterTag().slice(0, 7) + "-01";
+}
+
+const MONATE = ["Januar","Februar","März","April","Mai","Juni",
+                "Juli","August","September","Oktober","November","Dezember"];
+
+function monatsLabel(iso){
+  const [j, m] = iso.split("-");
+  return MONATE[Number(m) - 1] + " " + j;
+}
+
+function renderMonat(){
+  const start = monatsStart();
+  document.getElementById("monatLabel").textContent = monatsLabel(start);
+  const eintrag = state.monthGoals.find(g=>g.month_start===start);
+  const disp = document.getElementById("monatDisplay");
+  const desc = document.getElementById("monatDesc");
+  if(eintrag && eintrag.goal && eintrag.goal.trim()){
+    disp.textContent = eintrag.goal;
+    disp.classList.remove("empty");
+    desc.textContent = eintrag.description || "";
+  } else {
+    disp.textContent = "Noch kein Monatsprojekt für " + monatsLabel(start) + " gesetzt";
+    disp.classList.add("empty");
+    desc.textContent = "";
+  }
+}
+
+document.getElementById("editMonatBtn").addEventListener("click", async ()=>{
+  const start = monatsStart();
+  const vorhanden = state.monthGoals.find(g=>g.month_start===start);
+  await openModal({
+    title: "Monatsprojekt · " + monatsLabel(start),
+    submitLabel: "Monatsprojekt speichern",
+    fields: [
+      { name:"goal", label:"Überschrift", type:"text", width:"full",
+        placeholder:"z.B. Zehn Erstgespräche aus der Architekten-Kampagne" },
+      { name:"description", label:"Beschreibung", type:"textarea", width:"full",
+        placeholder:"Worauf zahlt das ein, und woran merkt ihr am Monatsende, dass es geschafft ist? (optional)" }
+    ],
+    initial: vorhanden ? { goal: vorhanden.goal, description: vorhanden.description || "" } : null,
+    validate: werte=> (werte.description && !String(werte.goal || "").trim())
+      ? "Bitte eine Überschrift eintragen — die Beschreibung steht sonst ohne Titel da." : null,
+    onSubmit: async werte=>{
+      const { data, error } = await db.from("monthly_goals")
+        .upsert({ month_start: start, goal: werte.goal,
+                  description: werte.description || null }, { onConflict: "month_start" })
+        .select();
+      // Die Tabelle gibt es erst nach sql/009 — ohne diesen Hinweis stuende da
+      // nur eine Postgres-Fehlernummer.
+      if(error && (error.code === "42P01" || /monthly_goals/i.test(error.message || ""))){
+        throw new Error("Dafür fehlt noch sql/009_monatsprojekt_und_constraint.sql "
+                        + "im Supabase-SQL-Editor.");
+      }
+      pruefe(error, "Monatsprojekt konnte nicht gespeichert werden");
+      if(!data || !data.length) throw new Error("Die Datenbank hat den Eintrag nicht übernommen — bitte die Seite neu laden.");
+      const idx = state.monthGoals.findIndex(g=>g.month_start===start);
+      if(idx>=0) state.monthGoals[idx] = data[0]; else state.monthGoals.push(data[0]);
+      renderMonat();
+    }
+  });
+});
+
+/* ---------- Engpass ----------
+   Der eine Satz, der erklaert, woran es gerade haengt. Liegt als Spalte in
+   derselben Zeile wie das Wochenprojekt (sql/009) — er wird im selben Meeting
+   besprochen und gilt fuer dieselbe Woche. */
+
+function renderEngpass(){
+  const wi = fokusWeekIdx();
+  const weekStart = WEEKS[wi][0];
+  document.getElementById("engpassWeekLabel").textContent = weekLabel(wi);
+  const eintrag = state.goals.find(g=>g.week_start===weekStart);
+  const disp = document.getElementById("engpassDisplay");
+  const text = eintrag && eintrag.constraint_text;
+  if(text && text.trim()){
+    disp.textContent = text;
+    disp.classList.remove("empty");
+  } else {
+    disp.textContent = "Noch kein Engpass festgehalten";
+    disp.classList.add("empty");
+  }
+}
+
+document.getElementById("editEngpassBtn").addEventListener("click", async ()=>{
+  const wi = fokusWeekIdx();
+  const weekStart = WEEKS[wi][0];
+  const vorhanden = state.goals.find(g=>g.week_start===weekStart);
+  await openModal({
+    title: "Engpass · " + weekLabel(wi),
+    submitLabel: "Engpass speichern",
+    fields: [
+      { name:"constraint_text", label:"Woran hängt es gerade?", type:"textarea", width:"full",
+        placeholder:"Ein Absatz: was den Fortschritt im Moment am stärksten bremst — und was ihr dagegen tut." }
+    ],
+    initial: vorhanden ? { constraint_text: vorhanden.constraint_text || "" } : null,
+    onSubmit: async werte=>{
+      // Upsert auf dieselbe Zeile wie das Wochenprojekt. `goal` muss mit, weil
+      // die Spalte nicht leer sein darf — steht noch keins da, bleibt es leer,
+      // und der Engpass laesst sich trotzdem festhalten.
+      const zeile = { week_start: weekStart, constraint_text: werte.constraint_text || null };
+      if(!vorhanden) zeile.goal = "";
+      const { data, error } = await db.from("weekly_goals")
+        .upsert(zeile, { onConflict: "week_start" }).select();
+      if(error && (error.code === "PGRST204" || error.code === "42703"
+                   || /constraint_text/i.test(error.message || ""))){
+        throw new Error("Dafür fehlt noch sql/009_monatsprojekt_und_constraint.sql "
+                        + "im Supabase-SQL-Editor.");
+      }
+      pruefe(error, "Engpass konnte nicht gespeichert werden");
+      if(!data || !data.length) throw new Error("Die Datenbank hat den Eintrag nicht übernommen — bitte die Seite neu laden.");
+      const idx = state.goals.findIndex(g=>g.week_start===weekStart);
+      if(idx>=0) state.goals[idx] = data[0]; else state.goals.push(data[0]);
+      renderEngpass();
+      renderGoal();
+    }
+  });
 });
 
 /* ---------- Wochenprojekt ----------
@@ -283,7 +411,9 @@ document.getElementById("commitmentsList").addEventListener("click", async (ev)=
   }
 });
 onRender("eingabe", ()=>{
+  renderMonat();
   renderGoal();
+  renderEngpass();
   renderCommitments();
   renderPreview(weekIndexForDate(document.getElementById("entryDate").value));
 });

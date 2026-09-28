@@ -703,3 +703,42 @@ tr.leerzeile td{
 .auftrag-formulierzeile .btn{ flex:none; }
 .auftrag-formuliert-label{ display:block; margin:var(--sp-3) 0 var(--sp-1); font-size:12.5px; color:var(--text-body); }
 #aFormuliert{ width:100%; font-family:inherit; }
+
+/* ---------- Monatsprojekt und Engpass ----------
+   Beide seit 28.09.2026 auf "Heute", weil sie im wöchentlichen Meeting
+   besprochen werden und bisher nirgends standen.
+
+   Das Monatsprojekt teilt die Optik des Wochenprojekts, ist aber flacher und
+   heller abgesetzt: Es steht darüber und soll die Woche nicht optisch
+   erschlagen. Der Engpass ist bewusst kein dunkler Kasten, sondern ein
+   ruhiger Absatz — er wird gelesen, nicht überflogen. */
+
+.focus-banner.is-monat{
+  background:var(--accent-dark);
+  padding:1.15rem 1.7rem;
+}
+.focus-banner.is-monat .focus-text{ font-size:1.2rem; }
+.focus-banner.is-monat .focus-text.empty{ font-size:1rem; }
+.focus-banner.is-monat .focus-stroke{ width:44px;height:2px;margin-top:0.7rem; }
+
+.constraint-banner{
+  margin-top:0.9rem;
+  padding:1.1rem 1.4rem;
+  background:var(--bg-subtle);
+  border:1px solid var(--border);
+  border-left:3px solid var(--amber);
+  border-radius:var(--r-md);
+}
+.constraint-label{
+  font-size:0.74rem;font-weight:var(--fw-bold);
+  color:var(--text-muted);
+  text-transform:uppercase;letter-spacing:0.06em;margin-bottom:0.45rem;
+}
+.constraint-text{
+  font-size:0.95rem;line-height:1.55;color:var(--text-primary);
+  white-space:pre-wrap;word-break:break-word;
+}
+.constraint-text.empty{ color:var(--text-muted); }
+
+/* Der Umsatzbalken steht jetzt im Kopf über allen Reitern. */
+.hero .hero-progress{ margin-top:1.2rem; }

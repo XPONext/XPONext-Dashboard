@@ -31,6 +31,18 @@
 <div class="hero">
   <h1>Fahrplan zum <span>Umsatzziel 2026</span></h1>
   <p>€20.000 Umsatz bis 31.12.2026 — trag deine Wochenzahlen ein und beobachte den Fortschritt.</p>
+
+  <!-- Der Balken stand bis 28.09.2026 im Vertrieb-Reiter und war damit auf der
+       Startseite unsichtbar. Hier steht er über allen Reitern: Wo ihr gerade
+       steht, ist die Frage, die man beim Öffnen zuerst hat. -->
+  <div class="hero-progress">
+    <div class="row">
+      <div class="label">Gesamtfortschritt Umsatz</div>
+      <div class="value"><span id="dashUmsatzIst">€0</span> / €20.000</div>
+    </div>
+    <div class="bar-track-lg"><div class="bar-fill-lg" id="dashUmsatzBar" style="width:0%"></div></div>
+    <div class="meta" id="dashUmsatzMeta">0% erreicht</div>
+  </div>
 </div>
 
 <!-- DASHBOARD -->
@@ -72,6 +84,20 @@
       </div>
     </div>
 
+    <!-- Monatsprojekt: das größere Vorhaben, auf das die Wochenprojekte
+         einzahlen. Steht über der Wochennavigation, weil es nicht an der
+         gewählten Woche hängt, sondern am Monat des gewählten Tages. -->
+    <div class="focus-banner is-monat">
+      <div class="focus-label">Monatsprojekt · <span id="monatLabel">dieser Monat</span></div>
+      <div class="focus-text empty" id="monatDisplay">Noch kein Monatsprojekt gesetzt</div>
+      <div class="focus-desc" id="monatDesc"></div>
+      <div class="focus-stroke"></div>
+    </div>
+
+    <div class="board-actions">
+      <button class="btn-outline" id="editMonatBtn">Monatsprojekt bearbeiten</button>
+    </div>
+
     <div class="board-head">
       <h2 id="fokusWeekHeading">Diese Woche</h2>
       <div class="week-nav">
@@ -89,8 +115,17 @@
       <div class="focus-stroke"></div>
     </div>
 
+    <!-- Der Engpass hängt an derselben Woche wie das Wochenprojekt: Er wird im
+         selben Meeting besprochen, und beim Zurückblättern sieht man so, was
+         damals im Weg stand — statt nur den heutigen Stand. -->
+    <div class="constraint-banner">
+      <div class="constraint-label">Aktueller Engpass · <span id="engpassWeekLabel">diese Woche</span></div>
+      <div class="constraint-text empty" id="engpassDisplay">Noch kein Engpass festgehalten</div>
+    </div>
+
     <div class="board-actions">
       <button class="btn-outline" id="editGoalBtn">Wochenprojekt bearbeiten</button>
+      <button class="btn-outline" id="editEngpassBtn">Engpass bearbeiten</button>
       <button class="btn" id="openAddCommitmentBtn">+ Commitment hinzufügen</button>
     </div>
 
@@ -103,15 +138,7 @@
 
 <section class="view" id="view-vertrieb">
   <div class="container">
-    <div class="hero-progress">
-      <div class="row">
-        <div class="label">Gesamtfortschritt Umsatz</div>
-        <div class="value"><span id="dashUmsatzIst">€0</span> / €20.000</div>
-      </div>
-      <div class="bar-track-lg"><div class="bar-fill-lg" id="dashUmsatzBar" style="width:0%"></div></div>
-      <div class="meta" id="dashUmsatzMeta">0% erreicht</div>
-    </div>
-
+    <!-- Der Umsatzbalken steht jetzt oben im Kopf, über allen Reitern. -->
     <div class="grid4">
       <div class="stat">
         <div class="lbl">Lead-Gen (Std.)</div>

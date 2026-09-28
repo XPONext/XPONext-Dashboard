@@ -392,7 +392,19 @@ setTimeout(async ()=>{
     // Wochenprojekt: Ueberschrift und Beschreibung
     pruefeDialog("Wochenprojekt zeigt die Ueberschrift", /Fokus auf Neukunden/.test(document.getElementById("goalDisplay").textContent));
     pruefeDialog("Wochenprojekt zeigt die Beschreibung", /Erstgespräche/.test(document.getElementById("goalDesc").textContent));
-    pruefeDialog("Banner heisst Wochenprojekt", /Wochenprojekt/.test(document.querySelector(".focus-label").textContent));
+    // Seit 28.09.2026 gibt es zwei .focus-banner (Monatsprojekt und
+    // Wochenprojekt). Deshalb nicht mehr den ersten greifen, sondern den, der
+    // das Wochenprojekt traegt — sonst prueft der Test das falsche Banner.
+    const wochenBanner = document.getElementById("goalDisplay").closest(".focus-banner");
+    pruefeDialog("Banner heisst Wochenprojekt", /Wochenprojekt/.test(wochenBanner.querySelector(".focus-label").textContent));
+    pruefeDialog("Monatsprojekt-Banner steht darueber", (()=>{
+      const monat = document.getElementById("monatDisplay").closest(".focus-banner");
+      return !!monat && /Monatsprojekt/.test(monat.querySelector(".focus-label").textContent)
+             && (monat.compareDocumentPosition(wochenBanner) & Node.DOCUMENT_POSITION_FOLLOWING) !== 0;
+    })());
+    pruefeDialog("Engpass-Absatz ist da", !!document.getElementById("engpassDisplay"));
+    pruefeDialog("Umsatzbalken steht im Kopf ueber allen Reitern",
+      !!document.querySelector(".hero .hero-progress #dashUmsatzIst"));
     document.getElementById("editGoalBtn").click();
     await bisWahr(()=>!!dlgJetzt());
     const wpDlg = dlgJetzt();
