@@ -79,7 +79,24 @@ SKIP_LABEL = "Überspringen"
 # Sekunden. Steht ein Dialog laenger offen, raeumt System Events ihn mit Fehler
 # -1712 ab: Das Fenster verschwindet, und der Klick darauf geht ins Leere.
 # Genau deshalb war ein Popup nach drei, vier Minuten nicht mehr bedienbar.
-DIALOG_TIMEOUT = 7200   # 2 Stunden — laenger steht kein Fenster sinnvoll offen
+#
+# Dagegen stand der Wert zwischenzeitlich auf zwei Stunden — und das war die
+# andere Grenze desselben Fehlers: Solange ein Fenster offen steht, laesst die
+# Sperre kein zweites zu und der Loop haengt in popup.py fest. Ein Fenster, das
+# hinter anderen verschwindet, macht den Tracker damit zwei Stunden lang stumm
+# (Tim am 28.09.2026: von 12:55 bis 14:40 kein einziges Popup).
+#
+# Eine Viertelstunde ist die Mitte: lang genug, um in Ruhe zu antworten, kurz
+# genug, dass ein uebersehenes Fenster nicht den halben Nachmittag frisst.
+DIALOG_TIMEOUT = 15 * 60
+
+# Der Rueckgabewert von osascript unterscheidet nicht, warum ein Dialog zu ist.
+# Diese beiden AppleScript-Fehler schon:
+#   -1712  Zeit abgelaufen — niemand hat geantwortet
+#   -128   bewusst abgebrochen (Escape, "Abbrechen")
+# Der Unterschied zaehlt: Nach einem abgelaufenen Fenster wird kurz nachgefasst,
+# nach einem bewusst weggeklickten nicht.
+AS_TIMEOUT = "-1712"
 
 # Ab wann gilt der Rechner als unbenutzt. Wer laenger nicht getippt oder die
 # Maus bewegt hat, sitzt nicht davor — dann soll kein Fenster aufgehen, das
@@ -154,7 +171,13 @@ def run_flow():
     '''
     result = subprocess.run(["osascript", "-e", script], capture_output=True, text=True)
     if result.returncode != 0:
-        return None
+        # Abgelaufen heisst: Das Fenster stand da, aber niemand hat geantwortet —
+        # entweder war der Platz leer oder es ist hinter anderen Fenstern
+        # verschwunden. Beides spricht dafuer, bald wieder nachzusehen, statt
+        # die vollen dreissig Minuten verstreichen zu lassen. Sitzt wirklich
+        # niemand davor, faengt die Leerlauf-Pruefung den naechsten Versuch ab
+        # und es geht gar kein Fenster auf.
+        return "TIMEOUT" if AS_TIMEOUT in (result.stderr or "") else None
     return result.stdout.strip()
 
 
@@ -270,7 +293,11 @@ def leerlauf_sekunden():
 # 30-Min-Trigger wieder ein neues aufgehen.
 
 LOCK_FILE = ROOT / ".tmp" / "popup.lock"
-STALE_LOCK_SECONDS = 6 * 60 * 60  # falls ein Prozess abstürzt, Sperre nach 6h ignorieren
+# Falls ein Prozess abstuerzt, ohne die Sperre freizugeben. Sechs Stunden
+# standen hier, solange ein Fenster zwei Stunden offen bleiben durfte — jetzt
+# kann ein echter Dialog hoechstens eine Viertelstunde dauern, also ist alles
+# ab einer Dreiviertelstunde sicher eine Leiche.
+STALE_LOCK_SECONDS = 45 * 60
 
 
 def acquire_lock():
@@ -314,8 +341,13 @@ def main():
             return
 
         result = run_flow()
+        if result == "TIMEOUT":
+            # Fenster lief ab, ohne dass jemand geantwortet hat. Derselbe
+            # Rueckgabewert wie bei "niemand am Rechner" — der Loop fasst dann
+            # in wenigen Minuten nach, statt eine halbe Stunde zu warten.
+            sys.exit(EXIT_NIEMAND_DA)   # das finally gibt die Sperre frei
         if result is None or result == "CANCELLED":
-            return  # abgebrochen — nichts speichern
+            return  # bewusst abgebrochen — nichts speichern, regulaer weiter
 
         if result == "STOP":
             # Feierabend, zwei Dateien mit zwei Aufgaben:

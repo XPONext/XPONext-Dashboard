@@ -171,3 +171,31 @@ python3 ~/.xpo-time-tracker/popup.py
 
 `./install.sh` einfach erneut ausführen — kopiert die neueste Version nach
 `~/.xpo-time-tracker/` und lädt den LaunchAgent neu.
+
+## Wenn stundenlang nichts kommt
+
+Meistens hängt ein Fenster, das niemand gesehen hat. Solange eines offen steht,
+lässt die Sperre kein zweites zu — der Loop wartet in `popup.py`.
+
+Nachsehen:
+
+```bash
+ps aux | grep -E "popup.py|osascript" | grep -v grep
+ls -la ~/.xpo-time-tracker/.tmp/popup.lock
+```
+
+Läuft ein `osascript` als Kind von `popup.py`, steht das Fenster irgendwo offen
+— oft hinter einem Vollbildfenster oder auf einem anderen Schreibtisch. Den
+Dialog schließen (nicht `popup.py` selbst abschießen, sonst bleibt die Sperre
+liegen):
+
+```bash
+pkill -P "$(pgrep -f 'xpo-time-tracker/popup.py')" osascript
+```
+
+Danach gibt `popup.py` die Sperre selbst frei und der Loop läuft weiter.
+
+Seit 28.09.2026 ist der Schaden begrenzt: Ein Fenster schließt sich nach einer
+Viertelstunde von selbst, und danach wird nach wenigen Minuten nachgefasst statt
+erst in einer halben Stunde. Vorher stand ein übersehenes Fenster **zwei
+Stunden** offen und der Tracker war so lange stumm.
