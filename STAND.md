@@ -36,7 +36,16 @@ im Dashboard, das Popup zieht sie automatisch.
    `kkk_architektur` stehen klein geschrieben in der Liste. Umbenennen im
    Kunden-Reiter ist gefahrlos — die Zeiteinträge hängen an der ID.
 3. **Umsätze eintragen**, sonst bleibt der Stundenlohn leer.
-4. **Durchklicken:** [CHECKLIST.md](CHECKLIST.md).
+4. **Ersten echten Vertrag über den Auftrags-Reiter schreiben** und das PDF
+   einmal ganz durchlesen. Der Generator ist gegen Zittrich geprüft, aber jede
+   Kombination von Bausteinen ist neu — und die Formulierhilfe für individuelle
+   Vereinbarungen hat noch nie einen echten Absatz erzeugt.
+5. **Durchklicken:** [CHECKLIST.md](CHECKLIST.md).
+
+**Erledigt am 28.09.2026:** `sql/009` ist ausgeführt — Monatsprojekt und Engpass
+stehen. In Railway (Service `web`) liegen `APP_SECRET`, `GOOGLE_TOKEN_JSON` und
+`ANTHROPIC_API_KEY`; der Auftrags-Reiter erzeugt damit Verträge, legt sie im
+Drive-Kundenordner ab und formuliert Freitext aus.
 
 ## Aufbau seit 19.09.2026
 
@@ -51,6 +60,12 @@ Datenquelle:
 | Arbeit | Woran arbeiten wir? | Hebel-Stand, Aufgaben-Board und Projekte als Umschalter |
 | Verlauf | Wie entwickelt es sich? | Stunden je Woche, Hebel je Woche, Tabellen, CSV |
 | Aufträge | Wie wird daraus ein Vertrag? | Leistungsvereinbarung zusammenklicken, Markdown + PDF |
+
+**Auf „Heute" seit 28.09.2026:** Monatsprojekt (das Vorhaben, auf das die
+Wochenprojekte einzahlen — hängt am Monat des gewählten Tages) und der aktuelle
+Engpass (ein Absatz, hängt an derselben Woche wie das Wochenprojekt, weil beides
+im wöchentlichen Meeting besprochen wird). Braucht `sql/009`. Der Umsatzbalken
+steht seither im Kopf über allen Reitern statt im Vertrieb-Reiter.
 
 **Aufträge-Reiter seit 23.09.2026.** Paket wählen, Bausteine anhaken, Laufzeit
 und Preise eintragen — heraus kommt die Leistungsvereinbarung als Markdown und
