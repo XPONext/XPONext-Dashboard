@@ -17,6 +17,45 @@
 -- ============================================================
 
 -- ------------------------------------------------------------
+-- 0) Die bestehende Absicherung übernehmen
+--
+-- Dieselbe Hilfsfunktion wie in sql/001 und sql/004. Sie muss hier erneut
+-- angelegt werden, weil beide Dateien sie am Ende wieder löschen — sie ist
+-- bewusst ein Wegwerf-Helfer und steht nicht dauerhaft in der Datenbank.
+--
+-- Sie liest die Policy einer bestehenden Tabelle und überträgt sie. Findet sie
+-- keine Vorlage, bricht sie ab: lieber gar nichts anlegen als etwas
+-- Ungeschütztes.
+-- ------------------------------------------------------------
+create or replace function public.xpo_policy_uebernehmen(ziel text)
+returns void
+language plpgsql
+as $$
+declare
+  ausdruck text;
+begin
+  select p.qual into ausdruck
+  from pg_policies p
+  where p.schemaname = 'public'
+    and p.tablename in ('time_entries','daily_team','daily_personal','tasks')
+    and p.qual is not null
+  order by case p.tablename
+             when 'time_entries' then 0 when 'daily_team' then 1 else 2 end
+  limit 1;
+
+  if ausdruck is null then
+    raise exception
+      'Keine bestehende Policy als Vorlage gefunden. Bitte melden — die neue Tabelle darf nicht ungeschützt angelegt werden.';
+  end if;
+
+  execute format('alter table public.%I enable row level security', ziel);
+  execute format('drop policy if exists "app_secret_all" on public.%I', ziel);
+  execute format(
+    'create policy "app_secret_all" on public.%I for all using (%s) with check (%s)',
+    ziel, ausdruck, ausdruck);
+end $$;
+
+-- ------------------------------------------------------------
 -- 1) Monatsprojekt
 --
 -- `month_start` ist immer der Monatserste. Das Dashboard rechnet den aus dem
@@ -30,7 +69,6 @@ create table if not exists public.monthly_goals (
   updated_at  timestamptz not null default now()
 );
 
-alter table public.monthly_goals enable row level security;
 select public.xpo_policy_uebernehmen('monthly_goals');
 
 -- ------------------------------------------------------------
@@ -45,7 +83,16 @@ alter table public.weekly_goals
   add column if not exists constraint_text text;
 
 -- ------------------------------------------------------------
--- 3) Gegenprobe — beides muss auftauchen, und die neue Tabelle geschützt sein
+-- 3) Hilfsfunktion wieder entfernen
+--
+-- Sie hat ihre Arbeit getan. Eine Funktion, die Policies umschreiben kann,
+-- bleibt nicht dauerhaft in der Datenbank stehen — so halten es sql/001 und
+-- sql/004 auch.
+-- ------------------------------------------------------------
+drop function if exists public.xpo_policy_uebernehmen(text);
+
+-- ------------------------------------------------------------
+-- 4) Gegenprobe — beides muss auftauchen, und die neue Tabelle geschützt sein
 -- ------------------------------------------------------------
 select 'monthly_goals' as tabelle,
        case when exists (
