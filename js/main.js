@@ -24,6 +24,9 @@ import "./views/zeittracking.js";
 // nicht bei onRender() an — ein Reiterwechsel würde sonst ein halb
 // ausgefülltes Formular zurücksetzen.
 import "./views/auftraege.js";
+// Dasselbe fuer Angebote: Ein fertiger Entwurf hat eine halbe Minute und ein
+// paar Cent gekostet und darf beim Reiterwechsel nicht verloren gehen.
+import "./views/angebote.js";
 
 window.addEventListener("error", ev=>{
   showErrorBanner("Es ist ein Fehler aufgetreten: "+(ev.message||"unbekannt")+" — bitte die Seite neu laden.");

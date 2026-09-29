@@ -22,6 +22,7 @@
     <button class="tab-btn" data-view="kunden">Kunden</button>
     <button class="tab-btn" data-view="arbeit">Arbeit</button>
     <button class="tab-btn" data-view="verlauf">Verlauf</button>
+    <button class="tab-btn" data-view="angebote">Angebote</button>
     <button class="tab-btn" data-view="auftraege">Aufträge</button>
   </nav>
   <button type="button" class="btn nachtragen-btn" id="nachtragenBtn">+ Nachtragen</button>
@@ -506,6 +507,28 @@
       <div id="ztByState"></div>
       <div class="zt-legacy" id="ztLegacy"></div>
     </details>
+  </div>
+</section>
+
+<!-- Angebote: Transkript rein, Angebot raus.
+     Anders als beim Vertrag schreibt hier ein Sprachmodell den Situationsteil,
+     weil es für die Lage eines Kunden keinen Präzedenzfall gibt. Der Entwurf
+     landet aber immer erst in editierbaren Feldern, nie direkt im PDF. Die
+     Stilregeln dafür sind aus 19 verschickten Angeboten ausgezählt, siehe
+     tools/angebot_formular/stil.py im Workflow-Repo. -->
+<section class="view" id="view-angebote">
+  <div class="auftrag-hinweis" id="angebotHinweis" hidden></div>
+  <div class="auftrag-raster" id="angebotRaster" hidden>
+    <div class="auftrag-formular" id="angebotFormular"></div>
+    <div class="auftrag-vorschau">
+      <div class="card">
+        <h2>Prüfung <small>läuft bei jeder Änderung mit, kostet nichts</small></h2>
+        <div class="angebot-platz" id="angebotPlatz"></div>
+        <div id="angebotBefunde"></div>
+        <button class="btn" id="angebotErzeugen" disabled>Angebot erzeugen</button>
+        <div class="auftrag-ergebnis" id="angebotErgebnis" hidden></div>
+      </div>
+    </div>
   </div>
 </section>
 

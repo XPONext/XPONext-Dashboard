@@ -17,7 +17,8 @@
    zum ersten Mal geöffnet wird. */
 
 import { escapeHtml } from "../utils/format.js";
-import { VERTRAG_API, SECRET_STORAGE_KEY } from "../config.js";
+import { VERTRAG_API } from "../config.js";
+import { hole, base64ZuBlob, ladeKnopf } from "../utils/generator-api.js";
 
 let katalog = null;
 let paket = null;
@@ -26,25 +27,6 @@ let ablage = "datei";   // "datei" lokal, "download" gehostet — s. hole()
 let formulierhilfe = false;   // ob ein ANTHROPIC_API_KEY hinterlegt ist
 
 const $ = id => document.getElementById(id);
-
-/* Ein Aufruf beim Generator.
-
-   Lokal ist VERTRAG_API leer, dann sind die Pfade relativ und serve.py
-   antwortet. Gehostet zeigt es auf Railway; dort prüft der Server dasselbe
-   Team-Passwort, das für Supabase ohnehin im localStorage liegt. Ohne den
-   Header bekäme man dort 401. */
-async function hole(weg, optionen = {}){
-  const kopf = { ...(optionen.headers || {}) };
-  const secret = localStorage.getItem(SECRET_STORAGE_KEY);
-  if(secret) kopf["x-app-secret"] = secret;
-  const antwort = await fetch(VERTRAG_API + weg, { ...optionen, headers: kopf });
-  const inhalt = await antwort.json().catch(()=>({}));
-  if(!antwort.ok){
-    // FastAPI verpackt Fehler in "detail", serve.py in "fehler".
-    throw new Error(inhalt.detail || inhalt.fehler || ("HTTP " + antwort.status));
-  }
-  return inhalt;
-}
 
 /* ---------- Aufbau ---------- */
 
@@ -578,21 +560,7 @@ function meldeDownload(e){
   }
 }
 
-function ladeKnopf(beschriftung, blob, dateiname){
-  const a = document.createElement("a");
-  a.className = "auftrag-download";
-  a.href = URL.createObjectURL(blob);
-  a.download = dateiname;
-  a.textContent = beschriftung;
-  return a;
-}
 
-function base64ZuBlob(b64, typ){
-  const roh = atob(b64);
-  const bytes = new Uint8Array(roh.length);
-  for(let i=0; i<roh.length; i++) bytes[i] = roh.charCodeAt(i);
-  return new Blob([bytes], {type:typ});
-}
 
 function melde(gut, html){
   const el = $("auftragErgebnis");

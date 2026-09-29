@@ -33,6 +33,7 @@ WORKFLOW = Path(os.getenv(
 )).expanduser()
 
 GENERATOR = WORKFLOW / "tools" / "vertrag_formular"
+ANGEBOT = WORKFLOW / "tools" / "angebot_formular"
 
 
 def lade_generator():
@@ -60,6 +61,30 @@ def lade_generator():
 
 
 GENERATOR_MODUL, GENERATOR_FEHLER = lade_generator()
+
+
+def lade_angebot():
+    """Den Angebotsgenerator laden — unabhaengig vom Vertrag.
+
+    Ein Fehler hier soll den Vertrags-Reiter nicht mitreissen und umgekehrt.
+    """
+    if not ANGEBOT.exists():
+        return None, f"Der Angebotsgenerator fehlt: {ANGEBOT}"
+    if str(ANGEBOT) not in sys.path:
+        sys.path.insert(0, str(ANGEBOT))
+    try:
+        from dotenv import load_dotenv
+        load_dotenv(WORKFLOW / ".env")     # fuer ANTHROPIC_API_KEY und Google
+    except Exception:
+        pass
+    try:
+        import angebot
+        return angebot, None
+    except Exception as e:
+        return None, f"Der Angebotsgenerator liess sich nicht laden: {e}"
+
+
+ANGEBOT_MODUL, ANGEBOT_FEHLER = lade_angebot()
 
 
 def _formulierhilfe_da() -> bool:
@@ -92,11 +117,15 @@ class Handler(SimpleHTTPRequestHandler):
     def do_GET(self):
         if self.path.startswith("/api/vertrag/"):
             return self._vertrag_get()
+        if self.path.startswith("/api/angebot/"):
+            return self._angebot_get()
         return super().do_GET()
 
     def do_POST(self):
         if self.path.startswith("/api/vertrag/"):
             return self._vertrag_post()
+        if self.path.startswith("/api/angebot/"):
+            return self._angebot_post()
         self.send_error(404)
 
     def _vertrag_get(self):
@@ -157,6 +186,36 @@ class Handler(SimpleHTTPRequestHandler):
             except Exception as e:
                 return self._json({"erfolg": False, "fehler": str(e)}, code=500)
 
+        self._json({"fehler": "unbekannt"}, code=404)
+
+    # ---- Angebot ----
+    def _angebot_get(self):
+        if ANGEBOT_MODUL is None:
+            return self._json({"fehler": ANGEBOT_FEHLER}, code=503)
+        if self.path.split("?")[0] == "/api/angebot/katalog":
+            return self._json(ANGEBOT_MODUL.katalog())
+        self._json({"fehler": "unbekannt"}, code=404)
+
+    def _angebot_post(self):
+        if ANGEBOT_MODUL is None:
+            return self._json({"fehler": ANGEBOT_FEHLER}, code=503)
+        try:
+            daten = self._koerper()
+        except Exception as e:
+            return self._json({"fehler": f"ungültiges JSON: {e}"}, code=400)
+
+        if self.path == "/api/angebot/entwurf":
+            return self._json(ANGEBOT_MODUL.entwirf(
+                daten.get("transkript", ""), daten.get("angaben", {})))
+        if self.path == "/api/angebot/pruefen":
+            return self._json(ANGEBOT_MODUL.pruefe(daten))
+        if self.path == "/api/angebot/erzeugen":
+            import base64
+            # Lokal zusaetzlich dorthin, wo alle bisherigen Angebote liegen.
+            e = ANGEBOT_MODUL.erzeuge(daten, ablage_ordner=WORKFLOW / "potential_clients")
+            pdf = e.pop("pdf_bytes", None)
+            e["pdf_base64"] = base64.b64encode(pdf).decode() if pdf else None
+            return self._json(e)
         self._json({"fehler": "unbekannt"}, code=404)
 
     def end_headers(self):
