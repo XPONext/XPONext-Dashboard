@@ -21,10 +21,18 @@ Das Passwort wird im Browser gespeichert und danach nicht mehr abgefragt.
 Dann [http://localhost:8000](http://localhost:8000) öffnen. Beenden mit `Ctrl+C`.
 
 Seit dem Auftrags-Reiter ist das kein reiner Dateiserver mehr: [serve.py](serve.py)
-liefert daneben den Vertragsgenerator aus. **Der Auftrags-Reiter funktioniert
-deshalb nur lokal** — unter der gehosteten Adresse gibt es kein Python und keinen
-Zugriff auf den Vertragsordner. Der Reiter erklärt das dort selbst, die übrigen
-fünf Reiter laufen normal weiter.
+liefert daneben den Vertragsgenerator aus, und der Vertrag landet versioniert in
+`vertraege/` des Workflow-Repos. **Unter der gehosteten Adresse** (GitHub Pages)
+übernimmt das seit 28.09.2026 der Railway-Service `web`: Das PDF kommt als
+Download zurück und wird im Drive-Kundenordner abgelegt (siehe `VERTRAG_API` in
+[js/config.js](js/config.js) und STAND.md).
+
+**Der Vertragstext liegt nicht in diesem Repo**, sondern im Workflow-Repo unter
+`tools/vertrag_formular/`. Eine Änderung am Wortlaut braucht dort einen Push
+(Railway baut dann selbst neu); hier nur, wenn sich das Formular ändert. Pushen
+beide, dann dieses Repo zuerst: Das neue Formular kommt mit dem alten Generator
+zurecht, umgekehrt fragt das alte Formular womöglich Schalter ab, die zum Paket
+gar nicht gehören.
 
 ## Aufbau
 

@@ -88,6 +88,10 @@ function baueFormular(){
         <div class="field"><label for="aPlzOrt">PLZ und Ort</label>
           <input type="text" id="aPlzOrt" placeholder="47906 Kempen"></div>
       </div>
+      <div class="field">
+        <label for="aVertreten">Vertreten durch <small>bei GmbH, PartG usw.; bei Inhabern leer lassen</small></label>
+        <input type="text" id="aVertreten" placeholder="die Geschäftsführerin Birgit Zittrich">
+      </div>
     </div>
 
     <div class="card">
@@ -196,6 +200,7 @@ function waehlePaket(id){
     b.setAttribute("aria-pressed", String(b.dataset.paket===id)));
   ["aCardLeistungen","aCardLaufzeit","aCardVerguetung","aCardSchalter","aCardSonstiges"]
     .forEach(c=>$(c).hidden = false);
+  for(const sid of Object.keys(katalog.schalter)) $("aBlock_"+sid).hidden = !gilt(sid);
   $("auftragErzeugen").disabled = false;
   baueLeistungen();
   rechneEnde();
@@ -258,12 +263,20 @@ function baueBausteinFelder(){
   ziel.appendChild(raster);
 }
 
+/* Manche Schalter gehören nur zu bestimmten Paketen (die Pflege nur zur Website).
+   Die übrigen werden ausgeblendet und weder abgefragt noch mitgeschickt. */
+function gilt(id){
+  const p = katalog.schalter[id].pakete;
+  return !p || p.includes(paket);
+}
+
 function baueSchalter(){
   const ziel = $("aSchalter");
   ziel.innerHTML = "";
   for(const [id,s] of Object.entries(katalog.schalter)){
     const block = document.createElement("div");
     block.className = "auftrag-schalter";
+    block.id = "aBlock_"+id;
     block.innerHTML = `<h3>${escapeHtml(s.titel)}</h3>`
       + (s.hinweis ? `<p class="auftrag-notiz">${escapeHtml(s.hinweis)}</p>` : "");
     for(const o of s.optionen){
@@ -340,7 +353,7 @@ function rechneEnde(){
 /* ---------- Verdrahtung ---------- */
 
 function verdrahte(){
-  ["aFirma","aStrasse","aPlzOrt","aAgbStand","aFreitext","aFormuliert"]
+  ["aFirma","aStrasse","aPlzOrt","aVertreten","aAgbStand","aFreitext","aFormuliert"]
     .forEach(id=>$(id).addEventListener("input", aktualisiere));
 
   $("aFormulieren").addEventListener("click", formulieren);
@@ -399,6 +412,7 @@ function sammle(){
 
   const schalter = {};
   for(const id of Object.keys(katalog.schalter)){
+    if(!gilt(id)) continue;
     const gewaehlt = document.querySelector(`input[name="aS_${id}"]:checked`);
     schalter[id] = gewaehlt ? gewaehlt.value : null;
     const marke = $("aOffen_"+id);
@@ -410,6 +424,7 @@ function sammle(){
     kunde_firma: $("aFirma").value,
     kunde_strasse: $("aStrasse").value,
     kunde_plz_ort: $("aPlzOrt").value,
+    kunde_vertreten: $("aVertreten").value,
     laufzeit_monate: parseInt($("aLaufzeit").value,10),
     start: $("aStart").value,
     ende: $("aEnde").value,
