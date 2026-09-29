@@ -783,3 +783,6 @@ tr.leerzeile td{
    hineinzusehen, ohne dass es die Seite füllt. */
 #anTranskript{ min-height:220px; }
 #anSit1, #anSit2, #anSit3, #anIntro{ min-height:120px; }
+.angebot-punkt{ display:grid; grid-template-columns:190px 1fr 32px; gap:var(--sp-2); margin-bottom:var(--sp-2); align-items:start; }
+.angebot-punkt .an-plead{ font-weight:600; }
+@media (max-width:700px){ .angebot-punkt{ grid-template-columns:1fr 32px; } .angebot-punkt .an-ptext{ grid-column:1; } }

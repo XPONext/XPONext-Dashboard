@@ -81,6 +81,14 @@ function baueFormular(){
           <textarea id="anHeikel" rows="2" placeholder="z. B.: Mitarbeiterin ab September in Elternzeit"></textarea>
         </div>
       </details>
+      <label class="auftrag-option" style="margin-top:.8rem">
+        <input type="checkbox" id="anListe">
+        <span>Leistungsumfang als Liste — wenn Mitentscheider oder eine Förderstelle ohne das Gespräch lesen</span>
+      </label>
+      <label class="auftrag-option">
+        <input type="checkbox" id="anFoerderung">
+        <span>Kostengrundlage für einen Förderantrag — nur die förderfähige Leistung, Brutto mit ausweisen</span>
+      </label>
       <div class="auftrag-formulierzeile">
         <button type="button" class="btn" id="anEntwurf">Entwurf erstellen</button>
         <span class="auftrag-notiz" id="anEntwurfStatus">Dauert rund eine Minute und kostet 10 bis 30 Cent.</span>
@@ -100,6 +108,13 @@ function baueFormular(){
         <input type="text" id="anHeadline"></div>
       <div class="field"><label>Lösungs-Intro</label>
         <textarea id="anIntro" rows="6"></textarea></div>
+      <div id="anListeBlock" hidden>
+        <label class="auftrag-formuliert-label">Leistungsumfang <small>fettes Stichwort, dahinter ein Satz</small></label>
+        <div id="anPunkte"></div>
+        <button type="button" class="btn btn-outline" id="anPunktNeu">+ Punkt</button>
+        <div class="field" style="margin-top:.8rem"><label>Was der Kunde beisteuert</label>
+          <textarea id="anOutro" rows="2"></textarea></div>
+      </div>
     </div>
 
     <div class="card" id="anCardVorgehen" hidden>
@@ -117,6 +132,7 @@ function baueFormular(){
       <div class="auftrag-formulierzeile">
         <select id="anPreisVorschlag"><option value="">+ Preiszeile aus Vorschlag …</option></select>
         <button type="button" class="btn btn-outline" id="anPreisLeer">+ leere Zeile</button>
+        <button type="button" class="btn btn-outline" id="anBrutto">+ Brutto-Zeile</button>
       </div>
       <label class="auftrag-formuliert-label" style="margin-top:1.1rem">Preishinweis — Sätze anhaken</label>
       <div id="anHinweise"></div>
@@ -141,6 +157,8 @@ function angaben(){
     laufzeit: $("anLaufzeit").value.trim(),
     eigene_zahlen: $("anZahlen").value.trim(),
     heikles: $("anHeikel").value.trim(),
+    liste: $("anListe").checked,
+    foerderung: $("anFoerderung").checked,
   };
 }
 
@@ -172,6 +190,10 @@ async function erstelleEntwurf(){
   $("anHeadline").value = d.solution_headline || "";
   $("anIntro").value = d.solution_intro || "";
   modellPhasen = d.phasen_vorschlag || null;
+  $("anPunkte").innerHTML = "";
+  (d.solution_points || []).forEach(([a, t])=>punktZeile(a, t));
+  $("anOutro").value = d.solution_outro || "";
+  $("anListeBlock").hidden = !$("anListe").checked && !(d.solution_points || []).length;
 
   const unklar = d.unklar || [];
   $("anUnklar").hidden = !unklar.length;
@@ -215,8 +237,10 @@ function baueQuellenKacheln(){
 }
 
 function fuelle(text){
-  const a = { Sie:["Ihrer","Ihr","Ihnen"], Ihr:["eurer","euer","euch"], Du:["deiner","dein","dir"] }[$("anAnrede").value];
-  return text.replace(/\{freigabe\}/g, a[0]).replace(/\{ihr\}/g, a[1]).replace(/\{ihnen\}/g, a[2])
+  const a = { Sie:["Ihrer","Ihr","Ihnen","Ihren"], Ihr:["eurer","euer","euch","euren"],
+             Du:["deiner","dein","dir","deinen"] }[$("anAnrede").value];
+  return text.replace(/\{freigabe\}/g, a[0]).replace(/\{ihren\}/g, a[3])
+             .replace(/\{ihr\}/g, a[1]).replace(/\{ihnen\}/g, a[2])
              .replace(/\{domain\}/g, $("anDomain").value.trim() || "der bestehenden Adresse");
 }
 
@@ -286,7 +310,8 @@ function baueHinweise(){
   for(const [id, h] of Object.entries(katalog.preishinweise)){
     const z = document.createElement("label");
     z.className = "auftrag-option";
-    z.innerHTML = `<input type="checkbox" data-hinweis="${id}" ${h.standard ? "checked" : ""}>
+    const an = h.standard || ($("anFoerderung").checked && ["foerderung", "ergebnisse"].includes(id));
+    z.innerHTML = `<input type="checkbox" data-hinweis="${id}" ${an ? "checked" : ""}>
                    <span>${escapeHtml(fuelle(h.text))}</span>
                    <span class="auftrag-quelle">${escapeHtml(h.quelle)}</span>`;
     z.querySelector("input").addEventListener("change", pruefe);
@@ -303,6 +328,39 @@ function preisHinweis(){
   return [frei, ...saetze].filter(Boolean).join(" ");
 }
 
+/* ---------- Leistungsumfang als Liste ----------
+   Der neuere Aufbau von Seite 2 (Boner 28.09., Schurig 29.09.): kurzes Intro
+   mit Doppelpunkt, dann die Punkte, dann was der Kunde beisteuert. */
+
+function punktZeile(lead = "", text = ""){
+  const z = document.createElement("div");
+  z.className = "angebot-punkt";
+  z.innerHTML = `<input type="text" class="an-plead" value="${escapeHtml(lead)}" placeholder="Stichwort.">
+                 <textarea class="an-ptext" rows="2" placeholder="Ein Satz, der den Punkt für diesen Kunden konkret macht.">${escapeHtml(text)}</textarea>
+                 <button type="button" class="angebot-weg" title="Punkt entfernen">✕</button>`;
+  z.querySelector(".angebot-weg").addEventListener("click", ()=>{ z.remove(); pruefe(); });
+  z.querySelectorAll("input, textarea").forEach(i=>i.addEventListener("input", pruefeGleich));
+  $("anPunkte").appendChild(z);
+}
+
+/* Brutto aus den Netto-Zeilen, wie das Förderformular es verlangt. Nur Zeilen
+   mit einem Eurobetrag zählen; "auf Anfrage" oder Stundensätze nicht. */
+function bruttoZeile(){
+  let netto = 0;
+  document.querySelectorAll("#anPreise .angebot-preiszeile").forEach(z=>{
+    const b = z.querySelector(".an-pbetrag").value;
+    const l = z.querySelector(".an-plabel").value;
+    if(/Std|Umsatzsteuer|brutto/i.test(b + l)) return;
+    const m = b.match(/^\s*([\d.]+)(,\d+)?\s*€\s*$/);
+    if(m) netto += parseFloat(m[1].replace(/\./g, "") + (m[2] || "").replace(",", "."));
+  });
+  if(!netto){ alert("Keine Netto-Zeile mit Eurobetrag gefunden."); return; }
+  const eur = x=>x.toLocaleString("de-DE", { maximumFractionDigits: 2 }) + " €";
+  preisZeile(`Gesamtbetrag inkl. 19 % Umsatzsteuer (${eur(Math.round(netto * 19) / 100)})`,
+             eur(Math.round(netto * 119) / 100));
+  pruefe();
+}
+
 /* ---------- Sammeln und Prüfen ---------- */
 
 function sammle(){
@@ -316,6 +374,11 @@ function sammle(){
       .map(s=>s.trim()).filter(Boolean),
     solution_headline: $("anHeadline").value.trim(),
     solution_intro: $("anIntro").value.trim(),
+    solution_points: $("anListeBlock").hidden ? [] :
+      [...document.querySelectorAll("#anPunkte .angebot-punkt")]
+        .map(z=>[z.querySelector(".an-plead").value.trim(), z.querySelector(".an-ptext").value.trim()])
+        .filter(([a, t])=>a && t),
+    solution_outro: $("anListeBlock").hidden ? "" : $("anOutro").value.trim(),
     phases: phasen(),
     price_rows: [...document.querySelectorAll("#anPreise .angebot-preiszeile")]
       .map(z=>({ label: z.querySelector(".an-plabel").value.trim(),
@@ -400,6 +463,22 @@ function verdrahte(){
   $("anEntwurf").addEventListener("click", erstelleEntwurf);
   $("angebotErzeugen").addEventListener("click", erzeuge);
   $("anPreisLeer").addEventListener("click", ()=>{ preisZeile(); });
+  $("anBrutto").addEventListener("click", bruttoZeile);
+  $("anPunktNeu").addEventListener("click", ()=>punktZeile());
+  $("anOutro").addEventListener("input", pruefeGleich);
+  $("anListe").addEventListener("change", ()=>{
+    // Auch nachträglich umschaltbar — die Felder bleiben dabei stehen.
+    if(!$("anCardText").hidden) $("anListeBlock").hidden = !$("anListe").checked;
+    pruefe();
+  });
+  // Förderantrag heißt fast immer: Mitentscheider lesen mit, noch keine
+  // Beauftragung, und der Preishinweis braucht den Bewilligungs-Satz. So war
+  // es bei Schurig.
+  $("anFoerderung").addEventListener("change", ()=>{
+    if(!$("anFoerderung").checked) return;
+    $("anListe").checked = true;
+    $("anOhneAuftrag").checked = true;
+  });
   $("anPreisVorschlag").addEventListener("change", ev=>{
     const p = katalog.preise[ev.target.value];
     if(p) preisZeile(p.label, p.betrag);
