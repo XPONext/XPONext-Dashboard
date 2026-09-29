@@ -15,6 +15,10 @@ window.alert = m=>rec("alert: "+m);
 window.confirm = ()=> true;
 
 const HEUTE = new Date(); const M = HEUTE.getFullYear()+"-"+String(HEUTE.getMonth()+1).padStart(2,"0");
+// Letzter Tag des laufenden Monats. Stand hier fest "-28", lief der Beispiel-
+// auftrag am 29., 30. und 31. ab, und zwei Pruefungen im Kunden-Reiter wurden
+// rot, ohne dass sich am Code etwas geaendert hatte (aufgefallen am 29.09.2026).
+const MONATSENDE = M+"-"+String(new Date(HEUTE.getFullYear(), HEUTE.getMonth()+1, 0).getDate()).padStart(2,"0");
 // Fristen relativ zu heute — feste Daten waeren ab einem bestimmten Tag
 // zwangslaeufig ueberfaellig und der Test wuerde von allein rot.
 // Montag der laufenden Woche — die Aufgaben muessen im Board der AKTUELLEN
@@ -67,7 +71,7 @@ const FAKE = {
   ],
   revenues: [
     {id:"r1", customer_id:"k1", kind:"retainer", service:"Webseite", title:"Betreuung", amount:3000, period_start:M+"-01", period_end:null, note:null},
-    {id:"r2", customer_id:"k2", kind:"einmalig", service:"GEO-Optimierung", title:"Relaunch",  amount:800,  period_start:M+"-01", period_end:M+"-28", note:null}
+    {id:"r2", customer_id:"k2", kind:"einmalig", service:"GEO-Optimierung", title:"Relaunch",  amount:800,  period_start:M+"-01", period_end:MONATSENDE, note:null}
   ],
   revenue_months: [
     // Protours: Retainer 3.000 EUR im laufenden Monat
