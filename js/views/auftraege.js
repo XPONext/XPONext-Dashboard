@@ -569,8 +569,6 @@ function melde(gut, html){
   el.hidden = false;
 }
 
-/* ---------- Anmeldung ---------- */
-// Lazy: erst beim ersten Öffnen des Reiters. Vorher weder Server fragen noch
-// das Formular bauen.
-document.querySelector('.tab-btn[data-view="auftraege"]')
-  ?.addEventListener("click", oeffne);
+/* Aufgebaut wird von js/views/dokumente.js aus, sobald dieser Teil im
+   Reiter "Angebote & Verträge" zum ersten Mal sichtbar wird. */
+export { oeffne as oeffneVertrag };

@@ -20,10 +20,9 @@
     <button class="tab-btn active" data-view="heute">Heute</button>
     <button class="tab-btn" data-view="vertrieb">Vertrieb</button>
     <button class="tab-btn" data-view="kunden">Kunden</button>
-    <button class="tab-btn" data-view="arbeit">Arbeit</button>
     <button class="tab-btn" data-view="verlauf">Verlauf</button>
-    <button class="tab-btn" data-view="angebote">Angebote</button>
-    <button class="tab-btn" data-view="auftraege">Aufträge</button>
+    <button class="tab-btn" data-view="arbeit">Arbeit</button>
+    <button class="tab-btn" data-view="dokumente">Angebote &amp; Verträge</button>
   </nav>
   <button type="button" class="btn nachtragen-btn" id="nachtragenBtn">+ Nachtragen</button>
 </aside>
@@ -510,13 +509,28 @@
   </div>
 </section>
 
-<!-- Angebote: Transkript rein, Angebot raus.
-     Anders als beim Vertrag schreibt hier ein Sprachmodell den Situationsteil,
-     weil es für die Lage eines Kunden keinen Präzedenzfall gibt. Der Entwurf
-     landet aber immer erst in editierbaren Feldern, nie direkt im PDF. Die
-     Stilregeln dafür sind aus 19 verschickten Angeboten ausgezählt, siehe
-     tools/angebot_formular/stil.py im Workflow-Repo. -->
-<section class="view" id="view-angebote">
+<!-- Angebote & Verträge: beides entsteht nach einem Gespräch mit dem Kunden,
+     erst das Angebot, nach der Zusage der Vertrag. Deshalb ein Reiter mit
+     Umschalter statt zwei Reitern — wie Aufgaben | Projekte unter "Arbeit".
+
+     Angebot: Ein Sprachmodell schreibt den Situationsteil, weil es für die Lage
+     eines Kunden keinen Präzedenzfall gibt. Der Entwurf landet immer erst in
+     editierbaren Feldern. Stilregeln: tools/angebot_formular/stil.py.
+
+     Vertrag: Es wird nichts formuliert, nur ausgewählt — jeder Satz steht
+     wortgleich in einem geschlossenen Vertrag. Bausteine:
+     tools/vertrag_formular/bausteine.py.
+
+     Beide Teile bauen sich erst beim ersten Öffnen auf, siehe
+     js/views/dokumente.js. -->
+<section class="view" id="view-dokumente">
+  <div class="container dokumente-kopf">
+    <div class="arbeit-switch" role="tablist">
+      <button type="button" class="active" data-dokument="angebot">Angebot</button>
+      <button type="button" data-dokument="vertrag">Vertrag</button>
+    </div>
+  </div>
+  <div data-dokument-teil="angebot">
   <div class="auftrag-hinweis" id="angebotHinweis" hidden></div>
   <div class="auftrag-raster" id="angebotRaster" hidden>
     <div class="auftrag-formular" id="angebotFormular"></div>
@@ -530,13 +544,8 @@
       </div>
     </div>
   </div>
-</section>
-
-<!-- Aufträge: Leistungsvereinbarung zusammenklicken.
-     Baut sich vollständig aus js/views/auftraege.js auf — die Bausteine kommen
-     vom Server, damit der Vertragstext an genau einer Stelle gepflegt wird
-     (bausteine.py im Workflow-Repo) und nicht hier noch einmal. -->
-<section class="view" id="view-auftraege">
+</div>
+  <div data-dokument-teil="vertrag" hidden>
   <div class="auftrag-hinweis" id="auftragHinweis" hidden></div>
   <div class="auftrag-raster" id="auftragRaster" hidden>
     <div class="auftrag-formular" id="auftragFormular"></div>
@@ -549,7 +558,9 @@
       </div>
     </div>
   </div>
+</div>
 </section>
+
 
 <footer>XPONext · Umsatzziel-Tracker 2026 · Daten werden lokal in deinem Browser gespeichert.</footer>
 

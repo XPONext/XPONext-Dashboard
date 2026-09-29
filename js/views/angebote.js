@@ -440,4 +440,6 @@ function verdrahte(){
   });
 }
 
-document.querySelector('.tab-btn[data-view="angebote"]')?.addEventListener("click", oeffne);
+/* Aufgebaut wird von js/views/dokumente.js aus, sobald dieser Teil im
+   Reiter "Angebote & Verträge" zum ersten Mal sichtbar wird. */
+export { oeffne as oeffneAngebot };

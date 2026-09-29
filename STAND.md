@@ -59,7 +59,14 @@ Datenquelle:
 | Kunden | Wer lohnt sich? | Stundenlohn je Kunde, Umsätze, Zeiterfassung nach Kunde |
 | Arbeit | Woran arbeiten wir? | Hebel-Stand, Aufgaben-Board und Projekte als Umschalter |
 | Verlauf | Wie entwickelt es sich? | Stunden je Woche, Hebel je Woche, Tabellen, CSV |
-| Aufträge | Wie wird daraus ein Vertrag? | Leistungsvereinbarung zusammenklicken, Markdown + PDF |
+| Angebote & Verträge | Was schicken wir dem Kunden? | Umschalter: Angebot aus dem Transkript, Vertrag aus Bausteinen |
+
+**Seit 29.09.2026:** Angebote und Verträge in einem Reiter mit Umschalter statt
+zwei Reitern. Reihenfolge links: oben die Reiter mit Umsatzbalken (Heute,
+Vertrieb, Kunden, Verlauf), unten die Werkbänke ohne (Arbeit, Angebote &
+Verträge). Der Angebots-Teil schreibt den Situationsteil mit einem
+Sprachmodell, 10 bis 30 Cent je Entwurf — Details in
+`tools/angebot_formular/README.md` im Workflow-Repo.
 
 **Auf „Heute" seit 28.09.2026:** Monatsprojekt (das Vorhaben, auf das die
 Wochenprojekte einzahlen — hängt am Monat des gewählten Tages) und der aktuelle

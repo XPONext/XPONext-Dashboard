@@ -20,13 +20,11 @@ import "./views/projekte.js";
 import "./views/calls.js";
 import "./views/kunden.js";
 import "./views/zeittracking.js";
-// Baut sich erst beim ersten Öffnen des Reiters auf und meldet sich bewusst
-// nicht bei onRender() an — ein Reiterwechsel würde sonst ein halb
-// ausgefülltes Formular zurücksetzen.
-import "./views/auftraege.js";
-// Dasselbe fuer Angebote: Ein fertiger Entwurf hat eine halbe Minute und ein
-// paar Cent gekostet und darf beim Reiterwechsel nicht verloren gehen.
-import "./views/angebote.js";
+// "Angebote & Verträge": Umschalter plus beide Teile. Sie bauen sich erst beim
+// ersten Öffnen auf und melden sich bewusst nicht bei onRender() an — ein
+// Reiterwechsel würde sonst ein halb ausgefülltes Formular oder einen Entwurf
+// verwerfen, der eine Minute und ein paar Cent gekostet hat.
+import "./views/dokumente.js";
 
 window.addEventListener("error", ev=>{
   showErrorBanner("Es ist ein Fehler aufgetreten: "+(ev.message||"unbekannt")+" — bitte die Seite neu laden.");

@@ -38,7 +38,10 @@ a{color:inherit;}
 .t-muted{color:var(--text-muted);}
 
 /* ---------- Formulare ---------- */
-select, input[type=number], input[type=date], input[type=text]{
+/* Textfelder gehoeren seit dem Angebots-Reiter dazu. Vorher waren sie nur in
+   Dialogen gestaltet (.dlg-body textarea, gleiche Werte) und standen sonst
+   klein und in Schreibmaschinenschrift da — ausgerechnet das Transkript. */
+select, input[type=number], input[type=date], input[type=text], textarea{
   font-family:var(--font);
   border:1.5px solid var(--border);
   border-radius:var(--r-sm);
@@ -49,7 +52,7 @@ select, input[type=number], input[type=date], input[type=text]{
   background:var(--bg);
   transition:border-color .15s var(--ease), box-shadow .15s var(--ease);
 }
-select:focus,input:focus{
+select:focus,input:focus,textarea:focus{
   outline:none;
   border-color:var(--accent);
   box-shadow:var(--focus-ring);
@@ -90,3 +93,4 @@ footer{
   padding:2.2rem 5% 0;
   letter-spacing:0.01em;
 }
+textarea{ resize:vertical; line-height:1.5; display:block; }

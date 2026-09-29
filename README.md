@@ -45,7 +45,7 @@ js/
   ui/               modal, chart, bus, components
   utils/            format, weeks
   views/            dashboard, eingabe, aufgaben, projekte,
-                    hebel, verlauf, zeittracking, auftraege
+                    hebel, verlauf, zeittracking, dokumente, angebote, auftraege
 serve.py            lokaler Server: Dateien + /api/vertrag/* (nur lokal)
 time_tracker/       macOS-Popup, das die Zeiten erfasst (eigenes README)
 test/               Rauchtest und visueller Vergleich
@@ -57,14 +57,20 @@ passenden Datei unter `js/views/`.
 
 ## Reiter
 
-Die Seite hat sechs Reiter (Heute, Vertrieb, Kunden, Arbeit, Verlauf, Aufträge)
+Die Seite hat sechs Reiter (Heute, Vertrieb, Kunden, Verlauf, Arbeit, Angebote & Verträge)
 und einen „+ Nachtragen"-Dialog. Die Module unter `js/views/` sind nach Datenquelle
 geschnitten (calls.js, hebel.js, zeittracking.js …) und finden ihre Elemente
 über IDs — ein Block darf deshalb in `index.html` zwischen Reitern umziehen,
 ohne dass sich am JavaScript etwas ändert. Genau so ist der Umbau vom
 19.09.2026 gelaufen (siehe [STAND.md](STAND.md)).
 
-**Aufträge** ist die Ausnahme von zwei Regeln. Er meldet sich nicht bei
+**Angebote & Verträge** ist die Ausnahme von zwei Regeln. Der Reiter hat einen
+Umschalter Angebot | Vertrag (js/views/dokumente.js) wie Aufgaben | Projekte
+unter Arbeit, aber mit eigenen Attributen, damit sich die beiden nicht verhaken.
+Den Kopf mit dem Umsatzbalken blendet der Router hier und unter Arbeit aus
+(js/router.js, OHNE_KOPF) — beides sind Werkbänke.
+
+Beide Teile sind Er meldet sich nicht bei
 `onRender()` an, weil ein Reiterwechsel sonst ein halb ausgefülltes Formular
 zurücksetzen würde — er baut sich einmal auf, wenn man ihn zum ersten Mal
 öffnet. Und er ist der einzige Reiter, der einen Server braucht: Verträge
