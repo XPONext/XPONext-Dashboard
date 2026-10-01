@@ -21,6 +21,7 @@
     <button class="tab-btn" data-view="vertrieb">Vertrieb</button>
     <button class="tab-btn" data-view="kunden">Kunden</button>
     <button class="tab-btn" data-view="verlauf">Verlauf</button>
+    <button class="tab-btn" data-view="finanzen">Finanzen</button>
     <button class="tab-btn" data-view="arbeit">Arbeit</button>
     <button class="tab-btn" data-view="dokumente">Angebote &amp; Verträge</button>
   </nav>
@@ -365,6 +366,91 @@
 <!-- PROJEKTE -->
 <!-- HEBEL -->
 <!-- VERLAUF -->
+<section class="view" id="view-finanzen">
+  <div class="container">
+    <!-- Seit 01.10.2026. Einnahmen aus den Aufträgen im Kunden-Reiter, Ausgaben
+         aus den Rechnungs-Mails (Abgleich tools/finanzen/ im Workflow-Repo) —
+         ohne Anbindung des Geschäftskontos. Alles netto, in Euro. -->
+    <div class="seiten-kopf">
+      <h2>Finanzen</h2>
+      <div class="seiten-kopf-rechts">
+        <span class="stand" id="fiStand">—</span>
+        <div class="segment" id="fiZeitraum" role="group" aria-label="Zeitraum">
+          <button type="button" data-zeitraum="monat">Dieser Monat</button>
+          <button type="button" data-zeitraum="vormonat">Letzter Monat</button>
+          <button type="button" data-zeitraum="jahr">2026</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="kpi-reihe">
+      <div class="kpi">
+        <div class="kpi-lbl">Einnahmen</div>
+        <div class="kpi-wert" id="fiEinnahmen">—</div>
+        <div class="kpi-fuss">netto, aus den Aufträgen</div>
+      </div>
+      <div class="kpi">
+        <div class="kpi-lbl">Ausgaben</div>
+        <div class="kpi-wert" id="fiAusgaben">—</div>
+        <div class="kpi-fuss" id="fiAusgabenFuss">netto, aus den Rechnungen</div>
+      </div>
+      <div class="kpi">
+        <div class="kpi-lbl">Gewinn</div>
+        <div class="kpi-wert" id="fiGewinn">—</div>
+        <div class="kpi-fuss" id="fiGewinnFuss">—</div>
+      </div>
+      <div class="kpi">
+        <div class="kpi-lbl">Auszahlbar je Person</div>
+        <div class="kpi-wert" id="fiAuszahlbar">—</div>
+        <div class="kpi-fuss" id="fiAuszahlbarFuss">—</div>
+      </div>
+    </div>
+
+    <div class="grid2">
+      <div class="card">
+        <div class="karten-kopf">
+          <div>
+            <h3>Zurücklegen</h3>
+            <p id="fiRuecklageSub">Was vom Geld auf dem Konto nicht euch gehört</p>
+          </div>
+          <div class="karten-kopf-zahl" id="fiZuruecklegen"></div>
+        </div>
+        <div id="fiRechnung"></div>
+      </div>
+
+      <div class="card">
+        <div class="karten-kopf">
+          <div>
+            <h3>Ausgaben nach Lieferant</h3>
+            <p>Netto im Zeitraum. „Rechnung fehlt": Tool aus dem Tool-Stack ohne Rechnung, mit dem eingetragenen Betrag gerechnet.</p>
+          </div>
+          <button type="button" class="btn-leise" id="fiPruefenBtn">Rechnungen prüfen</button>
+        </div>
+        <div id="fiLieferanten"></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="karten-kopf">
+        <div>
+          <h3>Je Monat</h3>
+          <p>Einnahmen, Ausgaben, Gewinn und was davon zurückzulegen ist</p>
+        </div>
+        <button type="button" class="btn-leise" id="fiNeuBtn">+ Ausgabe ohne Rechnung</button>
+      </div>
+      <div id="fiMonate"></div>
+      <div class="save-msg" id="fiMsg">Gespeichert ✓</div>
+      <details class="erklaerung">
+        <summary>Wie gerechnet wird</summary>
+        <p><strong>Einnahmen</strong>: die Aufträge im Kunden-Reiter, netto, im Monat ihrer Leistung (Retainer monatlich).
+        <strong>Ausgaben</strong>: die Rechnungen aus euren Postfächern, netto, im Monat des Rechnungsdatums; Fremdwährung zum EZB-Kurs am Rechnungsdatum. Kam für ein Tool aus dem Tool-Stack keine Rechnung, zählt sein eingetragener Betrag.
+        <strong>Umsatzsteuer</strong>: Satz auf die Einnahmen minus Vorsteuer aus den Rechnungen mit deutscher Umsatzsteuer — bei Reverse Charge (ausländische Anbieter) heben sich beide Seiten auf.
+        <strong>Rücklage</strong> für Einkommen- und Gewerbesteuer: ein fester Anteil vom Gewinn, bis euer Steuerberater einen genauen Satz nennt. Das ist eine vorsichtige Schätzung, keine Steuerberechnung.</p>
+      </details>
+    </div>
+  </div>
+</section>
+
 <section class="view" id="view-verlauf">
   <div class="container">
     <div class="board-head">

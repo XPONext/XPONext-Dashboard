@@ -28,7 +28,8 @@ async function alleZeilen(tabelle, sortierung){
 export async function fetchAllData(){
   const [personalRes, teamRes, timeRes, tasksRes, goalsRes, commitRes, projRes, stepRes,
          custRes, revMonRes, revRes, callsRes, setRes, leistRes, meetRes,
-         monthRes, salesRes, anrufRes, vorgabeRes, syncRes, leadRes, instRes] = await Promise.all([
+         monthRes, salesRes, anrufRes, vorgabeRes, syncRes, leadRes, instRes,
+         ausgabenRes, fixRes] = await Promise.all([
     db.from("daily_personal").select("*"),
     db.from("daily_team").select("*"),
     alleZeilen("time_entries", "id"),
@@ -50,7 +51,9 @@ export async function fetchAllData(){
     db.from("daily_call_targets").select("*"),
     db.from("sync_status").select("*"),
     db.from("sales_leads").select("*"),
-    alleZeilen("instantly_daily", ["date", "campaign_id"])
+    alleZeilen("instantly_daily", ["date", "campaign_id"]),
+    alleZeilen("expenses", "id"),
+    db.from("fixed_costs").select("*")
   ]);
   if(projRes.error){ console.error(projRes.error); state.projects = []; }
   else{ state.projects = projRes.data; }
@@ -117,6 +120,10 @@ export async function fetchAllData(){
   state.salesLeadsTabelleDa = !leadRes.error;
   // Cold Emails je Kampagne und Tag aus Instantly (sql/013)
   state.instantlyDaily = instRes.error ? [] : instRes.data;
+  // Finanzen (sql/014): Ausgaben aus den Rechnungs-Mails und feste Kosten
+  state.finanzenTabelleDa = !ausgabenRes.error;
+  state.expenses = ausgabenRes.error ? [] : ausgabenRes.data;
+  state.fixedCosts = fixRes.error ? [] : fixRes.data;
   if(setRes.error){ console.error(setRes.error); state.settings = {}; }
   else{
     state.settings = {};
@@ -304,4 +311,20 @@ export async function einstellungSpeichern(key, wert){
   }
   if(!data || !data.length) throw new Error("Die Datenbank hat die Änderung nicht übernommen — bitte die Seite neu laden.");
   return data[0];
+}
+
+/* ---------- Finanzen ---------- */
+
+/* Eine Ausgabe korrigieren oder von Hand anlegen. Korrigierte Zeilen fasst der
+   Rechnungsabgleich nie wieder an (korrigiert = true). */
+export async function ausgabeSpeichern(werte, id){
+  const nutzlast = { ...werte, korrigiert: true, updated_at: new Date().toISOString() };
+  const zeile = id ? { ...nutzlast, id }
+    : { ...nutzlast, id: "hand_" + (crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(36)), source: "hand" };
+  const abfrage = id
+    ? db.from("expenses").update(nutzlast).eq("id", id)
+    : db.from("expenses").insert(zeile);
+  const { error } = await abfrage;
+  if(error){ console.error(error); throw new Error("Ausgabe konnte nicht gespeichert werden: " + error.message); }
+  return zeile;
 }

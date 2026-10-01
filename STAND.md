@@ -27,6 +27,14 @@ im Dashboard, das Popup zieht sie automatisch.
 
 ## Offen
 
+**Finanzen (seit 01.10.2026):** neuer Reiter mit Einnahmen, Ausgaben, Gewinn,
+Rücklagen und Auszahlbarem je Person (`js/views/finanzen.js`, Rechnung in
+`state.js` → `finanzen`). Ausgaben aus den Rechnungs-Mails, Abgleich
+`tools/finanzen/` im Workflow-Repo — Einrichtung im README dort: Gmail-API im
+Cloud-Projekt einschalten (Simon), `sql/014_finanzen.sql` ausführen, in Railway
+`GMAIL_TOKEN_JSON` und `ANTHROPIC_API_KEY` am Service `XPO_Agentic_Workflow`.
+Den Tool-Stack in `fixed_costs` eintragen.
+
 **Kanal, Angebote, Kampagnen (seit 01.10.2026, nach dem ersten Push):**
 `sql/012_leads_kanal.sql` und `sql/013_instantly_kampagnen.sql` im
 Supabase-SQL-Editor ausführen (012 auch dann, wenn es schon einmal lief — es
@@ -85,6 +93,7 @@ Datenquelle:
 | Vertrieb | Kommen wir ans Ziel? | Ein Zeitraum für die ganze Seite; Erstgespräche, Show-up-Rate, Aufträge, Anrufe; Tim & Simon; je Woche |
 | Kunden | Wer lohnt sich? | Stundenlohn je Kunde, Umsätze, Zeiterfassung nach Kunde |
 | Arbeit | Woran arbeiten wir? | Hebel-Stand, Aufgaben-Board und Projekte als Umschalter |
+| Finanzen | Was bleibt uns? | Einnahmen, Ausgaben (aus Rechnungs-Mails), Gewinn, Zurücklegen (USt, Steuer), auszahlbar je Person, je Monat |
 | Verlauf | Wie entwickelt es sich? | Umsatz gegen das Ziel, Stunden je Woche, Hebel je Woche, Hebel gesamt, Bestenliste, Tabellen, CSV |
 | Angebote & Verträge | Was schicken wir dem Kunden? | Umschalter: Angebot aus dem Transkript, Vertrag aus Bausteinen |
 

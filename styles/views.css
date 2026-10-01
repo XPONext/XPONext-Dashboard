@@ -980,3 +980,14 @@ details.erklaerung p{font-size:0.8rem;color:var(--text-muted);line-height:1.65;m
   .karten-kopf{flex-direction:column;}
   .karten-kopf-zahl{text-align:left;}
 }
+
+/* ---------- Finanzen (views/finanzen.js) ----------
+   "Zuruecklegen" als kleine Rechnung: jede Zeile ein Schritt, Zwischensummen
+   mit Haarlinie, die Summe kraeftig. */
+.rechnung{display:flex;flex-direction:column;}
+.rechnung-zeile{display:flex;justify-content:space-between;gap:var(--sp-4);padding:0.45rem 0;font-size:var(--fs-sm);color:var(--text-body);font-variant-numeric:tabular-nums;}
+.rechnung-zeile span:last-child{white-space:nowrap;}
+.rechnung-zeile.is-zwischen{border-top:1px solid var(--border);color:var(--text-primary);font-weight:var(--fw-semi);}
+.rechnung-zeile.is-summe{border-top:2px solid var(--text-primary);margin-top:0.2rem;padding-top:0.6rem;color:var(--text-primary);font-weight:var(--fw-black);font-size:var(--fs-body);}
+.rechnung-zeile.is-leise{color:var(--text-muted);padding-top:0.15rem;padding-bottom:0.15rem;}
+.rate-basis.is-warn{color:var(--amber);font-weight:var(--fw-semi);}

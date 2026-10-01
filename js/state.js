@@ -33,6 +33,9 @@ export const state = {
   salesLeadsOk:  false,
   salesLeadsTabelleDa: false,
   instantlyDaily: [], // Cold Emails je Kampagne und Tag ("instantly_daily", sql/013)
+  expenses:      [], // Ausgaben aus Rechnungs-Mails und von Hand ("expenses", sql/014)
+  fixedCosts:    [], // Feste Kosten aus dem Tool-Stack ("fixed_costs", sql/014)
+  finanzenTabelleDa: false,
   calls:         [], // Calls je Tag und Person aus "daily_calls"
   settings:      {}, // Stellschrauben aus "settings", key -> Zahl
   leistungen:    [], // Leistungsarten aus tracker_options (kind = leistung)
@@ -915,4 +918,124 @@ export function zeitMixFuerKunde(customerId, vonMonat, bisMonat){
    Ansicht nach Mitternacht von selbst mitgeht, statt auf gestern stehenzubleiben. */
 export function gewaehlterTag(){
   return state.heuteTag || localDateStr(new Date());
+}
+
+
+/* ---------- Finanzen (sql/014) ----------
+
+   Einnahmen aus den Auftraegen im Kunden-Reiter (revenue_months, netto),
+   Ausgaben aus den Rechnungs-Mails (expenses) — das Geschaeftskonto ist
+   bewusst nicht angebunden (Tim, 01.10.2026). Kam fuer ein Tool aus dem
+   Tool-Stack (fixed_costs) im Monat keine Rechnung, zaehlt sein Betrag als
+   erwartete Ausgabe, damit der Monat vollstaendig ist.
+
+   Gerechnet wird je Monat, in Euro, netto:
+     Gewinn          = Einnahmen - Ausgaben
+     USt-Zahllast    = Einnahmen x USt-Satz - Vorsteuer aus den Rechnungen
+                       (Reverse Charge hebt sich auf und zaehlt nicht)
+     Steuerruecklage = Gewinn x Ruecklage-Satz (nur bei Gewinn)
+     Auszahlbar      = Gewinn - Steuerruecklage, aufgeteilt nach Anteil */
+
+export function finanzEinstellungen(){
+  const zahl = (k, vorgabe)=>{ const w = Number(state.settings[k]); return Number.isFinite(w) ? w : vorgabe; };
+  return {
+    ruecklage: zahl("steuer_ruecklage_prozent", 30) / 100,
+    anteilTim: zahl("auszahlung_anteil_tim", 50) / 100,
+    ust: zahl("ust_satz_prozent", 19) / 100
+  };
+}
+
+function ausgabeTag(e){
+  return e.rechnungsdatum || (e.eingang_at ? localDateStr(e.eingang_at) : null);
+}
+
+/* Netto in Euro. Fehlt netto, aber brutto und USt sind da, wird gerechnet. */
+function ausgabeNetto(e){
+  if(e.netto_eur != null) return Number(e.netto_eur);
+  if(e.brutto_eur != null) return Number(e.brutto_eur) - (Number(e.ust_eur) || 0);
+  return 0;
+}
+
+export function zaehlendeAusgaben(von, bis){
+  return state.expenses.filter(e=>{
+    if(e.status !== "ok" && e.status !== "pruefen") return false;
+    const tag = ausgabeTag(e);
+    return tag && tag >= von && tag <= bis;
+  });
+}
+
+/* Feste Kosten, fuer die im Monat keine Rechnung kam — als erwartete Ausgabe. */
+function fehlendeFixkosten(monatsStartStr){
+  const ende = letzterTagDesMonats(monatsStartStr);
+  const imMonat = zaehlendeAusgaben(monatsStartStr, ende);
+  return state.fixedCosts.filter(f=>{
+    if(f.ab > ende || (f.bis && f.bis < monatsStartStr)) return false;
+    if(f.rhythmus === "jaehrlich" && f.ab.slice(5, 7) !== monatsStartStr.slice(5, 7)) return false;
+    const such = String(f.suchwort || f.name).toLowerCase();
+    return !imMonat.some(e=>String(e.lieferant || "").toLowerCase().includes(such));
+  }).map(f=>({
+    name: f.name, kategorie: f.kategorie || "Software & Tools",
+    netto: f.ist_netto ? Number(f.betrag) : Number(f.betrag) / 1.19,
+    waehrung: f.waehrung
+  }));
+}
+
+function monateZwischen(von, bis){
+  const raus = [];
+  let m = monatsStart(von);
+  while(m <= bis){
+    raus.push(m);
+    const [j, mo] = m.split("-").map(Number);
+    m = mo === 12 ? (j + 1) + "-01-01" : j + "-" + String(mo + 1).padStart(2, "0") + "-01";
+  }
+  return raus;
+}
+
+/* Kennzahlen je Monat und fuer den ganzen Zeitraum. */
+export function finanzen(von, bis){
+  const e = finanzEinstellungen();
+  const monate = monateZwischen(von, bis).map(m=>{
+    const ende = letzterTagDesMonats(m);
+    const einnahmen = state.revenueMonths.filter(r=>r.month_start === m)
+      .reduce((s, r)=>s + (Number(r.amount) || 0), 0);
+    const rechnungen = zaehlendeAusgaben(m, ende);
+    const fehlend = fehlendeFixkosten(m);
+    const ausgaben = rechnungen.reduce((s, x)=>s + ausgabeNetto(x), 0) + fehlend.reduce((s, f)=>s + f.netto, 0);
+    const vorsteuer = rechnungen.filter(x=>!x.reverse_charge).reduce((s, x)=>s + (Number(x.ust_eur) || 0), 0);
+    const gewinn = einnahmen - ausgaben;
+    const ustZahllast = einnahmen * e.ust - vorsteuer;
+    const steuer = Math.max(0, gewinn) * e.ruecklage;
+    const auszahlbar = gewinn - steuer;
+    return { monat: m, einnahmen, ausgaben, vorsteuer, gewinn, ustZahllast, steuer, auszahlbar,
+             fehlend, pruefen: rechnungen.filter(x=>x.status === "pruefen").length };
+  });
+  const summe = feld => monate.reduce((s, m)=>s + m[feld], 0);
+  const gesamt = {};
+  ["einnahmen", "ausgaben", "vorsteuer", "gewinn", "ustZahllast", "steuer", "auszahlbar", "pruefen"].forEach(f=>{ gesamt[f] = summe(f); });
+  gesamt.tim = gesamt.auszahlbar * e.anteilTim;
+  gesamt.simon = gesamt.auszahlbar - gesamt.tim;
+  gesamt.zuruecklegen = Math.max(0, gesamt.ustZahllast) + gesamt.steuer;
+  return { monate, gesamt, einstellungen: e };
+}
+
+/* Ausgaben je Lieferant im Zeitraum, mit den fehlenden festen Kosten. */
+export function ausgabenNachLieferant(von, bis){
+  const gruppen = new Map();
+  const gruppe = (name, kategorie)=>{
+    const k = String(name || "Unbekannt").trim();
+    if(!gruppen.has(k)) gruppen.set(k, { name: k, kategorie, netto: 0, rechnungen: 0, pruefen: 0, fehlt: 0 });
+    return gruppen.get(k);
+  };
+  zaehlendeAusgaben(von, bis).forEach(x=>{
+    const g = gruppe(x.lieferant, x.kategorie);
+    g.netto += ausgabeNetto(x);
+    g.rechnungen++;
+    if(x.status === "pruefen") g.pruefen++;
+  });
+  monateZwischen(von, bis).forEach(m=>fehlendeFixkosten(m).forEach(f=>{
+    const g = gruppe(f.name, f.kategorie);
+    g.netto += f.netto;
+    g.fehlt++;
+  }));
+  return [...gruppen.values()].sort((a, b)=>b.netto - a.netto);
 }
