@@ -55,7 +55,7 @@ if banner is None:
     sys.exit(1)
 # Der Dialogteil muss wirklich gelaufen sein — sonst prueft der Test die
 # Popups gar nicht und meldet trotzdem "bestanden".
-ERWARTETE_DIALOGPRUEFUNGEN = 113  # 01.10.2026: +13 Termine, +7 Tim & Simon, -5 Opportunitaetskosten, +10 Kanaele/Kampagnen/Anrufzeit
+ERWARTETE_DIALOGPRUEFUNGEN = 133  # 01.10.2026: +13 Termine, +7 Tim & Simon, -5 Opportunitaetskosten, +10 Kanaele/Kampagnen/Anrufzeit, +20 Projekte/Ticket-Board
 
 if not banner.startswith("SMOKE: OK"):
     m = re.search(r'id="smokeResult"[^>]*>(.*?)</div>', dom, re.S)
@@ -104,7 +104,9 @@ if projects != 2:
 # Datenbank neu — und damit verschwindet die nur lokal gehaltene Aufgabe.
 # Genau das soll passieren: nach einem Fehlschlag darf im Speicher nichts
 # stehen, was die Datenbank nicht hat.
-tasks = count(r'class="kanban-card["\s]')
+# Die Karten im Ticket-Board tragen dieselbe Klasse (plus ticket-card) und
+# stehen ebenfalls im Markup — sie zaehlen hier nicht mit.
+tasks = count(r'class="kanban-card["\s]') - count(r'class="kanban-card ticket-card')
 # 2 aus den Testdaten + 1 ueber den Dialog angelegte. Die dritte ist der
 # eigentliche Nachweis: Die Attrappe merkt sich Schreibvorgaenge, die neue
 # Aufgabe muss also nach dem Neuladen sichtbar sein.

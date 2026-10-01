@@ -217,6 +217,55 @@ section.view.active{display:block;}
 .kanban-card-badges{display:flex;gap:0.35rem;flex-wrap:wrap;}
 .kanban-empty{font-size:0.75rem;color:var(--text-muted);text-align:center;padding:0.55rem 0;opacity:0.7;}
 
+/* ---------- Ticket-Board ----------
+   Gleiche Karten wie im Wochen-Board, aber als <button>: per Tastatur
+   erreichbar, ohne eigenen Click-Handler auf einem div. */
+#view-tickets .container{max-width:1120px;}
+/* Der Fahrplan zum Umsatzziel hat mit Entwicklungsprojekten nichts zu tun —
+   auf diesem Reiter ausgeblendet, auf allen anderen unveraendert. */
+.main:has(#view-tickets.active) .hero{display:none;}
+#view-tickets{padding-top:var(--sp-6);}
+
+.tk-projekte{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:var(--sp-4);}
+.tk-projekt{
+  display:flex;flex-direction:column;gap:var(--sp-2);
+  width:100%;text-align:left;font:inherit;color:inherit;cursor:pointer;
+  transition:border-color .12s var(--ease), transform .12s var(--ease);
+}
+.tk-projekt:hover:not(.is-gesperrt){border-color:var(--accent);transform:translateY(-1px);}
+.tk-projekt.is-gesperrt{cursor:default;opacity:0.7;}
+.tk-projekte .empty-state{grid-column:1 / -1;}
+.tk-projekt:focus-visible{outline:2px solid var(--accent);outline-offset:2px;}
+.tk-projekt .bar-track{display:block;}
+.tk-projekt .bar-fill{display:block;}
+.tk-projekt-titel{font-size:var(--fs-h2);font-weight:var(--fw-black);color:var(--text-primary);}
+.tk-projekt-repo{font-size:var(--fs-xs);color:var(--text-muted);margin-top:calc(-1 * var(--sp-1));}
+.tk-projekt-sprint{font-size:var(--fs-body);color:var(--text-body);}
+.tk-projekt-zahlen{font-size:var(--fs-sm);color:var(--text-muted);}
+.tk-zurueck{
+  background:none;border:none;padding:0;margin-bottom:var(--sp-4);
+  font:inherit;font-size:var(--fs-sm);font-weight:var(--fw-semi);color:var(--accent);cursor:pointer;
+}
+.tk-zurueck:hover{text-decoration:underline;}
+.tk-zurueck:focus-visible{outline:2px solid var(--accent);outline-offset:2px;}
+#tkSprintTitel small, #tkUebersicht h2 small{
+  margin-left:var(--sp-2);
+  font-size:var(--fs-sm);font-weight:var(--fw-normal);color:var(--text-muted);
+}
+#tkStats{margin-bottom:var(--sp-5);}
+.ticket-card{
+  display:block;width:100%;text-align:left;
+  font:inherit;color:inherit;
+}
+.ticket-card:focus-visible{outline:2px solid var(--accent);outline-offset:2px;}
+.ticket-card .kanban-card-text{display:block;}
+.ticket-key{
+  display:block;margin-bottom:var(--sp-1);
+  font-size:var(--fs-xs);font-weight:var(--fw-black);
+  color:var(--text-muted);letter-spacing:0.04em;
+}
+.arbeit-switch button:disabled{opacity:0.4;cursor:not-allowed;}
+
 /* ---------- Projekte ---------- */
 .project-card{
   background:var(--bg);

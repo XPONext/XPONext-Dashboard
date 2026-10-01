@@ -54,6 +54,13 @@ schlägt es die automatische Zuordnung.
    (seit Juli 8 Erstgespräche ohne Aufnahme oder Telefonat) und im
    Nachtragen-Dialog „Sebastian x XPO" (10.09.) auf Folgetermin stellen.
 
+**Ticket-Board (seit 01.10.2026, Ticket MA-008 im Repo `xpo-mail-agent`):**
+
+1. ~~**`sql/014_tickets.sql`** ausführen~~ — erledigt (Tim, 01.10.2026). Legt `sprints` und
+   `tickets` an, löscht nichts. Die Gegenprobe am Ende muss zweimal „geschützt" zeigen.
+2. Im Mail-Agent-Repo die Tickets aus `backlog/tickets/` importieren
+   (`tools/tickets/run.py`, Aktion `importieren`), dann hier Sprint 1 planen.
+
 0. **`sql/002_projekte.sql` ausführen** — drei zusätzliche Spalten für
    Fristen an Schritten, Aufgaben-Verknüpfung und Kundenbezug. Legt nur an,
    löscht nichts.
@@ -85,6 +92,7 @@ Datenquelle:
 | Vertrieb | Kommen wir ans Ziel? | Ein Zeitraum für die ganze Seite; Erstgespräche, Show-up-Rate, Aufträge, Anrufe; Tim & Simon; je Woche |
 | Kunden | Wer lohnt sich? | Stundenlohn je Kunde, Umsätze, Zeiterfassung nach Kunde |
 | Arbeit | Woran arbeiten wir? | Hebel-Stand, Aufgaben-Board und Projekte als Umschalter |
+| Projekte | Wo steht der Sprint? | Erst Projektauswahl, dann Scrum-Board je Entwicklungsprojekt (zuerst Mail-Agent), ohne Fahrplan-Kopf: Sprintziel, Resttage, Tickets mit Story und Kriterien, Sprint Planning. Claude liest und schreibt über `tools/tickets/` im jeweiligen Repo. Braucht `sql/014` |
 | Verlauf | Wie entwickelt es sich? | Umsatz gegen das Ziel, Stunden je Woche, Hebel je Woche, Hebel gesamt, Bestenliste, Tabellen, CSV |
 | Angebote & Verträge | Was schicken wir dem Kunden? | Umschalter: Angebot aus dem Transkript, Vertrag aus Bausteinen |
 

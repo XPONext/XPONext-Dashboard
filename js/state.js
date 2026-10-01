@@ -39,12 +39,51 @@ export const state = {
   revenues:      [], // Rohe Umsatzeintraege aus "revenues" — zum Bearbeiten
   revenueMonths: [], // Umsatz je Kunde und Monat aus der Sicht "revenue_months"
   ladeFehler:    null, // Meldung, wenn Kunden/Umsaetze nicht geladen werden konnten
+  tickets:       [], // Entwicklungs-Tickets aller Boards aus "tickets" (sql/014)
+  sprints:       [], // Sprints je Board aus "sprints" (sql/014)
+  ticketTabelleDa: false, // sql/014 ist ausgefuehrt
 
   boardWeekIdx: 0,    // aktuell im Aufgaben-Board angezeigte Woche (Index in WEEKS)
   ztWeekIdx: null,    // aktuell im Zeittracking angezeigte Woche; null = noch nicht gesetzt
   fokusWeekIdx: null, // Woche fuer Wochenprojekt und Commitments auf "Heute"; null = laufende Woche
-  heuteTag: null      // Tag fuer das Cockpit auf "Heute" (YYYY-MM-DD); null = heute
+  heuteTag: null,     // Tag fuer das Cockpit auf "Heute" (YYYY-MM-DD); null = heute
+  ticketBoard: null,  // geoeffnetes Projekt-Board (TICKET_BOARDS.key); null = Projektauswahl
+  ticketAnsicht: null // "sprint" | "alle"; null = Sprint, falls einer laeuft
 };
+
+/* ---------- Tickets und Sprints ---------- */
+
+/* Der Sprint, der heute laeuft. Ohne laufenden der naechste geplante — sonst
+   stuende zwischen Freitag und Montag "kein Sprint" auf dem Board, obwohl die
+   Planung laengst steht. */
+export function aktuellerSprint(board, heuteIso){
+  const eigene = state.sprints.filter(s=>s.board === board);
+  const laeuft = eigene.find(s=>s.start_date <= heuteIso && heuteIso <= s.end_date);
+  if(laeuft) return laeuft;
+  return eigene.filter(s=>s.start_date > heuteIso)
+               .sort((a,b)=>a.start_date < b.start_date ? -1 : 1)[0] || null;
+}
+
+/* Naechster freier Schluessel, z. B. MA-011. Gerechnet aus dem hoechsten
+   vorhandenen, nicht aus der Anzahl — geloeschte Tickets hinterlassen Luecken,
+   und eine Nummer darf nie zweimal vergeben werden. */
+export function naechsterTicketKey(prefix){
+  const muster = new RegExp("^" + prefix + "-(\\d+)$");
+  const hoechste = state.tickets.reduce((max, t)=>{
+    const m = muster.exec(t.key || "");
+    return m ? Math.max(max, Number(m[1])) : max;
+  }, 0);
+  return prefix + "-" + String(hoechste + 1).padStart(3, "0");
+}
+
+/* Branch-Name nach der Regel aus dem Repo: ticket/MA-###-kurzer-titel. */
+export function ticketBranch(key, titel){
+  const slug = String(titel || "").toLowerCase()
+    .replace(/ä/g,"ae").replace(/ö/g,"oe").replace(/ü/g,"ue").replace(/ß/g,"ss")
+    .replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "")
+    .split("-").slice(0, 4).join("-");
+  return "ticket/" + key + (slug ? "-" + slug : "");
+}
 
 /* Rechnet die Tageswerte zu Wochenwerten hoch.
    Tage ausserhalb des in WEEKS definierten Zeitraums fallen bewusst heraus. */

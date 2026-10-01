@@ -22,6 +22,7 @@
     <button class="tab-btn" data-view="kunden">Kunden</button>
     <button class="tab-btn" data-view="verlauf">Verlauf</button>
     <button class="tab-btn" data-view="arbeit">Arbeit</button>
+    <button class="tab-btn" data-view="tickets">Projekte</button>
     <button class="tab-btn" data-view="dokumente">Angebote &amp; Verträge</button>
   </nav>
   <button type="button" class="btn nachtragen-btn" id="nachtragenBtn">+ Nachtragen</button>
@@ -359,6 +360,70 @@
 
     <div id="projectsList"></div>
     </div>
+  </div>
+</section>
+
+<!-- PROJEKTE (Reiter "Projekte", intern "tickets")
+     Scrum-Board je Entwicklungsprojekt (zuerst der Mail-Agent). Erst die
+     Projektauswahl, ein Klick öffnet das Kanban-Board des Projekts.
+     Getrennt vom Wochen-Board unter "Arbeit": Tickets haben Story, Kriterien
+     und Branch und hängen an einem Sprint. Claude liest und schreibt dieselben
+     Zeilen über tools/tickets/ im Repo. Braucht sql/014.
+     Der Fahrplan-Kopf ist hier ausgeblendet (styles/views.css). -->
+<section class="view" id="view-tickets">
+  <div class="container">
+  <div id="tkUebersicht">
+    <div class="board-head">
+      <h2>Projekte <small>Projekt wählen, um sein Board zu öffnen</small></h2>
+    </div>
+    <div class="tk-projekte" id="tkProjektListe"></div>
+  </div>
+
+  <div id="tkBoardAnsicht" hidden>
+    <button type="button" class="tk-zurueck" id="tkZurueck">← Alle Projekte</button>
+    <div class="board-head">
+      <h2 id="tkSprintTitel">Projekt <small id="tkSprintSub"></small></h2>
+    </div>
+
+    <div class="grid4" id="tkStats">
+      <div class="stat">
+        <div class="lbl">Erledigt im Sprint</div>
+        <div class="num" id="tkStatFertig">—</div>
+        <div class="bar-track"><div class="bar-fill" id="tkStatFertigBar" style="width:0%"></div></div>
+        <div class="pct" id="tkStatFertigSub">Tickets</div>
+      </div>
+      <div class="stat">
+        <div class="lbl">Story Points</div>
+        <div class="num" id="tkStatPunkte">—</div>
+        <div class="pct" id="tkStatPunkteSub">erledigt / geplant</div>
+      </div>
+      <div class="stat">
+        <div class="lbl">In Review</div>
+        <div class="num" id="tkStatReview">0</div>
+        <div class="pct">wartet auf die andere Person</div>
+      </div>
+      <div class="stat">
+        <div class="lbl">Resttage</div>
+        <div class="num" id="tkStatTage">—</div>
+        <div class="pct" id="tkStatTageSub">—</div>
+      </div>
+    </div>
+
+    <div class="board-head">
+      <div class="arbeit-switch" role="tablist">
+        <button type="button" data-tk-ansicht="sprint">Sprint</button>
+        <button type="button" data-tk-ansicht="alle">Alle Tickets</button>
+      </div>
+      <div class="board-actions" style="margin:0;">
+        <button class="btn" id="tkNeuBtn">+ Ticket</button>
+        <button class="btn-outline" id="tkSprintBtn">Sprint planen</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="kanban" id="tkBoardSpalten"></div>
+    </div>
+  </div>
   </div>
 </section>
 

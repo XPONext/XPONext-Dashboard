@@ -46,6 +46,26 @@ export const STATUS_COLUMNS = [
   ["done","Done"]
 ];
 
+/* ---------- Ticket-Boards (sql/014) ----------
+   Ein Board je Entwicklungsprojekt, getrennt vom Wochen-Board oben. Das
+   Präfix ergibt die Ticket-Schlüssel (MA-001 …). Ein neues Projekt braucht
+   nur eine Zeile hier, kein neues SQL.
+
+   Die Status-Schlüssel sind bewusst andere als im Wochen-Board: Sie sind die
+   aus dem Repo (backlog/README.md), und Claude liest und schreibt sie dort
+   über tools/tickets/. */
+export const TICKET_BOARDS = [
+  { key:"mail-agent", label:"Mail-Agent", prefix:"MA", repo:"XPONext/xpo-mail-agent" }
+];
+export const TICKET_STATUS = [
+  ["backlog","Backlog"],
+  ["bereit","Bereit"],
+  ["in_arbeit","In Arbeit"],
+  ["review","Review"],
+  ["fertig","Fertig"]
+];
+export const SPRINT_TAGE = 7; // Standardlänge; ein Sprint darf im Dialog länger werden
+
 /* ---------- Supabase ----------
    Anon-Key und URL sind öffentlich — der eigentliche Schutz sind die
    RLS-Policies, die auf den Header x-app-secret prüfen. Das Team-Passwort

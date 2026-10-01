@@ -34,6 +34,13 @@ function wochenStart(){
   return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
 }
 
+// Letzter Tag der laufenden Woche — Ende des Test-Sprints
+function sonntagDerWoche(){
+  const d = new Date(wochenStart() + "T12:00:00");
+  d.setDate(d.getDate() + 6);
+  return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
+}
+
 // Wochenanfang relativ zur laufenden Woche: -1 = Vorwoche
 function wochenStartRel(n){
   const d = new Date(wochenStart() + "T12:00:00");
@@ -219,6 +226,18 @@ const FAKE = {
     {id:"s1", project_id:"p1", text:"Konzept", assignee:"tim", done:true,  due_date:null,         created_at:"2026-08-01T08:00:00Z"},
     {id:"s2", project_id:"p1", text:"Umsetzung", done:false,               due_date:tagRelativ(-15), created_at:"2026-08-02T08:00:00Z"},  // ueberfaellig, ohne assignee
     {id:"s3", project_id:"p1", text:"Testen", assignee:"simon", done:false, due_date:tagRelativ(90),  created_at:"2026-08-03T08:00:00Z"}
+  ],
+  // Sprint 1 laeuft in der aktuellen Woche — relativ, sonst waere er ab
+  // naechster Woche vorbei und der Test von allein rot.
+  sprints: [
+    {board:"mail-agent", nummer:1, ziel:"Board steht", start_date:wochenStart(), end_date:sonntagDerWoche()}
+  ],
+  // MA-005 ohne MA-003/004: Die naechste Nummer muss MA-006 sein, nicht MA-004
+  // (geloeschte Tickets hinterlassen Luecken, eine Nummer gibt es nur einmal).
+  tickets: [
+    {id:1, board:"mail-agent", key:"MA-001", titel:"Close-Sync <i>lesend</i>", status:"in_arbeit", sprint:1, prioritaet:"hoch",    aufwand:3,    assignee:"simon", branch:"ticket/MA-001-close-sync", blockiert_durch:[],         user_story:"Als Team …", akzeptanz:"- [ ] läuft", umsetzung:null, notizen:null},
+    {id:2, board:"mail-agent", key:"MA-002", titel:"Projektquelle",            status:"fertig",    sprint:1, prioritaet:"mittel",  aufwand:2,    assignee:"tim",   branch:"ticket/MA-002-projektquelle", blockiert_durch:[],    user_story:null, akzeptanz:null, umsetzung:null, notizen:null},
+    {id:5, board:"mail-agent", key:"MA-005", titel:"Agent-Tools",              status:"backlog",   sprint:null, prioritaet:"niedrig", aufwand:null, assignee:null,    branch:"ticket/MA-005-agent-tools", blockiert_durch:["MA-001"], user_story:null, akzeptanz:null, umsetzung:null, notizen:null}
   ]
 };
 
@@ -565,6 +584,61 @@ setTimeout(async ()=>{
     pruefeDialog("Projekttitel wird maskiert",
       projHtml.includes("&lt;b&gt;2026&lt;/b&gt;") &&
       document.querySelectorAll("#projectsList b").length === 0);
+
+    // ---- Tickets ----
+    document.querySelector('[data-view="tickets"]').click();
+    await new Promise(r=>setTimeout(r, 250));
+    pruefeDialog("Projekte: Fahrplan-Kopf ausgeblendet", getComputedStyle(document.querySelector(".hero")).display === "none");
+    pruefeDialog("Projekte: Auswahl zeigt das Projekt mit Sprintstand",
+      document.querySelectorAll("#tkProjektListe [data-projekt]").length === 1 &&
+      /Sprint 1/.test(document.getElementById("tkProjektListe").textContent));
+    document.querySelector('#tkProjektListe [data-projekt="mail-agent"]').click();
+    await new Promise(r=>setTimeout(r, 80));
+    pruefeDialog("Projekte: Klick oeffnet das Board", !document.getElementById("tkBoardAnsicht").hidden && document.getElementById("tkUebersicht").hidden);
+    pruefeDialog("Tickets: laufender Sprint im Titel", /Sprint 1/.test(document.getElementById("tkSprintTitel").textContent));
+    pruefeDialog("Tickets: erledigt 1 von 2", /^1\s*\/ 2$/.test(document.getElementById("tkStatFertig").textContent.trim()));
+    pruefeDialog("Tickets: Story Points 2 von 5", /^2\s*\/ 5$/.test(document.getElementById("tkStatPunkte").textContent.trim()));
+    const tkRest = Math.round((new Date(sonntagDerWoche()+"T12:00:00") - new Date(tagRelativ(0)+"T12:00:00")) / 86400000) + 1;
+    pruefeDialog("Tickets: Resttage inkl. heute", document.getElementById("tkStatTage").textContent === String(tkRest));
+    pruefeDialog("Tickets: Sprint-Ansicht zeigt nur Sprint-Tickets", document.querySelectorAll("#tkBoardSpalten .ticket-card").length === 2);
+    pruefeDialog("Tickets: Titel wird maskiert",
+      document.getElementById("tkBoardSpalten").innerHTML.includes("&lt;i&gt;lesend&lt;/i&gt;") &&
+      document.querySelectorAll("#tkBoardSpalten i").length === 0);
+
+    // Neues Ticket: Nummer nach der hoechsten, Branch aus dem Titel, im laufenden Sprint
+    document.getElementById("tkNeuBtn").click();
+    await new Promise(r=>setTimeout(r, 60));
+    const tkDlg = document.querySelector("dialog.dlg[open]");
+    pruefeDialog("Tickets: naechste Nummer ueberspringt die Luecke", /MA-006/.test(tkDlg.querySelector("h3").textContent));
+    tkDlg.querySelector('[name="titel"]').value = "Testticket für das Board";
+    tkDlg.querySelector('[data-dlg="submit"]').click();
+    await new Promise(r=>setTimeout(r, 150));
+    const tkNeu = FAKE.tickets.find(t=>t.key === "MA-006");
+    pruefeDialog("Tickets: neues Ticket gespeichert", !!tkNeu && tkNeu.board === "mail-agent");
+    pruefeDialog("Tickets: Branch aus Nummer und Titel", !!tkNeu && tkNeu.branch === "ticket/MA-006-testticket-fuer-das-board");
+    pruefeDialog("Tickets: landet im laufenden Sprint", !!tkNeu && tkNeu.sprint === 1);
+    pruefeDialog("Tickets: Karte erscheint sofort", document.querySelectorAll("#tkBoardSpalten .ticket-card").length === 3);
+
+    // Alle Tickets
+    document.querySelector('[data-tk-ansicht="alle"]').click();
+    await new Promise(r=>setTimeout(r, 80));
+    pruefeDialog("Tickets: 'Alle' zeigt auch den Backlog", document.querySelectorAll("#tkBoardSpalten .ticket-card").length === 4);
+
+    // Sprint Planning: MA-005 in den Sprint holen
+    document.getElementById("tkSprintBtn").click();
+    await new Promise(r=>setTimeout(r, 60));
+    const spDlg = document.querySelector("dialog.dlg[open]");
+    const spHaken = spDlg.querySelector('[name="t_5"]');
+    pruefeDialog("Sprint: offenes Backlog-Ticket steht zur Auswahl", !!spHaken && !spHaken.checked);
+    pruefeDialog("Sprint: Ticket im Sprint ist angehakt", !!spDlg.querySelector('[name="t_1"]') && spDlg.querySelector('[name="t_1"]').checked);
+    if(spHaken) spHaken.checked = true;
+    spDlg.querySelector('[data-dlg="submit"]').click();
+    await new Promise(r=>setTimeout(r, 150));
+    pruefeDialog("Sprint: Ticket wurde eingeplant", FAKE.tickets.find(t=>t.key === "MA-005").sprint === 1);
+    pruefeDialog("Sprint: Ziel gespeichert", FAKE.sprints.some(s=>s.nummer === 1 && s.ziel === "Board steht"));
+    document.getElementById("tkZurueck").click();
+    await new Promise(r=>setTimeout(r, 60));
+    pruefeDialog("Projekte: Zurueck fuehrt zur Auswahl", !document.getElementById("tkUebersicht").hidden);
 
     // ---- Verlauf ----
     document.querySelector('[data-view="verlauf"]').click();
