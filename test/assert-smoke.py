@@ -55,7 +55,7 @@ if banner is None:
     sys.exit(1)
 # Der Dialogteil muss wirklich gelaufen sein — sonst prueft der Test die
 # Popups gar nicht und meldet trotzdem "bestanden".
-ERWARTETE_DIALOGPRUEFUNGEN = 108  # +13 am 01.10.2026: Termine aus dem Close-Kalender, +7 Calls je Person
+ERWARTETE_DIALOGPRUEFUNGEN = 103  # 01.10.2026: +13 Termine, +7 Tim & Simon, -5 Opportunitaetskosten
 
 if not banner.startswith("SMOKE: OK"):
     m = re.search(r'id="smokeResult"[^>]*>(.*?)</div>', dom, re.S)
@@ -85,15 +85,14 @@ check("Closes", text_of("statCloses"), "2")
 # — Beta wurde im Dialog als No-Show bestaetigt. Show-up-Rate 5 von 7.
 check("Termine gebucht", text_of("statTermineGebucht"), "7")
 check("Termine Show-up", text_of("statTermineShowup"), "5")
-if not re.search(r'id="showupHinweis"[^>]*><div>Show-up-Rate <strong>71(&nbsp;|\u00a0)%</strong> \(5(&nbsp;|\u00a0)von(&nbsp;|\u00a0)7\)', dom):
-    failures.append("Show-up-Rate: erwartet 71 % (5 von 7)")
+check("Show-up-Rate", text_of("vtShowupQuote"), "71\u00a0%")
 # 2: die Testwoche aus daily_personal plus die laufende Woche, in der die
 # getrackten Hebel-Stunden aus dem Zeittracker liegen.
 check("Erfasste Wochen", text_of("streakWeeksLogged"), "2")
 check("Zeittracking heute (Std.)", text_of("ztTodayHours"), "24")
 
 # 3) Wurde ueberhaupt gerendert?
-if count(r'class="bar-fill') < 10:
+if count(r'class="(bar|kpi)-fill') < 10:
     failures.append("Zu wenige Fortschrittsbalken — das Dashboard wurde nicht gerendert.")
 # Auf das Kartenelement selbst zielen, nicht auf seine Unterelemente
 # (kanban-card-text, kanban-card-badges tragen ein aehnliches Praefix).

@@ -58,24 +58,29 @@
       </div>
     </div>
 
+    <!-- Bis 01.10.2026 stand hier als Hauptzahl, was liegengebliebene Calls
+         kosten (Vorgabe aus Close-Tasks minus Calls, mal 3,35 €). Die Vorgabe
+         kennt aber nur Follow-up-Tasks, keine Kaltakquise — an Cold-Call-Tagen
+         war die Zahl Unsinn. Tim: "komplett rausnehmen". -->
     <div class="cockpit" id="clCockpit">
       <div class="cockpit-haupt">
-        <div class="cockpit-lbl" id="clKostenSub">Entgeht dir heute</div>
-        <div class="cockpit-zahl" id="clKosten">—</div>
-        <div class="cockpit-sub" id="clKostenErklaerung">—</div>
+        <div class="cockpit-lbl" id="clCallsLbl">Calls heute</div>
+        <div class="cockpit-zahl" id="clHeute">0</div>
+        <div class="cockpit-sub" id="clHeuteSub">—</div>
+        <div class="cockpit-sub is-leise" id="clHeuteArt"></div>
+        <div class="cockpit-verlauf">
+          <div id="clVerlauf"></div>
+          <div class="cockpit-verlauf-lbl" id="clVerlaufLbl"></div>
+        </div>
       </div>
       <div class="cockpit-neben">
         <div class="cockpit-karte">
-          <div class="cockpit-kzahl">
-            <span id="clHeute">0</span><span class="cockpit-ziel" id="clZiel"> / —</span>
-          </div>
-          <div class="cockpit-klbl" id="clCallsLbl">Calls heute</div>
-          <div class="cockpit-bar"><div class="cockpit-fill" id="clBar" style="width:0%"></div></div>
-          <div class="cockpit-klbl" id="clHeuteSub">—</div>
+          <div class="cockpit-kzahl" id="clTermineHeute">0</div>
+          <div class="cockpit-klbl" id="clTermineHeuteSub">Termine heute</div>
         </div>
         <div class="cockpit-karte">
-          <div class="cockpit-kzahl" id="clWert">—</div>
-          <div class="cockpit-klbl">pro Call · <button type="button" class="cockpit-edit" id="clWertEdit">ändern</button></div>
+          <div class="cockpit-kzahl" id="clRueckstand">—</div>
+          <div class="cockpit-klbl" id="clRueckstandSub">überfällige Call-Tasks in Close</div>
         </div>
         <div class="cockpit-karte" id="ztTodayCard">
           <div class="cockpit-kzahl"><span id="ztTodayHours">0</span><span class="cockpit-ziel"> Std.</span></div>
@@ -138,137 +143,77 @@
 
 <section class="view" id="view-vertrieb">
   <div class="container">
-    <!-- Der Umsatzbalken steht jetzt oben im Kopf, über allen Reitern. -->
-    <div class="grid4">
-      <div class="stat">
-        <div class="lbl">Lead-Gen (Std.)</div>
-        <div class="num" id="statCalls">0 <small>/ 600</small></div>
-        <div class="bar-track"><div class="bar-fill ok" id="barCalls" style="width:0%"></div></div>
-        <div class="pct" id="pctCalls">0% vom Gesamtziel</div>
-      </div>
-      <div class="stat">
-        <div class="lbl">Termine gebucht</div>
-        <div class="num" id="statTermineGebucht">0 <small>/ 167</small></div>
-        <div class="bar-track"><div class="bar-fill ok" id="barTermineGebucht" style="width:0%"></div></div>
-        <div class="pct" id="pctTermineGebucht">0% vom Gesamtziel</div>
-        <div class="pct" id="termineStand"></div>
-      </div>
-      <div class="stat">
-        <div class="lbl">Termine (Show-up)</div>
-        <div class="num" id="statTermineShowup">0 <small>/ 100</small></div>
-        <div class="bar-track"><div class="bar-fill ok" id="barTermineShowup" style="width:0%"></div></div>
-        <div class="pct" id="pctTermineShowup">0% vom Gesamtziel</div>
-        <div class="pct" id="showupHinweis"></div>
-      </div>
-      <div class="stat">
-        <div class="lbl">Aufträge</div>
-        <div class="num" id="statCloses">0 <small>/ 10</small></div>
-        <div class="bar-track"><div class="bar-fill ok" id="barCloses" style="width:0%"></div></div>
-        <div class="pct" id="pctCloses">0% vom Gesamtziel</div>
-      </div>
-    </div>
-
-    <div class="grid2">
-      <div class="stat">
-        <div class="lbl">Umsatz im Zeitraum</div>
-        <div class="num" id="vlUmsatzKennzahl">—</div>
-        <div class="pct" id="vlUmsatzKennzahlSub">—</div>
-      </div>
-      <div class="stat">
-        <div class="lbl">Zeitraum</div>
-        <div class="num" id="vlZeitraum" style="font-size:1.05rem;line-height:1.4">—</div>
-        <div class="pct">Das Ziel gilt für diesen Zeitraum, nicht für das Kalenderjahr.</div>
-      </div>
-    </div>
-
-    <div class="card">
-      <h2>Umsatz gegen das Ziel
-        <small>Realisierter Umsatz aus den Kundeneinträgen, kumuliert — nicht die Auftragswerte aus den Closes.</small></h2>
-      <div id="vlUmsatzChart"></div>
-    </div>
-
-    <div class="card">
-      <h2>Vertrieb je Woche
-        <small>Termine, Show-ups und gewonnene Aufträge. Der Auftragswert steht darunter in der Tabelle.</small></h2>
-      <div id="vlVertriebChart"></div>
-    </div>
-
-    <div class="grid4">
-      <div class="stat">
-        <div class="lbl">Calls erfasst</div>
-        <div class="num" id="clGesamt">0</div>
-        <div class="pct" id="clGesamtSub">seit Beginn der Erfassung</div>
-      </div>
-      <div class="stat">
-        <div class="lbl">Wert daraus</div>
-        <div class="num" id="clWertGesamt">—</div>
-        <div class="pct">Calls × Wert je Call</div>
-      </div>
-      <div class="stat">
-        <div class="lbl">Nicht gemacht</div>
-        <div class="num" id="clVerpasst">—</div>
-        <div class="pct" id="clVerpasstSub">Rückstand auf die Vorgaben</div>
-      </div>
-      <div class="stat">
-        <div class="lbl">Offen in Close</div>
-        <div class="num" id="clRueckstand">—</div>
-        <div class="pct">überfällige Tasks</div>
-      </div>
-    </div>
-
-    <div class="card">
-      <div class="board-head">
-        <h2>Calls je Tag <small id="clChartSub">gemachte Calls gegen die Tagesvorgabe</small></h2>
-        <button class="btn-outline" id="clNachtragen">Calls nachtragen</button>
-      </div>
-      <div id="clChart"></div>
-      <div class="save-msg" id="clMsg">Gespeichert ✓</div>
-    </div>
-
-    <div class="card">
-      <div class="board-head">
-        <h2>Calls je Person <small id="anrufStand">Anrufe aus Close, Person aus der Leitung</small></h2>
-        <select id="anrufZeitraum" aria-label="Zeitraum">
-          <option value="woche">Diese Woche</option>
-          <option value="28" selected>Letzte 4 Wochen</option>
-          <option value="alles">Seit 13.07.</option>
-        </select>
-      </div>
-      <div id="anrufPersonen"></div>
-    </div>
-
-    <div class="card">
-      <h2>Was Nichtstun kostet <small>Auf Basis von <span id="clBasis">—</span> je Call</small></h2>
-      <div id="clKostenTabelle"></div>
-    </div>
-
-    <div class="grid2" style="margin-top:1.4rem;">
-      <div class="card">
-        <h2>Diese Woche <small id="dashWeekLabel">—</small></h2>
-        <div id="dashCurrentWeekBody"></div>
-      </div>
-
-      <div class="card">
-        <h2>Aufteilung diese Woche <small>Tim vs. Simon</small></h2>
-        <div id="dashPersonSplit"></div>
-      </div>
-    </div>
-
-    <div class="grid2" style="margin-top:1.3rem;">
-      <div class="card">
-        <h2>Hebel-Stunden gesamt <small id="hebelZielLabel">Ziel: 7 Std./Woche pro Person</small></h2>
-        <div class="bar-track"><div class="bar-fill ok" id="barHebelTotal" style="width:0%"></div></div>
-        <div class="pct" id="pctHebelTotal" style="margin-top:0.4rem;">0 / 0 Std.</div>
-        <div class="streak">
-          <div class="item"><div class="n" id="streakWeeksLogged">0</div><div class="l">Wochen erfasst</div></div>
-          <div class="item"><div class="n" id="streakOnTarget">0</div><div class="l">Wochen ≥100% Umsatz</div></div>
+    <!-- Seit 01.10.2026 eine Seite mit einem Zeitraum: Alle Zahlen darunter
+         rechnen fuer denselben Ausschnitt. Vorher hatte jede Karte ihren
+         eigenen (gesamt, diese Woche, letzte 30 Tage, 4 Wochen) und die
+         Seite war gut 3.800 Pixel lang. -->
+    <div class="seiten-kopf">
+      <h2>Vertrieb</h2>
+      <div class="seiten-kopf-rechts">
+        <span class="stand" id="vtStand">—</span>
+        <div class="segment" id="vtZeitraum" role="group" aria-label="Zeitraum">
+          <button type="button" data-zeitraum="woche">Diese Woche</button>
+          <button type="button" data-zeitraum="4wochen">4 Wochen</button>
+          <button type="button" data-zeitraum="alles">Seit 13.07.</button>
         </div>
       </div>
+    </div>
 
-      <div class="card">
-        <h2>Bestenliste <small>Top-Woche pro Kategorie</small></h2>
-        <div id="dashLeaderboard"></div>
+    <div class="kpi-reihe">
+      <div class="kpi">
+        <div class="kpi-lbl">Erstgespräche gebucht</div>
+        <div class="kpi-wert"><span id="statTermineGebucht">0</span><small id="vtTermineSoll"></small></div>
+        <div class="kpi-meter"><div class="kpi-fill" id="vtTermineBar"></div></div>
+        <div class="kpi-fuss" id="vtTermineFuss">—</div>
       </div>
+      <div class="kpi">
+        <div class="kpi-lbl">Show-up-Rate</div>
+        <div class="kpi-wert" id="vtShowupQuote">—</div>
+        <div class="kpi-meter"><div class="kpi-fill" id="vtShowupBar"></div></div>
+        <div class="kpi-fuss"><span id="statTermineShowup">0</span> geführt<span id="vtShowupFuss"></span></div>
+        <div class="kpi-fuss" id="showupHinweis"></div>
+      </div>
+      <div class="kpi">
+        <div class="kpi-lbl">Aufträge</div>
+        <div class="kpi-wert"><span id="statCloses">0</span><small id="vtAuftraegeSoll"></small></div>
+        <div class="kpi-meter"><div class="kpi-fill" id="vtAuftraegeBar"></div></div>
+        <div class="kpi-fuss" id="vtAuftraegeFuss">—</div>
+      </div>
+      <div class="kpi">
+        <div class="kpi-lbl">Anrufe</div>
+        <div class="kpi-wert" id="vtAnrufe">0</div>
+        <div class="kpi-meter"><div class="kpi-fill" id="vtAnrufeBar"></div></div>
+        <div class="kpi-fuss" id="vtAnrufeFuss">—</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="karten-kopf">
+        <div>
+          <h3>Tim &amp; Simon</h3>
+          <p>Anrufe aus Close, die Person kommt aus der Leitung. Termine und Aufträge bleiben Teamzahlen.</p>
+        </div>
+        <button type="button" class="btn-leise" id="clNachtragen">Anrufe außerhalb von Close nachtragen</button>
+      </div>
+      <div id="anrufPersonen"></div>
+      <div class="save-msg" id="clMsg">Gespeichert ✓</div>
+      <details class="erklaerung">
+        <summary>Wie gerechnet wird</summary>
+        <p><strong>Kalte Leads</strong> standen beim Anruf auf Cold, Keine Interesse, Not Interested, Lost oder Bad Fit, <strong>warme</strong> auf Warm, Hot, Interested, Meeting, No Show oder Nurture.
+        <strong>→ Termin</strong>: Anteil dieser Leads, die binnen 30 Tagen ein Erstgespräch bekamen. <strong>→ Close</strong>: Anteil aller erreichten Leads, die binnen 180 Tagen ihren ersten Auftrag in Close gewonnen haben — bei jungen Anrufen kommt das noch nach.
+        <strong>Nicht erreicht</strong>: Notiz beginnt mit „ne", „falsche Nummer" oder 0 Sekunden ohne Notiz.
+        <strong>Lead-Gen</strong>: Zeit auf „Neukunden" im Zeittracker gegen 12 Std. je Woche.</p>
+      </details>
+    </div>
+
+    <div class="card">
+      <div class="karten-kopf">
+        <div>
+          <h3>Je Woche</h3>
+          <p>Erstgespräche gebucht und geführt, gewonnene Aufträge</p>
+        </div>
+      </div>
+      <div id="vlVertriebChart"></div>
     </div>
   </div>
 </section>
@@ -393,6 +338,20 @@
     </div>
 
     <div class="card">
+      <div class="karten-kopf">
+        <div>
+          <h3>Umsatz gegen das Ziel</h3>
+          <p>Realisierter Umsatz aus den Kundeneinträgen, kumuliert — <span id="vlZeitraum">—</span></p>
+        </div>
+        <div class="karten-kopf-zahl">
+          <div id="vlUmsatzKennzahl">—</div>
+          <small id="vlUmsatzKennzahlSub">—</small>
+        </div>
+      </div>
+      <div id="vlUmsatzChart"></div>
+    </div>
+
+    <div class="card">
       <h2>Stunden je Woche <small id="vlStundenSub">Lead-Gen und Hebel gegen die Wochenziele</small></h2>
       <div id="vlStundenChart"></div>
     </div>
@@ -406,6 +365,33 @@
     <div class="card">
       <h2>Aufteilung <small id="hebSplitSub">Woher die Hebel-Stunden dieser Woche kommen</small></h2>
       <div id="hebelPreview"></div>
+    </div>
+
+    <div class="grid2">
+      <div class="card">
+        <div class="karten-kopf">
+          <div>
+            <h3>Hebel-Stunden gesamt</h3>
+            <p id="hebelZielLabel">Ziel: 7 Std./Woche pro Person</p>
+          </div>
+        </div>
+        <div class="kpi-meter"><div class="kpi-fill" id="barHebelTotal"></div></div>
+        <div class="kpi-fuss" id="pctHebelTotal">0 / 0 Std.</div>
+        <div class="streak">
+          <div class="item"><div class="n" id="streakWeeksLogged">0</div><div class="l">Wochen erfasst</div></div>
+          <div class="item"><div class="n" id="streakOnTarget">0</div><div class="l">Wochen ≥100% Umsatz</div></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="karten-kopf">
+          <div>
+            <h3>Bestenliste</h3>
+            <p>Top-Woche je Kennzahl</p>
+          </div>
+        </div>
+        <div id="dashLeaderboard"></div>
+      </div>
     </div>
 
     <details class="card zt-details" id="vlTeamCard">

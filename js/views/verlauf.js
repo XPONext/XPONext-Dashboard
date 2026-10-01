@@ -134,20 +134,20 @@ function renderVertrieb(){
   const bis = letzteWocheMitDaten();
   const labels = WEEKS.slice(0, bis + 1).map((_, i)=> "KW " + (i + 1));
   const reihen = [
-    { name: "Termine gebucht", werte: labels.map((_,i)=> teamEntry(i).termineGebucht) },
-    { name: "davon Show-up",   werte: labels.map((_,i)=> teamEntry(i).termineShowup) },
+    { name: "Erstgespräche gebucht", werte: labels.map((_,i)=> teamEntry(i).termineGebucht) },
+    { name: "Erstgespräche geführt", werte: labels.map((_,i)=> teamEntry(i).termineShowup) },
     { name: "Aufträge",        werte: labels.map((_,i)=> auftraegeInWoche(i).length) }
   ];
 
   const el = document.getElementById("vlVertriebChart");
   if(!reihen.some(r=>r.werte.some(v=>v > 0))){
     el.innerHTML = emptyState("Noch keine Vertriebszahlen",
-      "Sobald in der Wochen-Eingabe Termine und Abschlüsse stehen, entsteht hier der Verlauf.");
+      "Sobald Termine aus Close und Aufträge da sind, entsteht hier der Verlauf.");
     return;
   }
   el.innerHTML = balkenChart({
     reihen, labels, hoehe: 220,
-    beschreibung: "Gebuchte Termine, Show-ups und gewonnene Aufträge je Kalenderwoche"
+    beschreibung: "Erstgespräche gebucht und geführt, gewonnene Aufträge je Kalenderwoche"
   });
 }
 

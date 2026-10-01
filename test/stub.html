@@ -11,6 +11,8 @@ console.error = (...a)=>{
   rec("console.error: "+a.map(String).join(" "));
 };
 window.prompt = ()=> "TESTSECRET";
+// Vertrieb-Reiter auf "Seit 13.07." — die Erwartungen unten sind Gesamtzahlen.
+try{ localStorage.setItem("xponext_vertrieb_zeitraum", "alles"); }catch(e){}
 window.alert = m=>rec("alert: "+m);
 window.confirm = ()=> true;
 
@@ -419,35 +421,28 @@ setTimeout(async ()=>{
     kdDlg.querySelector('[data-dlg="abbruch"]').click();
     await new Promise(r=>setTimeout(r, 80));
 
-    // ---- Calls ----
+    // ---- Calls (Heute-Cockpit) ----
+    // Seit 01.10.2026 ohne Opportunitaetskosten: Die Hauptzahl sind die Calls.
     document.querySelector('[data-view="heute"]').click();
-    await bisWahr(()=>!!document.querySelector("#clChart svg, #clChart .empty-state"));
+    await bisWahr(()=>document.getElementById("clHeute").textContent === "12");
     pruefeDialog("Calls heute stehen im Cockpit", document.getElementById("clHeute").textContent === "12");
-    pruefeDialog("Vorgabe ist die Inbox (offen + erledigt), nicht nur das heute Faellige",
-      document.getElementById("clZiel").textContent.includes("26"));
-    pruefeDialog("Warm und kalt werden genannt",
-      /8 warm · 4 kalt/.test(document.getElementById("clHeuteSub").textContent));
+    pruefeDialog("Calls sind die Hauptzahl im Cockpit",
+      document.querySelector("#clCockpit .cockpit-zahl").id === "clHeute");
     pruefeDialog("Calls heute nach Person getrennt",
       /Tim 8 · Simon 4/.test(document.getElementById("clHeuteSub").textContent));
-    // 26 - 12 = 14 offen x 3,35 EUR = 46,90 EUR
-    pruefeDialog("Opportunitaetskosten gerechnet",
-      /46,90/.test(document.getElementById("clKosten").textContent));
-    pruefeDialog("Cockpit ist als Warnung markiert",
-      document.getElementById("clCockpit").classList.contains("is-warnung"));
-    pruefeDialog("Kosten stehen als Hauptzahl im Cockpit",
-      document.querySelector("#clCockpit .cockpit-zahl").id === "clKosten");
-    pruefeDialog("Hochrechnung aufs Jahr wird genannt",
-      /im Jahr/.test(document.getElementById("clKostenErklaerung").textContent));
-    pruefeDialog("Wert je Call wird angezeigt", /3,35/.test(document.getElementById("clWert").textContent));
-    pruefeDialog("Verlaufsdiagramm gezeichnet", !!document.querySelector("#clChart svg"));
-    pruefeDialog("Kostentabelle gefuellt", /Entgangen/.test(document.getElementById("clKostenTabelle").textContent));
+    pruefeDialog("Erreichte Calls werden genannt", /11 erreicht/.test(document.getElementById("clHeuteSub").textContent));
+    pruefeDialog("Warm und kalt werden genannt",
+      /8 warm · 4 kalt/.test(document.getElementById("clHeuteArt").textContent));
+    pruefeDialog("Ueberfaellige Call-Tasks aus Close", document.getElementById("clRueckstand").textContent === "5");
+    pruefeDialog("Keine Opportunitaetskosten mehr",
+      !document.getElementById("clKosten") && !/€/.test(document.getElementById("clCockpit").textContent));
 
     // ---- Heute: Tag wechseln ----
     // Vorher war das Cockpit fest auf heute — nur die Woche liess sich wechseln.
     document.getElementById("tagPrev").click();
     await bisWahr(()=>document.getElementById("clHeute").textContent === "20");
     pruefeDialog("Gestern: Calls des Vortags im Cockpit", document.getElementById("clHeute").textContent === "20");
-    pruefeDialog("Gestern: Vorgabe erreicht, keine Kosten", document.getElementById("clCockpit").classList.contains("is-gut"));
+    pruefeDialog("Gestern: Ueberschrift im Cockpit nennt den Tag", /^Calls am /.test(document.getElementById("clCallsLbl").textContent));
     pruefeDialog("Ueberschrift sagt Gestern", document.getElementById("tagHeading").textContent === "Gestern");
     pruefeDialog("Zeit am Vortag statt heute", document.getElementById("ztTodayHours").textContent === "0");
     pruefeDialog("Nach vorn geht es wieder", !document.getElementById("tagNext").disabled);
@@ -582,34 +577,38 @@ setTimeout(async ()=>{
     pruefeDialog("CSV nutzt Semikolon", text.split("\n")[0].split(";").length === 11);
     pruefeDialog("CSV nutzt Komma als Dezimaltrennzeichen", !/\d+\.\d/.test(text));
 
-    // ---- Calls je Person (Vertrieb) ----
+    // ---- Tim & Simon (Vertrieb) ----
+    // Spalten: Name | Lead-Gen | Anrufe | Erreicht | Kalt -> Termin | Warm -> Termin | -> Close.
+    // Eine Ratenzelle zeigt "33 %" und darunter "1 / 3".
     document.querySelector('[data-view="vertrieb"]').click();
     await new Promise(r=>setTimeout(r, 150));
     const personZeile = name=>[...document.querySelectorAll("#anrufPersonen tbody tr")]
       .map(tr=>[...tr.children].map(td=>td.textContent.replace(/\s+/g, " ").trim()))
       .find(z=>z[0] === name) || [];
+    const basis = zelle=>((zelle || "").match(/(\d+)\s*\/\s*(\d+)\s*$/) || []).slice(1).join("/");
+    const zeitraumWahl = async wahl=>{
+      document.querySelector('#vtZeitraum [data-zeitraum="' + wahl + '"]').click();
+      await new Promise(r=>setTimeout(r, 80));
+    };
+    await zeitraumWahl("4wochen");
     const tim = personZeile("Tim"), simon = personZeile("Simon");
-    pruefeDialog("Calls je Person: Tim 21 Anrufe, 20 erreicht", tim[1] === "21" && /^20/.test(tim[2] || ""));
-    pruefeDialog("Calls je Person: Tim 2 kalte Leads, kein Termin daraus",
-      tim[3] === "2" && /^0/.test(tim[4] || ""));
-    pruefeDialog("Calls je Person: Simon 1 warm -> Termin", simon[1] === "14" && /^1/.test(simon[6] || ""));
-    const zeitraum = document.getElementById("anrufZeitraum");
-    zeitraum.value = "alles";
-    zeitraum.dispatchEvent(new Event("change", { bubbles: true }));
-    await new Promise(r=>setTimeout(r, 80));
+    pruefeDialog("Tim & Simon (4 Wochen): Tim 21 Anrufe, 20 erreicht", tim[2] === "21" && basis(tim[3]) === "20/21");
+    pruefeDialog("Tim & Simon (4 Wochen): Tim 2 kalte Leads, kein Termin daraus", basis(tim[4]) === "0/2");
+    pruefeDialog("Tim & Simon (4 Wochen): Simon 1 von 13 warmen Leads -> Termin", simon[2] === "14" && basis(simon[5]) === "1/13");
+    await zeitraumWahl("alles");
     const timAlles = personZeile("Tim"), simonAlles = personZeile("Simon");
     pruefeDialog("Seit 13.07.: Tim kalt -> Termin 1 von 3 (33 %)",
-      timAlles[3] === "3" && /^1\s*33\s*%/.test(timAlles[4] || ""));
-    pruefeDialog("Seit 13.07.: Simon -> Close 1", /^1/.test(simonAlles[7] || ""));
-    pruefeDialog("Stand des Anruf-Abgleichs wird genannt", /Abgleich\s(gerade\seben|vor)/.test(document.getElementById("anrufStand").textContent));
+      basis(timAlles[4]) === "1/3" && /^33\s*%/.test(timAlles[4] || ""));
+    pruefeDialog("Seit 13.07.: Simon -> Close 1 von 15", basis(simonAlles[6]) === "1/15");
+    pruefeDialog("Stand des Close-Abgleichs steht im Seitenkopf", /Abgleich\s(gerade\seben|vor)/.test(document.getElementById("vtStand").textContent));
 
     // ---- Termine aus dem Close-Kalender ----
-    const showupText = ()=>document.getElementById("showupHinweis").textContent;
+    const showupText = ()=>document.getElementById("vtShowupQuote").closest(".kpi").textContent.replace(/\s+/g, " ");
     const zahl = id=>document.getElementById(id).textContent.trim().split(/\s/)[0];
     pruefeDialog("Termine: nur Erstgespraeche gebucht (6)", zahl("statTermineGebucht") === "6");
     pruefeDialog("Termine: gefuehrt (5)", zahl("statTermineShowup") === "5");
-    pruefeDialog("Show-up-Rate 5 von 6", /83\s*%\s*\(5\s+von\s+6\)/.test(showupText()));
-    pruefeDialog("Abgleich-Stand wird genannt", /Abgleich\s(gerade\seben|vor)/.test(document.getElementById("termineStand").textContent));
+    pruefeDialog("Show-up-Rate 5 von 6", /83\s*%/.test(document.getElementById("vtShowupQuote").textContent) &&
+      /5 geführt von 6/.test(showupText()));
 
     // Termin ohne Spur bestaetigen: Beta war kein Gespraech
     const unklarBtn = document.getElementById("unklarBtn");
@@ -621,7 +620,7 @@ setTimeout(async ()=>{
     dlgU.querySelector('[name="t0"]').value = "no_show";
     dlgU.querySelector('[data-dlg="submit"]').click();
     await new Promise(r=>setTimeout(r, 250));
-    pruefeDialog("Bestaetigung wirkt: 4 von 6", zahl("statTermineShowup") === "4" && /67\s*%/.test(showupText()));
+    pruefeDialog("Bestaetigung wirkt: 4 von 6", zahl("statTermineShowup") === "4" && /67\s*%/.test(document.getElementById("vtShowupQuote").textContent));
     pruefeDialog("Kein Termin mehr ohne Spur", !document.getElementById("unklarBtn"));
 
     // Korrektur im Nachtragen-Dialog: Gamma doch als Erstgespraech zaehlen.

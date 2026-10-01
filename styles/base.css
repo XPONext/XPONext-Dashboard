@@ -14,7 +14,10 @@ body{
 
 a{color:inherit;}
 
-.container{max-width:900px;margin:0 auto;padding:0 5%;}
+/* Inhalt und Umsatz-Kopf (.hero in views.css) haben dieselbe Breite und
+   dieselben Raender — vorher war der Inhalt 900 px schmal und mittig, der
+   Kopf volle Breite, und nichts stand buendig untereinander. */
+.container{max-width:1180px;margin:0 auto;padding:0 5%;}
 
 /* ---------- Tastaturbedienung ----------
    Sichtbarer Fokus auf allem Bedienbaren, nicht nur auf Eingabefeldern.

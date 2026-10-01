@@ -72,11 +72,11 @@ Datenquelle:
 
 | Reiter | Frage | Enthält |
 |---|---|---|
-| Heute | Wo stehe ich jetzt? | Opportunitätskosten, Calls heute, Zeit heute, Wochenprojekt, Commitments (Woche mit ‹ › blätterbar) |
-| Vertrieb | Kommen wir ans Ziel? | Wochenkacheln, Umsatz gegen Ziel, Vertrieb je Woche, Calls, Kostentabelle, Bestenliste |
+| Heute | Wo stehe ich jetzt? | Calls heute (Tim/Simon, 14-Tage-Verlauf), Termine heute, überfällige Call-Tasks, Zeit heute, Wochenprojekt, Commitments (Woche mit ‹ › blätterbar) |
+| Vertrieb | Kommen wir ans Ziel? | Ein Zeitraum für die ganze Seite; Erstgespräche, Show-up-Rate, Aufträge, Anrufe; Tim & Simon; je Woche |
 | Kunden | Wer lohnt sich? | Stundenlohn je Kunde, Umsätze, Zeiterfassung nach Kunde |
 | Arbeit | Woran arbeiten wir? | Hebel-Stand, Aufgaben-Board und Projekte als Umschalter |
-| Verlauf | Wie entwickelt es sich? | Stunden je Woche, Hebel je Woche, Tabellen, CSV |
+| Verlauf | Wie entwickelt es sich? | Umsatz gegen das Ziel, Stunden je Woche, Hebel je Woche, Hebel gesamt, Bestenliste, Tabellen, CSV |
 | Angebote & Verträge | Was schicken wir dem Kunden? | Umschalter: Angebot aus dem Transkript, Vertrag aus Bausteinen |
 
 **Seit 29.09.2026:** Angebote und Verträge in einem Reiter mit Umschalter statt
@@ -137,6 +137,18 @@ erreichten kalten bzw. warmen Leads binnen 30 Tagen ein Erstgespräch bekamen
 Vertrieb-Reiter. Gerechnet je Lead: Nach dem letzten Anruf vor der Buchung lag
 „kalt → Termin" fast immer bei 0, weil erst ein Folgeanruf den Termin legt. Die Tagesvorgabe ist eine Teamzahl
 (`daily_call_targets`), weil alle Tasks an Tims Close-Nutzer hängen.
+
+**Vertrieb-Reiter neu seit 01.10.2026** (`js/views/vertrieb.js`): Tim fand die
+Seite unübersichtlich (3.800 px, fünf Bauarten, jede Karte mit eigenem Zeitraum).
+Jetzt ein Zeitraum-Schalter oben für alles, vier gleich gebaute Kennzahlen mit
+Vergleich zum Vorzeitraum, „Tim & Simon" als ruhige Tabelle, der Verlauf je Woche.
+Soll = Wochenziel aus `config.js` anteilig auf die Tage. Ampelfarben nur bei
+Kennzahlen mit Soll. Die Bausteine (`.seiten-kopf`, `.segment`, `.kpi`,
+`table.ruhig`, `.karten-kopf` in `views.css`) sind für die anderen Reiter gedacht.
+**Opportunitätskosten sind raus** (Cockpit, Kacheln, Kostentabelle, „Wert je
+Call"): Die Vorgabe aus Close-Tasks kennt keine Kaltakquise — Tim: „komplett
+rausnehmen". Die Einstellung `call_value_eur` steht noch in `settings`, wird aber
+nicht mehr gelesen. Inhalt und Umsatz-Kopf sind jetzt gleich breit (1180 px).
 
 **Seit 01.10.2026 lädt das Dashboard `time_entries` seitenweise.** Supabase
 liefert je Abfrage höchstens 1000 Zeilen, ohne Fehlermeldung; die Tabelle hatte

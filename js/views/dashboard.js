@@ -1,14 +1,15 @@
-/* Ansicht: Dashboard — Gesamtfortschritt und laufende Woche. */
+/* Ansicht: Umsatz-Kopf, Hebel-Summe und Bestenliste. */
 
-import { N_WEEKS, TOTAL, TOTAL_HEBEL, WEEKLY_TARGET, PERSONS, LEAD_GEN_PER_PERSON } from "../config.js";
-import { num, euro, weekLabel, barClass } from "../utils/format.js";
-import { findCurrentWeekIndex } from "../utils/weeks.js";
-import { personEntry, hebelHours, combinedEntry, cumulative,
-         realisierterUmsatz, auftraegeGesamt, auftraegeInWoche, auftragswertInWoche } from "../state.js";
+import { N_WEEKS, TOTAL, TOTAL_HEBEL } from "../config.js";
+import { num, euro, weekLabel } from "../utils/format.js";
+import { combinedEntry, cumulative, realisierterUmsatz, auftraegeInWoche, auftragswertInWoche } from "../state.js";
 import { onRender } from "../ui/bus.js";
 
+/* Zeichnet den Umsatz-Kopf ueber allen Reitern, dazu Hebel-Summe und
+   Bestenliste im Verlauf-Reiter. Die Vertriebskennzahlen stehen seit
+   01.10.2026 in views/vertrieb.js, mit einem Zeitraum fuer die ganze Seite. */
 function renderDashboard(){
-  const {c, weeksLogged, onTarget, bestWeek, bestUmsatz} = cumulative();
+  const {c, weeksLogged, onTarget} = cumulative();
 
   // Umsatz kommt aus den Kundeneintraegen, nicht mehr aus der Wochen-Eingabe.
   const umsatz = realisierterUmsatz();
@@ -18,57 +19,14 @@ function renderDashboard(){
   document.getElementById("dashUmsatzMeta").textContent =
     num(umsatzPct,1)+"% erreicht · noch "+euro(Math.max(0,TOTAL.umsatz-umsatz))+" bis "+euro(TOTAL.umsatz);
 
-  const metrics = [
-    ["Lead-Gen (Std.)","statCalls","barCalls","pctCalls",c.leadGenHours,TOTAL.leadGen,1],
-    ["Termine gebucht","statTermineGebucht","barTermineGebucht","pctTermineGebucht",c.termineGebucht,TOTAL.termineGebucht,0],
-    ["Termine (Show-up)","statTermineShowup","barTermineShowup","pctTermineShowup",c.termineShowup,TOTAL.termineShowup,0],
-    ["Aufträge","statCloses","barCloses","pctCloses",auftraegeGesamt(),TOTAL.closes,0],
-  ];
-  metrics.forEach(([label, numId, barId, pctId, ist, soll, digits])=>{
-    const pct = soll>0 ? (ist/soll)*100 : 0;
-    document.getElementById(numId).innerHTML = num(ist,digits)+" <small>/ "+num(soll,digits)+"</small>";
-    const bar = document.getElementById(barId);
-    bar.style.width = Math.min(100,pct)+"%";
-    bar.className = "bar-fill "+barClass(pct);
-    document.getElementById(pctId).textContent = num(pct,1)+"% vom Gesamtziel";
-  });
-
   const hebelPct = (c.hebel/TOTAL_HEBEL)*100;
   const hb = document.getElementById("barHebelTotal");
   hb.style.width = Math.min(100,hebelPct)+"%";
-  hb.className = "bar-fill "+barClass(hebelPct);
+  hb.className = "kpi-fill " + (hebelPct >= 100 ? "is-ok" : hebelPct >= 60 ? "is-warn" : "is-low");
   document.getElementById("pctHebelTotal").textContent = num(c.hebel,1)+" / "+TOTAL_HEBEL+" Std. ("+num(hebelPct,1)+"%)";
 
   document.getElementById("streakWeeksLogged").textContent = weeksLogged;
   document.getElementById("streakOnTarget").textContent = onTarget;
-
-  const curIdx = findCurrentWeekIndex();
-  document.getElementById("dashWeekLabel").textContent = weekLabel(curIdx);
-  const e = combinedEntry(curIdx);
-  const rows = [
-    ["Lead-Gen (Std.)", e.leadGenHours, WEEKLY_TARGET.leadGen],
-    ["Termine gebucht", e.termineGebucht, WEEKLY_TARGET.termineGebucht],
-    ["Termine (Show-up)", e.termineShowup, WEEKLY_TARGET.termineShowup],
-    ["Aufträge", auftraegeInWoche(curIdx).length, WEEKLY_TARGET.closes],
-    ["Auftragswert", auftragswertInWoche(curIdx), WEEKLY_TARGET.umsatz],
-  ];
-  document.getElementById("dashCurrentWeekBody").innerHTML = rows.map(([label,ist,soll])=>{
-    const pct = soll>0 ? (ist/soll)*100 : 0;
-    const displayIst = label==="Auftragswert" ? euro(ist) : num(ist,label==="Lead-Gen (Std.)"?1:0);
-    const displaySoll = label==="Auftragswert" ? euro(soll) : num(soll,1);
-    return `<div class="row-metric">
-      <div class="top"><span class="name">${label}</span><span class="vals">${displayIst} / ${displaySoll}</span></div>
-      <div class="bar-track"><div class="bar-fill ${barClass(pct)}" style="width:${Math.min(100,pct)}%"></div></div>
-    </div>`;
-  }).join("");
-
-  document.getElementById("dashPersonSplit").innerHTML = PERSONS.map(([key,label])=>{
-    const pe = personEntry(curIdx, key);
-    const ph = hebelHours(pe);
-    return `<div class="row-metric">
-      <div class="top"><span class="name">${label}</span><span class="vals">${num(pe.leadGenHours,1)} Std. Lead-Gen (Ziel ${LEAD_GEN_PER_PERSON}) · ${num(ph,1)}/${WEEKLY_TARGET.hebel} Std. Hebel</span></div>
-    </div>`;
-  }).join("");
 
   renderLeaderboard();
 }
@@ -85,8 +43,8 @@ function bestWeekByMetric(getValue){
 function renderLeaderboard(){
   const metrics = [
     ["Lead-Gen (Std.)", i=>combinedEntry(i).leadGenHours, v=>num(v,1)+" Std."],
-    ["Termine gebucht", i=>combinedEntry(i).termineGebucht, v=>num(v,0)],
-    ["Termine Show-up", i=>combinedEntry(i).termineShowup, v=>num(v,0)],
+    ["Erstgespräche gebucht", i=>combinedEntry(i).termineGebucht, v=>num(v,0)],
+    ["Erstgespräche geführt", i=>combinedEntry(i).termineShowup, v=>num(v,0)],
     ["Aufträge", i=>auftraegeInWoche(i).length, v=>num(v,0)],
     ["Auftragswert", i=>auftragswertInWoche(i), v=>euro(v)],
     ["Hebel-Stunden", i=>combinedEntry(i).hebelHours, v=>num(v,1)+" Std."],

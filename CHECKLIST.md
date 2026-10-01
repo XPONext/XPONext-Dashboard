@@ -17,10 +17,11 @@ laden ES-Module nicht mehr über `file://`). Browser-Konsole offen lassen:
 ## Dashboard
 
 - [ ] Umsatzbalken zeigt einen Wert, Prozentangabe passt zur Balkenbreite
-- [ ] Alle vier KPI-Karten (Lead-Gen, Termine gebucht, Show-up, Closes) gefüllt
-- [ ] Hebel-Gesamtbalken gefüllt
-- [ ] Aktuelle Woche unten zeigt die richtige Kalenderwoche
-- [ ] Leaderboard zeigt Tim und Simon
+- [ ] Vertrieb: vier Kennzahlen (Erstgespräche, Show-up-Rate, Aufträge, Anrufe) gefüllt, Balken passen zur Zahl
+- [ ] Vertrieb: Zeitraum oben umschalten (Diese Woche / 4 Wochen / Seit 13.07.) → alle Zahlen und „Tim & Simon" ziehen mit, die Wahl bleibt nach dem Neuladen
+- [ ] Vertrieb: Vergleich mit dem Vorzeitraum (▲/▼) steht bei Woche und 4 Wochen, nicht bei „Seit 13.07."
+- [ ] Heute: Calls heute als Hauptzahl, getrennt nach Tim und Simon, darunter der 14-Tage-Verlauf
+- [ ] Verlauf: Umsatz gegen das Ziel, Hebel-Stunden gesamt und Bestenliste gefüllt
 
 ## Wochen-Eingabe
 
@@ -32,8 +33,8 @@ laden ES-Module nicht mehr über `file://`). Browser-Konsole offen lassen:
 - [ ] Art eines Termins umstellen → „Termine gebucht" im Vertrieb ändert sich sofort
 - [ ] Ergebnis zurück auf den Vorschlag stellen → Zusatz „von Hand korrigiert" verschwindet
 - [ ] „+ Termin ohne Einladung" → Termin erscheint in der Liste, lässt sich wieder löschen
-- [ ] Vertrieb: unter „Termine gebucht" steht der letzte Close-Abgleich (nicht orange)
-- [ ] Vertrieb: „… ohne Spur – bestätigen" öffnet den Dialog, Auswahl ändert die Show-up-Rate
+- [ ] Vertrieb: oben rechts steht der letzte Close-Abgleich (nicht orange)
+- [ ] Vertrieb: „… ohne Spur – bestätigen" in der Show-up-Kachel öffnet den Dialog, Auswahl ändert die Show-up-Rate
 - [ ] Close hinzufügen (mit Auftragswert) → erscheint in der Liste
 - [ ] Close löschen funktioniert
 - [ ] Wochenprojekt setzen (Überschrift + Beschreibung) → Banner zeigt beides

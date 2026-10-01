@@ -224,6 +224,61 @@ export function showupQuote(von, bis){
   };
 }
 
+/* Termine im Zeitraum [von, bis] (lokale Tage) — eine Stelle fuer den
+   Vertrieb-Reiter. Vor sql/010 aus den alten Quellen (Handeingabe plus
+   Task-Zaehlung), damit die Seite nicht leer steht. */
+export function termineImZeitraum(von, bis){
+  if(state.salesMeetingsOk){
+    const { alle, buchungen } = erstgespraeche();
+    const faellig = alle.filter(t=>t.tag >= von && t.tag <= bis && t.ergebnis !== "geplant");
+    return {
+      gebucht: buchungen.filter(t=>t.gebuchtTag >= von && t.gebuchtTag <= bis).length,
+      gefuehrt: faellig.filter(t=>FAND_STATT.has(t.ergebnis)).length,
+      faellig: faellig.length,
+      unklar: faellig.filter(t=>t.ergebnis === "unklar").length
+    };
+  }
+  let gebucht = 0, gefuehrt = 0;
+  Object.entries(state.dailyTeam).forEach(([tag, t])=>{
+    if(tag < von || tag > bis) return;
+    gebucht += Number(t.termineGebucht) || 0;
+    gefuehrt += Number(t.termineShowup) || 0;
+  });
+  state.meetings.forEach(m=>{
+    if(m.date < von || m.date > bis) return;
+    gebucht += Number(m.booked) || 0;
+    gefuehrt += Number(m.showup) || 0;
+  });
+  return { gebucht, gefuehrt, faellig: null, unklar: 0 };
+}
+
+/* Auftraege, die im Zeitraum beauftragt wurden: Anzahl und Auftragswert
+   (beim Retainer der erste Monatsbetrag, wie in auftragswertInWoche). */
+export function auftraegeImZeitraum(von, bis){
+  const liste = state.revenues.filter(r=>r.period_start >= von && r.period_start <= bis);
+  return { anzahl: liste.length, wert: liste.reduce((s,r)=>s + (Number(r.amount) || 0), 0) };
+}
+
+/* Lead-Gen-Stunden im Zeitraum, je Person oder alle: Zeit auf "Neukunden" im
+   Zeittracker plus Nachgetragenes — dieselben Quellen wie in
+   buildWeeklyAggregates, nur nach Tagen statt nach Wochen. */
+export function leadGenStunden(von, bis, person){
+  let std = 0;
+  Object.entries(state.dailyPersonal).forEach(([tag, personen])=>{
+    if(tag < von || tag > bis) return;
+    Object.entries(personen).forEach(([p, d])=>{
+      if(!person || p === person) std += Number(d.leadGenHours) || 0;
+    });
+  });
+  state.timeEntries.forEach(e=>{
+    if(e.state === "Pause" || !/neukunden/i.test(String(e.zuordnung || ""))) return;
+    if(person && e.person !== person) return;
+    const tag = localDateStr(e.ts);
+    if(tag >= von && tag <= bis) std += (Number(e.duration_minutes) || 0) / 60;
+  });
+  return std;
+}
+
 /* Wann der Close-Abgleich zuletzt lief: Jeder Lauf frischt updated_at aller
    Termine auf. null, wenn es noch keinen gab. */
 export function letzterTerminAbgleich(){

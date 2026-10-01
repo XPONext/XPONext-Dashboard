@@ -15,6 +15,7 @@ import "./views/dashboard.js";
 import "./views/verlauf.js";
 import { populateEntryControls, loadDayIntoForm } from "./views/eingabe.js";
 import "./views/termine.js";
+import "./views/vertrieb.js";
 import { loadDayIntoHebelForm } from "./views/hebel.js";
 import "./views/aufgaben.js";
 import "./views/projekte.js";
