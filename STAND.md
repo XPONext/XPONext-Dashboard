@@ -27,6 +27,15 @@ im Dashboard, das Popup zieht sie automatisch.
 
 ## Offen
 
+**Kanal, Angebote, Kampagnen (seit 01.10.2026, nach dem ersten Push):**
+`sql/012_leads_kanal.sql` und `sql/013_instantly_kampagnen.sql` im
+Supabase-SQL-Editor ausführen (012 auch dann, wenn es schon einmal lief — es
+ergänzt Spalten), dann das Workflow-Repo pushen (`tools/vertrieb_sync/leads.py`,
+`instantly.py`). Bis dahin zeigt die Karte „Woher kommen Termine
+und Aufträge?" einen Hinweis. Optional in Close beim Feld „Quelle" Auswahlwerte
+anlegen (z. B. Empfehlung, Externer Setter, Cold Email, Cold Call) — gesetzt
+schlägt es die automatische Zuordnung.
+
 **Termine und Anrufe aus Close (seit 01.10.2026) — in dieser Reihenfolge:**
 
 1. **`sql/010_termine_aus_kalender.sql` und `sql/011_anrufe_aus_close.sql`** im
@@ -145,6 +154,15 @@ Vergleich zum Vorzeitraum, „Tim & Simon" als ruhige Tabelle, der Verlauf je Wo
 Soll = Wochenziel aus `config.js` anteilig auf die Tage. Ampelfarben nur bei
 Kennzahlen mit Soll. Die Bausteine (`.seiten-kopf`, `.segment`, `.kpi`,
 `table.ruhig`, `.karten-kopf` in `views.css`) sind für die anderen Reiter gedacht.
+Darin seit dem zweiten Durchgang: Vergleich im Klartext („▼ 139 Anrufe · −24 %
+ggü. 10.08.–03.09."), „Woher kommen Termine und Aufträge?" (Kanal je Lead nach
+der ersten Konversation, `leadKanal`/`kanalKennzahlen`/`wegZumAuftrag` in
+`state.js`), Spalte „Termine" bei Tim & Simon und „Je Woche" als Tabelle mit
+feinen Balken; das Säulendiagramm steht jetzt im Verlauf-Reiter. Im dritten
+Durchgang: Trichter Termin → geführt → Angebot → Auftrag mit offenen Angeboten,
+Wert und Aufwand je Termin je Kanal, „Cold Email nach Kampagne" (Instantly) und
+„Beste Anrufzeit" als Wärmebild (`kohorte`, `trichter`, `kampagnenKennzahlen`,
+`anrufzeiten` in `state.js`).
 **Opportunitätskosten sind raus** (Cockpit, Kacheln, Kostentabelle, „Wert je
 Call"): Die Vorgabe aus Close-Tasks kennt keine Kaltakquise — Tim: „komplett
 rausnehmen". Die Einstellung `call_value_eur` steht noch in `settings`, wird aber

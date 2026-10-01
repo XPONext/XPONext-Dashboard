@@ -14,9 +14,11 @@ import { showErrorBanner } from "./ui/bus.js";
 const SEITE = 1000;
 async function alleZeilen(tabelle, sortierung){
   let alle = [];
+  const spalten = [].concat(sortierung);
   for(let von = 0; ; von += SEITE){
-    const { data, error } = await db.from(tabelle).select("*")
-      .order(sortierung, { ascending: true }).range(von, von + SEITE - 1);
+    let abfrage = db.from(tabelle).select("*");
+    spalten.forEach(s=>{ abfrage = abfrage.order(s, { ascending: true }); });
+    const { data, error } = await abfrage.range(von, von + SEITE - 1);
     if(error) return { data: null, error };
     alle = alle.concat(data);
     if(data.length < SEITE) return { data: alle, error: null };
@@ -26,7 +28,7 @@ async function alleZeilen(tabelle, sortierung){
 export async function fetchAllData(){
   const [personalRes, teamRes, timeRes, tasksRes, goalsRes, commitRes, projRes, stepRes,
          custRes, revMonRes, revRes, callsRes, setRes, leistRes, meetRes,
-         monthRes, salesRes, anrufRes, vorgabeRes, syncRes] = await Promise.all([
+         monthRes, salesRes, anrufRes, vorgabeRes, syncRes, leadRes, instRes] = await Promise.all([
     db.from("daily_personal").select("*"),
     db.from("daily_team").select("*"),
     alleZeilen("time_entries", "id"),
@@ -46,7 +48,9 @@ export async function fetchAllData(){
     db.from("sales_meetings").select("*"),
     alleZeilen("sales_calls", "id"),
     db.from("daily_call_targets").select("*"),
-    db.from("sync_status").select("*")
+    db.from("sync_status").select("*"),
+    db.from("sales_leads").select("*"),
+    alleZeilen("instantly_daily", ["date", "campaign_id"])
   ]);
   if(projRes.error){ console.error(projRes.error); state.projects = []; }
   else{ state.projects = projRes.data; }
@@ -105,6 +109,14 @@ export async function fetchAllData(){
   if(!vorgabeRes.error) vorgabeRes.data.forEach(r=>{ state.callTargets[r.date] = r; });
   state.syncStatus = {};
   if(!syncRes.error) syncRes.data.forEach(r=>{ state.syncStatus[r.key] = r; });
+  // Kanal je Lead (sql/012). Bis dahin bleibt die Karte "Woher kommen Termine
+  // und Auftraege?" mit einem Hinweis stehen.
+  state.salesLeads = {};
+  if(!leadRes.error) leadRes.data.forEach(r=>{ state.salesLeads[r.lead_id] = r; });
+  state.salesLeadsOk = !leadRes.error && leadRes.data.length > 0;
+  state.salesLeadsTabelleDa = !leadRes.error;
+  // Cold Emails je Kampagne und Tag aus Instantly (sql/013)
+  state.instantlyDaily = instRes.error ? [] : instRes.data;
   if(setRes.error){ console.error(setRes.error); state.settings = {}; }
   else{
     state.settings = {};

@@ -920,6 +920,48 @@ table.ruhig .zahl{text-align:right;font-variant-numeric:tabular-nums;}
 table.ruhig .rate{display:block;font-weight:var(--fw-bold);color:var(--text-primary);font-size:0.95rem;}
 table.ruhig .rate-basis{display:block;font-size:0.72rem;color:var(--text-muted);margin-top:0.1rem;}
 
+/* Vergleich mit dem Vorzeitraum in der Kachel: Abzeichen plus, womit
+   verglichen wird — eine nackte "▼ 35" war nicht zu verstehen. */
+.kpi-vergleich{margin-top:0.45rem;font-size:0.72rem;color:var(--text-muted);line-height:1.7;}
+.kpi-vergleich .delta{margin-left:0;}
+.kpi-vergleich:empty{display:none;}
+.vgl-bezug{white-space:nowrap;}
+
+/* Feiner Balken unter einer Zahl in der Tabelle: Laenge relativ zum
+   groessten Wert der Spalte, damit man die Woche auf einen Blick einordnet,
+   ohne an einer Achse abzulesen. */
+.mini-balken{display:block;width:72px;height:3px;margin:0.4rem 0 0 auto;border-radius:var(--r-pill);background:var(--accent-light);overflow:hidden;}
+.mini-balken > span{display:block;height:100%;border-radius:var(--r-pill);background:var(--accent);}
+table.ruhig tr.is-laufend th, table.ruhig tr.is-laufend td{background:var(--bg-subtle);}
+table.ruhig.wochen tbody th .rate-basis{font-weight:var(--fw-normal);}
+
+/* Trichter: Termin -> gefuehrt -> Angebot -> Auftrag, zwischen den Stufen
+   der Anteil, der weiterkommt. Rechts die offenen Angebote (Stand heute). */
+.trichter{display:flex;align-items:stretch;flex-wrap:wrap;gap:var(--sp-2) 0;margin-bottom:var(--sp-5);}
+.trichter-stufe{flex:1 1 110px;padding:0.85rem 1rem;background:var(--bg-subtle);border:1px solid var(--border);border-radius:10px;}
+.trichter-zahl{font-size:1.45rem;font-weight:var(--fw-black);color:var(--text-primary);letter-spacing:-0.02em;margin-top:0.3rem;}
+.trichter-pfeil{
+  flex:0 0 64px;display:flex;flex-direction:column;align-items:center;justify-content:center;
+  font-size:0.72rem;font-weight:var(--fw-semi);color:var(--text-body);
+}
+.trichter-pfeil::after{content:"→";color:var(--text-muted);font-size:0.9rem;line-height:1;margin-top:0.15rem;}
+.trichter-offen{flex:0 1 180px;margin-left:var(--sp-5);padding:0.85rem 0 0.85rem var(--sp-5);border-left:1px solid var(--border);}
+@media(max-width:700px){ .trichter-offen{margin-left:0;padding-left:0;border-left:none;flex-basis:100%;} }
+
+/* Waermebild Anrufzeiten: eine Farbe, hell = selten erreicht, dunkel = oft.
+   Die Zahl steht in der Zelle, die Farbe hilft nur beim Ueberblick. */
+.waerme{display:grid;gap:3px;}
+.waerme-zeile{display:grid;grid-template-columns:34px repeat(11, minmax(0,1fr));gap:3px;align-items:center;}
+.waerme-kopf span{font-size:0.7rem;color:var(--text-muted);text-align:center;}
+.waerme-tag{font-size:0.78rem;font-weight:var(--fw-semi);color:var(--text-body);}
+.waerme-zelle{
+  height:32px;border-radius:6px;display:flex;align-items:center;justify-content:center;
+  font-size:0.72rem;font-weight:var(--fw-semi);font-variant-numeric:tabular-nums;color:var(--text-primary);
+  background:rgba(63,81,55,var(--staerke));
+}
+.waerme-zelle.is-dunkel{color:#fff;}
+.waerme-zelle.is-leer{background:var(--bg-subtle);color:var(--text-muted);font-weight:var(--fw-normal);}
+
 details.erklaerung{margin-top:var(--sp-4);border-top:1px solid var(--border);padding-top:var(--sp-3);}
 details.erklaerung summary{font-size:var(--fs-sm);color:var(--text-muted);cursor:pointer;font-weight:var(--fw-semi);}
 details.erklaerung summary:hover{color:var(--text-body);}

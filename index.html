@@ -161,16 +161,18 @@
 
     <div class="kpi-reihe">
       <div class="kpi">
-        <div class="kpi-lbl">Erstgespräche gebucht</div>
+        <div class="kpi-lbl">Termine gebucht</div>
         <div class="kpi-wert"><span id="statTermineGebucht">0</span><small id="vtTermineSoll"></small></div>
         <div class="kpi-meter"><div class="kpi-fill" id="vtTermineBar"></div></div>
         <div class="kpi-fuss" id="vtTermineFuss">—</div>
+        <div class="kpi-vergleich" id="vtTermineVgl"></div>
       </div>
       <div class="kpi">
         <div class="kpi-lbl">Show-up-Rate</div>
         <div class="kpi-wert" id="vtShowupQuote">—</div>
         <div class="kpi-meter"><div class="kpi-fill" id="vtShowupBar"></div></div>
         <div class="kpi-fuss"><span id="statTermineShowup">0</span> geführt<span id="vtShowupFuss"></span></div>
+        <div class="kpi-vergleich" id="vtShowupVgl"></div>
         <div class="kpi-fuss" id="showupHinweis"></div>
       </div>
       <div class="kpi">
@@ -178,13 +180,45 @@
         <div class="kpi-wert"><span id="statCloses">0</span><small id="vtAuftraegeSoll"></small></div>
         <div class="kpi-meter"><div class="kpi-fill" id="vtAuftraegeBar"></div></div>
         <div class="kpi-fuss" id="vtAuftraegeFuss">—</div>
+        <div class="kpi-vergleich" id="vtAuftraegeVgl"></div>
       </div>
       <div class="kpi">
         <div class="kpi-lbl">Anrufe</div>
         <div class="kpi-wert" id="vtAnrufe">0</div>
         <div class="kpi-meter"><div class="kpi-fill" id="vtAnrufeBar"></div></div>
         <div class="kpi-fuss" id="vtAnrufeFuss">—</div>
+        <div class="kpi-vergleich" id="vtAnrufeVgl"></div>
       </div>
+    </div>
+
+    <div class="card">
+      <div class="karten-kopf">
+        <div>
+          <h3>Vom Termin zum Auftrag</h3>
+          <p>Die Termine im Zeitraum und was aus ihnen wurde — nach Kanal der ersten Konversation: Antwort auf eine Cold Email oder erreichter Anruf.</p>
+        </div>
+        <div class="karten-kopf-zahl" id="vtWeg"></div>
+      </div>
+      <div id="vtTrichter"></div>
+      <div id="vtKanaele"></div>
+      <details class="erklaerung">
+        <summary>Wie gerechnet wird</summary>
+        <p><strong>Cold Email</strong>: Die erste Konversation war eine Antwort auf eine Cold Email (der Reply-Sync legt dazu in Close eine Notiz „Reply-Klassifikation" an). <strong>Cold Call</strong>: Die erste Konversation war ein erreichter Anruf.
+        Steht am Lead in Close das Feld <strong>„Quelle"</strong>, gilt das — damit lassen sich Empfehlungen, Termine vom externen Terminsetzer oder falsch eingeordnete Leads korrigieren.
+        Gezählt werden die Leads, deren <strong>Erstgespräch im Zeitraum gebucht</strong> wurde, und was aus ihnen wurde: ob der Termin stattfand und ob ein <strong>Auftrag</strong> (in Close gewonnene Opportunity) daraus wurde — auch wenn der erst später kam. Bei jungen Terminen kommen Aufträge also noch nach.
+        <strong>Angebot</strong>: eine Opportunity in Close. <strong>€ je Termin</strong>: Auftragswert geteilt durch Termine — was ein Termin im Schnitt einbringt. <strong>Aufwand je Termin</strong>: bei Cold Call die kalten Anrufe im Zeitraum, bei Cold Email die versendeten Mails aus Instantly, geteilt durch die Termine des Kanals.
+        <strong>Gespräche bis zum Auftrag</strong>: erreichte Anrufe und geführte Termine vor dem Gewinn, im Schnitt je im Zeitraum gewonnenem Auftrag (Anrufe erst ab 13.07.).</p>
+      </details>
+    </div>
+
+    <div class="card">
+      <div class="karten-kopf">
+        <div>
+          <h3>Cold Email nach Kampagne</h3>
+          <p>Versand und Antworten aus Instantly im Zeitraum, Termine und Aufträge der Leads, die auf diese Kampagne geantwortet haben.</p>
+        </div>
+      </div>
+      <div id="vtKampagnen"></div>
     </div>
 
     <div class="card">
@@ -209,11 +243,22 @@
     <div class="card">
       <div class="karten-kopf">
         <div>
+          <h3>Beste Anrufzeit</h3>
+          <p>Wie oft kalte Anrufe jemanden erreichen, nach Wochentag und Uhrzeit — dunkler heißt öfter erreicht.</p>
+        </div>
+        <div class="karten-kopf-zahl" id="vtAnrufzeitBest"></div>
+      </div>
+      <div id="vtAnrufzeiten"></div>
+    </div>
+
+    <div class="card">
+      <div class="karten-kopf">
+        <div>
           <h3>Je Woche</h3>
-          <p>Erstgespräche gebucht und geführt, gewonnene Aufträge</p>
+          <p>Die Wochen im gewählten Zeitraum, neueste oben</p>
         </div>
       </div>
-      <div id="vlVertriebChart"></div>
+      <div id="vtWochen"></div>
     </div>
   </div>
 </section>
@@ -349,6 +394,16 @@
         </div>
       </div>
       <div id="vlUmsatzChart"></div>
+    </div>
+
+    <div class="card">
+      <div class="karten-kopf">
+        <div>
+          <h3>Vertrieb je Woche</h3>
+          <p>Erstgespräche gebucht und geführt, gewonnene Aufträge</p>
+        </div>
+      </div>
+      <div id="vlVertriebChart"></div>
     </div>
 
     <div class="card">

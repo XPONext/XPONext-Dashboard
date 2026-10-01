@@ -29,6 +29,10 @@ export const state = {
   salesCallsOk:  false, // erst wenn der Abgleich Anrufe geliefert hat — vorher zaehlt daily_calls
   callTargets:   {}, // Tagesvorgabe fuers Team je Datum ("daily_call_targets")
   syncStatus:    {}, // Zustand der Abgleiche je Schluessel ("sync_status")
+  salesLeads:    {}, // Je Lead mit Termin/Opportunity: erste Konversation, Auftraege ("sales_leads", sql/012)
+  salesLeadsOk:  false,
+  salesLeadsTabelleDa: false,
+  instantlyDaily: [], // Cold Emails je Kampagne und Tag ("instantly_daily", sql/013)
   calls:         [], // Calls je Tag und Person aus "daily_calls"
   settings:      {}, // Stellschrauben aus "settings", key -> Zahl
   leistungen:    [], // Leistungsarten aus tracker_options (kind = leistung)
@@ -628,9 +632,20 @@ export function anrufKennzahlen(von, bis, person){
     return zeiten.some(z=>gewonnen >= z - TAG && gewonnen <= z + CLOSE_NACH_ANRUF_TAGE * TAG);
   }).length;
 
+  // Termine je Person: Leads (kalt oder warm erreicht), die binnen 30 Tagen
+  // ein Erstgespraech bekamen — jeder Lead einmal, auch wenn er in beiden
+  // Spalten steht.
+  const termine = [...alleLeads].filter(([lead, zeiten])=>{
+    const t = buchung.get(lead);
+    if(!t) return false;
+    const gebucht = new Date(t.booked_at).getTime();
+    return zeiten.some(z=>gebucht >= z && gebucht <= z + TERMIN_NACH_ANRUF_TAGE * TAG);
+  }).length;
+
   return {
     anwahlen: imZeitraum.length,
     erreicht: erreicht.length,
+    termine,
     kaltLeads: leads.kalt.size,
     warmLeads: leads.warm.size,
     leads: alleLeads.size,
@@ -640,6 +655,167 @@ export function anrufKennzahlen(von, bis, person){
   };
 }
 
+
+/* ---------- Woher kommen Termine und Auftraege? (sql/012) ----------
+
+   Der Kanal eines Leads ist, womit die erste Konversation kam (Tim,
+   01.10.2026): eine Antwort auf eine Cold Email (Notiz "Reply-Klassifikation"
+   vom Reply-Sync) oder ein erreichter Anruf. Ist in Close das Feld "Quelle"
+   gesetzt, gilt das — fuer Empfehlungen, den externen Terminsetzer oder eine
+   Antwort, die den Reply-Sync nie erreicht hat. */
+
+export const KANAELE = ["Cold Email", "Cold Call", "Sonstige"];
+
+export function leadKanal(lead_id){
+  const l = state.salesLeads[lead_id];
+  if(!l) return "Sonstige";
+  if(l.quelle_close) return l.quelle_close;
+  const reply = l.first_reply_at ? new Date(l.first_reply_at).getTime() : null;
+  const call = l.first_conversation_call_at ? new Date(l.first_conversation_call_at).getTime() : null;
+  if(reply != null && (call == null || reply <= call)) return "Cold Email";
+  if(call != null) return "Cold Call";
+  return "Sonstige";
+}
+
+/* Die Leads, deren Erstgespraech im Zeitraum gebucht wurde — und was aus
+   ihnen wurde: ob der Termin stattfand, ob ein Angebot (Opportunity in Close)
+   und ob ein Auftrag daraus wurde, auch wenn das erst spaeter kam. Zuerst
+   standen hier die im Zeitraum gewonnenen Auftraege neben den im Zeitraum
+   gebuchten Terminen; das waren verschiedene Leads, und "Termin -> Auftrag"
+   haette nicht gestimmt. gruppe(lead_id) ordnet zu (Kanal, Kampagne, Team). */
+function kohorte(von, bis, gruppe){
+  const leer = k=>({ name: k, termine: 0, gefuehrt: 0, angebote: 0, auftraege: 0, wert: 0 });
+  const zeilen = new Map();
+  const { alle, buchungen } = erstgespraeche();
+  buchungen.forEach(t=>{
+    if(t.gebuchtTag < von || t.gebuchtTag > bis) return;
+    const k = gruppe(t.lead_id);
+    if(k == null) return;
+    if(!zeilen.has(k)) zeilen.set(k, leer(k));
+    const z = zeilen.get(k);
+    z.termine++;
+    const schluessel = t.lead_id || t.id;
+    if(alle.some(x=>(x.lead_id || x.id) === schluessel && FAND_STATT.has(x.ergebnis))) z.gefuehrt++;
+    const l = t.lead_id && state.salesLeads[t.lead_id];
+    if(!l) return;
+    if(l.first_opportunity_at && localDateStr(l.first_opportunity_at) >= t.gebuchtTag) z.angebote++;
+    if(l.won_at && l.won_at >= t.gebuchtTag){
+      z.auftraege++;
+      z.wert += Number(l.won_value) || 0;
+    }
+  });
+  return zeilen;
+}
+
+/* Trichter fuers Team: Termin -> gefuehrt -> Angebot -> Auftrag, dazu die
+   offenen Angebote (Stand heute, unabhaengig vom Zeitraum). */
+export function trichter(von, bis){
+  const z = kohorte(von, bis, ()=>"Team").get("Team") || { termine: 0, gefuehrt: 0, angebote: 0, auftraege: 0, wert: 0 };
+  const offen = Object.values(state.salesLeads).filter(l=>Number(l.open_value) > 0);
+  return { ...z, offenAnzahl: offen.length, offenWert: offen.reduce((s,l)=>s + Number(l.open_value), 0) };
+}
+
+/* Instantly-Zahlen im Zeitraum, je Kampagne oder gesamt */
+export function mailsImZeitraum(von, bis, kampagneId){
+  const r = { sent: 0, replies: 0, auto: 0, interessiert: 0 };
+  state.instantlyDaily.forEach(t=>{
+    if(t.date < von || t.date > bis || (kampagneId && t.campaign_id !== kampagneId)) return;
+    r.sent += Number(t.sent) || 0;
+    r.replies += Number(t.replies) || 0;
+    r.auto += Number(t.replies_auto) || 0;
+    r.interessiert += Number(t.opportunities) || 0;
+  });
+  return r;
+}
+
+/* Je Kanal: Kohorte plus Aufwand — bei Cold Call die kalten Anrufe im
+   Zeitraum, bei Cold Email die versendeten Mails. Kanaele aus dem Feld
+   "Quelle" kommen als eigene Zeilen dazu. */
+export function kanalKennzahlen(von, bis){
+  const zeilen = kohorte(von, bis, leadKanal);
+  KANAELE.forEach(k=>{ if(!zeilen.has(k)) zeilen.set(k, { name: k, termine: 0, gefuehrt: 0, angebote: 0, auftraege: 0, wert: 0 }); });
+  const raus = [...zeilen.values()].map(z=>({ ...z, kanal: z.name, aufwand: null, einheit: null }));
+  const call = raus.find(z=>z.kanal === "Cold Call");
+  if(call && state.salesCallsOk){
+    call.aufwand = state.salesCalls.filter(c=>{
+      const tag = localDateStr(c.started_at);
+      return tag >= von && tag <= bis && anrufArt(c) === "kalt";
+    }).length;
+    call.einheit = "kalte Anrufe";
+  }
+  const mail = raus.find(z=>z.kanal === "Cold Email");
+  if(mail && state.instantlyDaily.length){
+    mail.aufwand = mailsImZeitraum(von, bis).sent;
+    mail.einheit = "Mails";
+  }
+  const reihenfolge = k=>{ const i = KANAELE.indexOf(k); return i < 0 ? KANAELE.length - 0.5 : i; };
+  return raus.sort((a,b)=>reihenfolge(a.kanal) - reihenfolge(b.kanal));
+}
+
+/* Cold Email je Kampagne: versendet, Antworten (ohne automatische),
+   Interessenten aus Instantly — und aus der Kohorte die Termine, Angebote und
+   Auftraege der Leads aus dieser Kampagne. */
+export function kampagnenKennzahlen(von, bis){
+  const namen = new Map();
+  state.instantlyDaily.forEach(t=>namen.set(t.campaign_id, t.campaign_name));
+  Object.values(state.salesLeads).forEach(l=>{ if(l.kampagne_id) namen.set(l.kampagne_id, l.kampagne || namen.get(l.kampagne_id)); });
+  const kohorteJe = kohorte(von, bis, lead=>{
+    const l = state.salesLeads[lead];
+    return l && l.kampagne_id && leadKanal(lead) === "Cold Email" ? l.kampagne_id : null;
+  });
+  return [...namen].map(([id, name])=>{
+    const m = mailsImZeitraum(von, bis, id);
+    const k = kohorteJe.get(id) || { termine: 0, gefuehrt: 0, angebote: 0, auftraege: 0, wert: 0 };
+    // name zuletzt: die Kohorte bringt ein eigenes Feld "name" (die ID) mit
+    return { ...m, ...k, id, name: name || id, antworten: m.replies - m.auto };
+  }).filter(z=>z.sent || z.termine || z.auftraege)
+    .sort((a,b)=>b.termine - a.termine || b.sent - a.sent);
+}
+
+/* Erreichbarkeit kalter Anrufe nach Wochentag (Mo–Fr) und Stunde (8–18 Uhr):
+   wann gehen Bueros ans Telefon? */
+export function anrufzeiten(von, bis){
+  const raster = {};
+  state.salesCalls.forEach(c=>{
+    const tag = localDateStr(c.started_at);
+    if(tag < von || tag > bis || anrufArt(c) !== "kalt") return;
+    const d = new Date(c.started_at);
+    const wt = d.getDay(), h = d.getHours();
+    if(wt < 1 || wt > 5 || h < 8 || h > 18) return;
+    const k = wt + "-" + h;
+    raster[k] = raster[k] || { n: 0, erreicht: 0 };
+    raster[k].n++;
+    if(c.reached) raster[k].erreicht++;
+  });
+  return raster;
+}
+
+/* Bis zum Auftrag, je im Zeitraum gewonnenem Lead: wie viele Gespraeche
+   (erreichte Anrufe plus gefuehrte Termine davor) und wie viele Tage seit dem
+   ersten Termin. Anrufe gibt es erst ab 13.07.2026 — bei frueheren
+   Auftraegen fehlen die Anrufe davor. */
+export function wegZumAuftrag(von, bis){
+  const gewonnen = Object.values(state.salesLeads).filter(l=>l.won_at && l.won_at >= von && l.won_at <= bis);
+  if(!gewonnen.length) return null;
+  const termine = termineMitArt();
+  let gespraeche = 0, tage = 0, mitTagen = 0;
+  gewonnen.forEach(l=>{
+    const ende = new Date(l.won_at + "T23:59:59").getTime();
+    const anrufe = state.salesCalls.filter(c=>c.lead_id === l.lead_id && c.reached &&
+      new Date(c.started_at).getTime() <= ende).length;
+    const eigene = termine.filter(t=>t.lead_id === l.lead_id && new Date(t.starts_at).getTime() <= ende);
+    gespraeche += anrufe + eigene.filter(t=>FAND_STATT.has(t.ergebnis)).length;
+    if(eigene.length){
+      tage += (ende - new Date(eigene[0].starts_at).getTime()) / 86400000;
+      mitTagen++;
+    }
+  });
+  return {
+    auftraege: gewonnen.length,
+    gespraeche: gespraeche / gewonnen.length,
+    tage: mitTagen ? tage / mitTagen : null
+  };
+}
 
 /* ---------- Auftraege: Stunden, Budget, Leistung ----------
 
