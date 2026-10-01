@@ -5,13 +5,31 @@ import { db } from "./supabase.js";
 import { state, buildWeeklyAggregates } from "./state.js";
 import { showErrorBanner } from "./ui/bus.js";
 
+/* Supabase liefert je Abfrage hoechstens 1000 Zeilen — ohne Fehlermeldung,
+   der Rest fehlt einfach. time_entries hat die Grenze am 01.10.2026
+   ueberschritten: Ab da kamen die neuesten Eintraege nicht mehr an, und "Zeit
+   heute", Lead-Gen- und Hebel-Stunden blieben stehen, obwohl der Tracker
+   schrieb. Grosse Tabellen deshalb seitenweise laden, sortiert, damit keine
+   Zeile zwischen zwei Seiten verrutscht. */
+const SEITE = 1000;
+async function alleZeilen(tabelle, sortierung){
+  let alle = [];
+  for(let von = 0; ; von += SEITE){
+    const { data, error } = await db.from(tabelle).select("*")
+      .order(sortierung, { ascending: true }).range(von, von + SEITE - 1);
+    if(error) return { data: null, error };
+    alle = alle.concat(data);
+    if(data.length < SEITE) return { data: alle, error: null };
+  }
+}
+
 export async function fetchAllData(){
   const [personalRes, teamRes, timeRes, tasksRes, goalsRes, commitRes, projRes, stepRes,
          custRes, revMonRes, revRes, callsRes, setRes, leistRes, meetRes,
-         monthRes] = await Promise.all([
+         monthRes, salesRes, anrufRes, vorgabeRes, syncRes] = await Promise.all([
     db.from("daily_personal").select("*"),
     db.from("daily_team").select("*"),
-    db.from("time_entries").select("*"),
+    alleZeilen("time_entries", "id"),
     db.from("tasks").select("*").order("created_at", { ascending: true }),
     db.from("weekly_goals").select("*"),
     db.from("weekly_commitments").select("*").order("created_at", { ascending: true }),
@@ -24,7 +42,11 @@ export async function fetchAllData(){
     db.from("settings").select("*"),
     db.from("tracker_options").select("name").eq("kind","leistung").eq("active", true).order("sort_order", { ascending: true }),
     db.from("daily_meetings").select("*"),
-    db.from("monthly_goals").select("*")
+    db.from("monthly_goals").select("*"),
+    db.from("sales_meetings").select("*"),
+    alleZeilen("sales_calls", "id"),
+    db.from("daily_call_targets").select("*"),
+    db.from("sync_status").select("*")
   ]);
   if(projRes.error){ console.error(projRes.error); state.projects = []; }
   else{ state.projects = projRes.data; }
@@ -69,6 +91,20 @@ export async function fetchAllData(){
   // Termine aus Close gibt es erst nach sql/008.
   if(meetRes.error){ console.error(meetRes.error); state.meetings = []; }
   else{ state.meetings = meetRes.data; }
+  // Termine aus dem Close-Kalender gibt es erst nach sql/010 und dem ersten
+  // Abgleich auf Railway. Bis dahin zaehlt das Dashboard wie vorher — eine
+  // leere Tabelle hiesse sonst "0 Termine", obwohl nur der Abgleich fehlt.
+  state.salesTabelleDa = !salesRes.error;
+  state.salesMeetings = salesRes.error ? [] : salesRes.data;
+  state.salesMeetingsOk = state.salesMeetings.some(t=>t.source === "close");
+  // Anrufe aus Close, Tagesvorgabe und Zustand der Abgleiche gibt es erst nach
+  // sql/011. Bis dahin rechnet der Calls-Teil wie vorher aus daily_calls.
+  state.salesCalls = anrufRes.error ? [] : anrufRes.data;
+  state.salesCallsOk = state.salesCalls.length > 0;
+  state.callTargets = {};
+  if(!vorgabeRes.error) vorgabeRes.data.forEach(r=>{ state.callTargets[r.date] = r; });
+  state.syncStatus = {};
+  if(!syncRes.error) syncRes.data.forEach(r=>{ state.syncStatus[r.key] = r; });
   if(setRes.error){ console.error(setRes.error); state.settings = {}; }
   else{
     state.settings = {};
@@ -112,21 +148,6 @@ export async function upsertDailyPersonal(date, person){
   });
   if(error){ console.error(error); throw new Error("Speichern fehlgeschlagen: "+error.message); }
 }
-
-export async function upsertDailyTeam(date){
-  const e = state.dailyTeam[date] || {termineGebucht:0, termineShowup:0};
-  // Die Spalte "closes" wird nicht mehr geschrieben. Sie bleibt in der
-  // Datenbank stehen, damit alte Eintraege nicht verloren gehen — Umsatz und
-  // Auftraege kommen jetzt aus den Kundeneintraegen.
-  const { error } = await db.from("daily_team").upsert({
-    date,
-    termine_gebucht: e.termineGebucht,
-    termine_showup: e.termineShowup,
-    updated_at: new Date().toISOString()
-  });
-  if(error){ console.error(error); throw new Error("Speichern fehlgeschlagen: "+error.message); }
-}
-
 
 /* ---------- Kunden ---------- */
 

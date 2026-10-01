@@ -5,18 +5,18 @@
 
    1. Gemessen wird gegen die Inbox: alle Call-Tasks, die heute oder frueher
       faellig waren (offen plus heute erledigt). Die Zahlen kommen alle 30
-      Minuten automatisch aus Close (time_tracker/close_sync.py) — nicht mehr
-      ueber ein Fenster um 18 Uhr, das in der Praxis nie kam.
+      Minuten automatisch aus Close — seit 01.10.2026 vom Abgleich auf
+      Railway, jeder Anruf einzeln mit der Person aus der Leitung (sql/011).
 
    2. Der Wert je Call ist eine feste Einstellung (Startwert 3,35 € aus
       5.200 € bei 1.550 Calls) und keine mitlaufende Rechnung. Eine Zahl, die
       bei jedem neuen Auftrag springt, taugt nicht als Maßstab — die
       Opportunitätskosten würden mitspringen. */
 
-import { euro, euroCent, num, escapeHtml, fmtDate, todayIso } from "../utils/format.js";
+import { euro, euroCent, num, escapeHtml, fmtDate, todayIso, vorWieLange } from "../utils/format.js";
 import { PERSONS, WEEKS } from "../config.js";
 import { state, wertJeCall, callsAmTag, vorgabeAmTag, rueckstandAmTag, callTage, gewaehlterTag,
-         callsNachArt } from "../state.js";
+         callsNachArt, callsGesamt, anrufKennzahlen } from "../state.js";
 import { callsSpeichern, einstellungSpeichern, fetchAllData } from "../data.js";
 import { openModal } from "../ui/modal.js";
 import { onRender, renderAll, showErrorBanner, flashSaved } from "../ui/bus.js";
@@ -62,15 +62,20 @@ function verpasstAmTag(datum){
 /* ---------- Dialoge ---------- */
 
 async function nachtragenDialog(){
+  // Seit die Anrufe einzeln aus Close kommen, ist der Nachtrag nur noch fuer
+  // Anrufe, die nicht ueber Close liefen — er kommt dazu, statt zu ersetzen.
+  const ausClose = state.salesCallsOk;
   const ergebnis = await openModal({
-    title: "Calls nachtragen",
+    title: ausClose ? "Calls außerhalb von Close nachtragen" : "Calls nachtragen",
     submitLabel: "Speichern",
     fields: [
       { name:"date", label:"Tag", type:"date", value: todayIso(), required:true },
       { name:"person", label:"Wer?", type:"select",
         options: PERSONS.map(([k,l])=>[k,l]), value: PERSONS[0][0] },
       { name:"calls", label:"Wie viele Calls?", type:"number", min:"0", step:"1",
-        required:true, hint:"Ersetzt den Wert für diesen Tag, addiert nicht dazu." }
+        required:true, hint: ausClose
+          ? "Nur Anrufe, die nicht über Close liefen (z. B. vom Handy). Sie kommen zu den Close-Anrufen dazu; ein zweiter Nachtrag für denselben Tag ersetzt den ersten."
+          : "Ersetzt den Wert für diesen Tag, addiert nicht dazu." }
     ],
     validate: w=> Number(w.calls) >= 0 ? null : "Bitte eine Zahl ab 0 eintragen.",
     onSubmit: async w=>{
@@ -185,6 +190,7 @@ function renderCockpit(){
 
   const art = callsNachArt(heute);
   document.getElementById("clHeuteSub").textContent = [
+    state.salesCallsOk ? PERSONS.map(([k, l])=>l + " " + callsAmTag(heute, k)).join(" · ") : "",
     art ? art.warm + " warm · " + art.kalt + " kalt" : "",
     rueckstandAmTag(heute) ? rueckstandAmTag(heute) + " überfällig in Close" : ""
   ].filter(Boolean).join(" · ") || "noch nichts erfasst";
@@ -195,7 +201,7 @@ function renderCockpit(){
 
 function renderKennzahlen(){
   const wert = wertJeCall();
-  const erfasst = state.calls.reduce((s,c)=>s + (Number(c.calls) || 0), 0);
+  const erfasst = callsGesamt();
   const historie = Number(state.settings.call_history_calls) || 0;
 
   document.getElementById("clGesamt").textContent = num(erfasst, 0);
@@ -217,11 +223,11 @@ function renderKennzahlen(){
 
 function renderVerlauf(){
   const el = document.getElementById("clChart");
-  if(!state.calls.length){
+  if(!state.calls.length && !state.salesCalls.length){
     el.innerHTML = emptyState(
       "Noch keine Calls erfasst",
-      "Die Zahlen kommen alle 30 Minuten automatisch aus Close. Steht hier nichts, " +
-      "läuft der Abgleich noch nicht — einmal time_tracker/install.sh ausführen."
+      "Die Zahlen kommen alle 30 Minuten automatisch aus Close (Abgleich auf Railway, " +
+      "sql/011). Steht hier nichts, läuft der Abgleich noch nicht."
     );
     return;
   }
@@ -290,10 +296,90 @@ function renderKostenTabelle(){
   <p class="tabellen-hinweis">In diesen ${zeilen.length} Tagen sind <strong>${escapeHtml(euro(summe))}</strong> liegen geblieben — gerechnet mit ${escapeHtml(euroCent(wert))} je Call.</p>`;
 }
 
+/* ---------- Calls je Person ----------
+   Calls sind eine Personen-Zahl, Termine und Auftraege eine Team-Zahl. "Kalt/
+   Warm -> Termin" und "-> Close" teilen sie deshalb nicht auf, sondern zeigen,
+   wie oft sie auf einen erreichten Anruf dieser Person folgten. */
+
+function anrufZeitraum(){
+  const wahl = document.getElementById("anrufZeitraum").value;
+  const bis = todayIso();
+  if(wahl === "woche"){
+    const wi = findCurrentWeekIndex();
+    return { von: wi >= 0 ? WEEKS[wi][0] : bis, bis };
+  }
+  if(wahl === "alles") return { von: WEEKS[0][0], bis };
+  return { von: tagPlus(bis, -27), bis };
+}
+
+function quote(teil, ganz){
+  return ganz ? `<span class="quote">${num(teil / ganz * 100, 0)}\u00a0%</span>` : "";
+}
+
+function renderAnrufStand(){
+  const el = document.getElementById("anrufStand");
+  const st = state.syncStatus.anrufe;
+  el.classList.remove("is-warn");
+  if(!state.salesCallsOk){
+    el.textContent = Object.keys(state.syncStatus).length
+      ? "Der Abgleich auf Railway hat noch keine Anrufe geliefert."
+      : "Noch die alte Zählung aus Close-Tasks — sql/011 ausführen.";
+    el.classList.add("is-warn");
+    return;
+  }
+  if(st && !st.ok){
+    el.textContent = "Letzter Abgleich fehlgeschlagen: " + (st.detail || "unbekannt");
+    el.classList.add("is-warn");
+    return;
+  }
+  const zuletzt = st ? new Date(st.updated_at) : null;
+  const alt = !zuletzt || Date.now() - zuletzt.getTime() > 2 * 3600000;
+  el.textContent = "Anrufe aus Close, Person aus der Leitung" +
+    (zuletzt ? " · Abgleich " + vorWieLange(zuletzt) : "");
+  if(alt) el.classList.add("is-warn");
+}
+
+function renderPersonen(){
+  renderAnrufStand();
+  const el = document.getElementById("anrufPersonen");
+  if(!state.salesCallsOk){
+    el.innerHTML = emptyState("", "Sobald die Anrufe einzeln aus Close kommen, stehen hier Tim und Simon getrennt.", { inline:true });
+    return;
+  }
+  const { von, bis } = anrufZeitraum();
+  const zeilen = PERSONS.map(([k, l])=>[l, anrufKennzahlen(von, bis, k)]);
+  const ohne = anrufKennzahlen(von, bis, null);
+  if(ohne.anwahlen) zeilen.push(["ohne Leitung", ohne]);
+
+  el.innerHTML = `<div class="table-wrap"><table class="anruf-tabelle">
+    <thead><tr><th>Wer</th><th class="zahl">Anrufe</th><th class="zahl">Erreicht</th>
+      <th class="zahl">Kalte Leads</th><th class="zahl">→ Termin</th>
+      <th class="zahl">Warme Leads</th><th class="zahl">→ Termin</th>
+      <th class="zahl">→ Close</th></tr></thead>
+    <tbody>${zeilen.map(([l, k])=>`
+      <tr>
+        <td>${escapeHtml(l)}</td>
+        <td class="zahl">${num(k.anwahlen, 0)}</td>
+        <td class="zahl">${num(k.erreicht, 0)}${quote(k.erreicht, k.anwahlen)}</td>
+        <td class="zahl">${num(k.kaltLeads, 0)}</td>
+        <td class="zahl">${num(k.terminKalt, 0)}${quote(k.terminKalt, k.kaltLeads)}</td>
+        <td class="zahl">${num(k.warmLeads, 0)}</td>
+        <td class="zahl">${num(k.terminWarm, 0)}${quote(k.terminWarm, k.warmLeads)}</td>
+        <td class="zahl">${num(k.closes, 0)}${quote(k.closes, k.leads)}</td>
+      </tr>`).join("")}
+    </tbody>
+  </table></div>
+  <p class="tabellen-hinweis"><strong>Kalte/warme Leads</strong>: im Zeitraum erreicht, als sie auf Cold, Keine Interesse, Not Interested, Lost oder Bad Fit standen — bzw. auf Warm, Hot, Interested, Meeting, No Show oder Nurture.
+    <strong>→ Termin</strong>: davon bekamen so viele binnen 30 Tagen ein Erstgespräch. <strong>→ Close</strong>: von allen erreichten Leads gewannen so viele binnen 180 Tagen ihren ersten Auftrag.
+    Bei jungen Anrufen kommen Termine und Aufträge noch nach. Termine und Aufträge selbst bleiben Teamzahlen.
+    Nicht erreicht: Notiz beginnt mit „ne“, „falsche Nummer“ oder 0 Sekunden ohne Notiz.</p>`;
+}
+
 function renderCalls(){
   renderCockpit();
   renderKennzahlen();
   renderVerlauf();
+  renderPersonen();
   renderKostenTabelle();
 }
 
@@ -302,5 +388,6 @@ document.getElementById("tagPrev").addEventListener("click", ()=>tagWechsel(tagP
 document.getElementById("tagNext").addEventListener("click", ()=>tagWechsel(tagPlus(gewaehlterTag(), +1)));
 document.getElementById("tagHeuteBtn").addEventListener("click", ()=>tagWechsel(todayIso()));
 document.getElementById("clWertEdit").addEventListener("click", wertDialog);
+document.getElementById("anrufZeitraum").addEventListener("change", renderPersonen);
 
 onRender("calls", renderCalls);

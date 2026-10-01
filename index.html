@@ -151,12 +151,14 @@
         <div class="num" id="statTermineGebucht">0 <small>/ 167</small></div>
         <div class="bar-track"><div class="bar-fill ok" id="barTermineGebucht" style="width:0%"></div></div>
         <div class="pct" id="pctTermineGebucht">0% vom Gesamtziel</div>
+        <div class="pct" id="termineStand"></div>
       </div>
       <div class="stat">
         <div class="lbl">Termine (Show-up)</div>
         <div class="num" id="statTermineShowup">0 <small>/ 100</small></div>
         <div class="bar-track"><div class="bar-fill ok" id="barTermineShowup" style="width:0%"></div></div>
         <div class="pct" id="pctTermineShowup">0% vom Gesamtziel</div>
+        <div class="pct" id="showupHinweis"></div>
       </div>
       <div class="stat">
         <div class="lbl">Aufträge</div>
@@ -221,6 +223,18 @@
       </div>
       <div id="clChart"></div>
       <div class="save-msg" id="clMsg">Gespeichert ✓</div>
+    </div>
+
+    <div class="card">
+      <div class="board-head">
+        <h2>Calls je Person <small id="anrufStand">Anrufe aus Close, Person aus der Leitung</small></h2>
+        <select id="anrufZeitraum" aria-label="Zeitraum">
+          <option value="woche">Diese Woche</option>
+          <option value="28" selected>Letzte 4 Wochen</option>
+          <option value="alles">Seit 13.07.</option>
+        </select>
+      </div>
+      <div id="anrufPersonen"></div>
     </div>
 
     <div class="card">
@@ -583,14 +597,11 @@
     </div>
 
     <div class="card">
-      <h2>Team-Zahlen <small>Gebuchte Termine und Show-ups kommen automatisch aus Close. Hier nur Korrekturen — was du einträgst, zählt <strong>zusätzlich</strong>.</small></h2>
-      <div class="form-grid">
-        <div class="field"><label>Termine gebucht</label><input type="number" id="inTermineGebucht" min="0" step="1"></div>
-        <div class="field"><label>Termine (Show-up)</label><input type="number" id="inTermineShowup" min="0" step="1"></div>
-      </div>
-      
-      <button class="btn" id="saveTeamBtn" style="margin-top:1rem;">Tag speichern</button>
-      <div class="save-msg" id="saveTeamMsg">Gespeichert ✓</div>
+      <h2>Termine <small id="termineWoche"></small></h2>
+      <p class="dlg-hint">Kommen von selbst aus dem Close-Kalender. Als Termin zählt nur das Erstgespräch. Stimmt etwas nicht, hier umstellen — die Korrektur bleibt, auch wenn Close später etwas anderes meint.</p>
+      <div id="termineListe"></div>
+      <button type="button" class="btn-outline" id="terminNeuBtn">+ Termin ohne Einladung</button>
+      <div class="save-msg" id="termineMsg">Gespeichert ✓</div>
     </div>
 
     <div class="card">

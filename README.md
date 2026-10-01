@@ -53,7 +53,8 @@ js/
   ui/               modal, chart, bus, components
   utils/            format, weeks
   views/            dashboard, eingabe, aufgaben, projekte,
-                    hebel, verlauf, zeittracking, dokumente, angebote, auftraege
+                    hebel, verlauf, zeittracking, dokumente, angebote, auftraege,
+                    termine (Erstgespräche aus dem Close-Kalender)
 serve.py            lokaler Server: Dateien + /api/vertrag/* (nur lokal)
 time_tracker/       macOS-Popup, das die Zeiten erfasst (eigenes README)
 test/               Rauchtest und visueller Vergleich

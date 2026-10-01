@@ -51,3 +51,14 @@ export function barClass(pct){
 export function todayIso(){
   return localDateStr(new Date());
 }
+
+/* "vor 5 Min." — fuer den Stand der Abgleiche. Geschuetzte Leerzeichen: In
+   den schmalen Kennzahl-Karten brach "gerade eben" sonst um. */
+export function vorWieLange(d){
+  const min = Math.round((Date.now() - d.getTime()) / 60000);
+  if(min < 1) return "gerade\u00a0eben";
+  if(min < 60) return "vor\u00a0" + min + "\u00a0Min.";
+  const std = Math.round(min / 60);
+  if(std < 48) return "vor\u00a0" + std + "\u00a0Std.";
+  return "vor\u00a0" + Math.round(std / 24) + "\u00a0Tagen";
+}

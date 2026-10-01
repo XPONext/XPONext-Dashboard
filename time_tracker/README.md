@@ -83,31 +83,25 @@ Das war's. Der Tracker läuft sofort los und ab dann bei jeder Anmeldung.
 - **Feierabend** im Popup → Schluss für heute; am nächsten Morgen läuft er wieder
 - **Pause** im Popup → trackt eine Pause, der Loop läuft weiter
 
-## Calls, Termine und Show-ups — automatisch aus Close
+## Calls und Termine — kommen von selbst aus Close
 
-Neben dem Popup läuft ein zweiter Hintergrunddienst: `close_sync.py`. Er holt
-alle 30 Minuten die Tageszahlen aus Close und schreibt sie ins Dashboard —
-unabhängig davon, ob du am Rechner sitzt oder schon Feierabend gedrückt hast.
-Du musst dafür nichts eintragen.
+Auf deinem Mac läuft dafür **nichts**. Seit 01.10.2026 holt ein Abgleich auf
+dem Server (Railway) alle 30 Minuten die Anrufe und Termine aus Close und
+schreibt sie ins Dashboard — egal, ob dein Rechner an ist. Früher lief dafür
+`close_sync.py` auf dem Mac; `./install.sh` entfernt den alten Dienst, falls er
+noch da ist.
 
-| Zahl | Woher |
+Damit deine Zahlen stimmen, achte auf drei Dinge:
+
+| Was | Warum |
 |---|---|
-| **Calls** | heute abgehakte Tasks: „Follow up", „Rückruf"/„RR" = warm · „… Cold Email", „Re-Engagement" = kalt. „Konzept zusenden", „Meeting …" usw. zählen nicht |
-| **Vorgabe** | alle Call-Tasks, die heute oder früher fällig waren (offen + heute erledigt) |
-| **Termine gebucht** | heute angelegte Tasks, die mit „Meeting" beginnen — je Lead einmal |
-| **Show-ups** | heute fällige „Meeting …"-Tasks. Gilt als stattgefunden, außer der Lead steht auf **No Show** oder es gibt von heute eine Notiz mit „verschoben", „nicht aufgetaucht", „nicht erreicht", „abgesagt". Wird erst **ab 17 Uhr** bewertet |
+| **Aus Close anrufen, mit deiner Leitung** („Simon Business" bzw. „Tim Business") | Die Leitung entscheidet, wem der Anruf gehört. Ein Anruf vom Handy ohne Close fehlt — den trägst du im Dashboard unter „Calls nachtragen" nach. |
+| **Niemanden erreicht → Notiz beginnt mit „ne"** | Sonst zählt der Anruf als erreicht. „falsche Nummer" und 0 Sekunden ohne Notiz gelten auch als nicht erreicht. |
+| **Termine immer mit Kalendereinladung an die Mail-Adresse des Leads** | Close übernimmt Termine aus deinem Google-Kalender, aber nur, wenn ein Teilnehmer ein Kontakt in Close ist. Ohne Einladung: im Dashboard unter „+ Nachtragen" → „Termin ohne Einladung". |
 
-Damit das funktioniert, braucht jede Person ihren eigenen `CLOSE_API_KEY` in
-der `.env` (Close → Settings → Developer → API Keys).
-
-```bash
-python3 ~/.xpo-time-tracker/close_sync.py      # sofort abgleichen
-tail ~/.xpo-time-tracker/.tmp/close_sync.log   # was zuletzt gezählt wurde
-```
-
-Eine im Dashboard von Hand korrigierte Call-Zahl überschreibt der Abgleich
-nicht. Termine, die du zusätzlich im Nachtragen-Dialog einträgst, zählen
-**obendrauf** — also nur noch für Korrekturen nutzen.
+Den Status (Cold, Warm, Meeting …) setzt du nach dem Anruf wie gewohnt in
+Close. Daraus rechnet das Dashboard, ob ein Anruf kalt oder warm war und ob
+der Lead danach warm wurde.
 
 ## Wenn du länger weg warst
 

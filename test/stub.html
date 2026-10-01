@@ -43,6 +43,14 @@ function tagRelativ(n){
   const d = new Date(); d.setDate(d.getDate()+n);
   return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
 }
+// Ein Anruf aus Close (sales_calls, sql/011). Erreicht und warm, wenn nichts anderes gesagt.
+function anruf(id, tag, person, status_before, extra){
+  return Object.assign({ id, lead_id: "lead_" + id, person,
+    line_label: person === "simon" ? "Simon Business" : "Tim Business",
+    started_at: tag + "T09:00:00Z", duration: 90, reached: true, reached_reason: null,
+    status_before, updated_at: new Date().toISOString() }, extra || {});
+}
+
 const FAKE = {
   settings: [
     {key:"call_value_eur", value:3.35}, {key:"call_history_calls", value:1550},
@@ -57,6 +65,70 @@ const FAKE = {
   daily_meetings: [
     {date:tagRelativ(0), person:"tim",   booked:2, showup:1, noshow:1, source:"close"},
     {date:tagRelativ(0), person:"simon", booked:1, showup:1, noshow:0, source:"close"}
+  ],
+  // Termine aus dem Close-Kalender (sql/010). Sobald es sie gibt, zaehlen
+  // daily_meetings oben und die Termine in daily_team NICHT mehr mit — die
+  // stehen hier absichtlich weiter drin, damit der Test das beweist.
+  //
+  // Erwartung vor den Dialogen: 6 Erstgespraeche gebucht (Alpha, Beta,
+  // Epsilon, Zeta, Eta, Iota), 5 gefuehrt (Alpha im zweiten Anlauf, Beta ohne
+  // Spur, Zeta, Eta, Iota), Show-up-Rate 5 von 6 = 83 % — Alphas No-Show
+  // zaehlt als Ausfall, aber nicht als zweite Buchung.
+  sales_meetings: [
+    // Alpha: No-Show, neu gebucht und gefuehrt, danach Onboarding (Folgetermin)
+    {id:"cal_a1", lead_id:"lead_a", title:"Alpha x XPO", booked_at:"2026-08-10T07:00:00Z", starts_at:"2026-08-10T08:00:00Z", outcome:"no_show", outcome_reason:"Lead-Status auf No Show gesetzt", source:"close", updated_at:new Date().toISOString()},
+    {id:"cal_a2", lead_id:"lead_a", title:"Alpha x XPO", booked_at:"2026-08-10T12:00:00Z", starts_at:"2026-08-12T08:00:00Z", outcome:"stattgefunden", source:"close", updated_at:new Date().toISOString()},
+    {id:"cal_a3", lead_id:"lead_a", title:"Onboarding Alpha", booked_at:"2026-08-12T12:00:00Z", starts_at:"2026-08-20T08:00:00Z", outcome:"stattgefunden", source:"close", updated_at:new Date().toISOString()},
+    // Beta: Close fuehrt ihn als erledigt, hat aber keine Spur
+    {id:"cal_b1", lead_id:"lead_b", title:"Beta x XPO", booked_at:"2026-08-11T09:00:00Z", starts_at:"2026-08-14T08:00:00Z", outcome:"unklar", source:"close", updated_at:new Date().toISOString()},
+    // Gamma: von Hand als Folgetermin korrigiert
+    {id:"cal_c1", lead_id:"lead_c", title:"Gamma x XPO", booked_at:"2026-08-12T09:00:00Z", starts_at:"2026-08-13T08:00:00Z", outcome:"stattgefunden", kind_override:"folge", source:"close", updated_at:new Date().toISOString()},
+    // Delta: ist schon Kunde -> Kundentermin
+    {id:"cal_d1", lead_id:"lead_d", title:"Delta x XPO", booked_at:"2026-08-12T09:00:00Z", starts_at:"2026-08-15T08:00:00Z", outcome:"stattgefunden", client_since:"2026-08-01", source:"close", updated_at:new Date().toISOString()},
+    // Epsilon: heute gebucht, steht noch an
+    {id:"cal_e1", lead_id:"lead_e", title:"Epsilon x XPO", booked_at:new Date().toISOString(), starts_at:tagRelativ(5)+"T08:00:00Z", outcome:"geplant", source:"close", updated_at:new Date().toISOString()},
+    // Zeta: Telefontermin ohne Einladung, von Hand nachgetragen
+    {id:"hand_f1", lead_id:null, title:"Zeta Architekten", booked_at:"2026-08-12T10:00:00Z", starts_at:"2026-08-13T10:00:00Z", outcome:"stattgefunden", kind_override:"erst", source:"hand"},
+    // Eta: nach Tims kaltem Anruf gebucht
+    {id:"cal_h1", lead_id:"lead_h", title:"Eta x XPO", booked_at:"2026-08-10T12:00:00Z", starts_at:"2026-08-13T08:00:00Z", outcome:"stattgefunden", source:"close", updated_at:new Date().toISOString()},
+    // Iota: nach Simons warmem Anruf gebucht, Auftrag am 15.08. gewonnen
+    {id:"cal_i1", lead_id:"lead_i", title:"Iota x XPO", booked_at:"2026-08-11T12:00:00Z", starts_at:"2026-08-14T09:00:00Z", outcome:"stattgefunden", client_since:"2026-08-15", source:"close", updated_at:new Date().toISOString()}
+  ],
+  // Anrufe aus Close, je Person aus der Leitung. Sobald es sie gibt, zaehlen
+  // die daily_calls darunter nicht mehr mit (ausser von Hand nachgetragene) —
+  // die Erwartungen im Cockpit bleiben trotzdem dieselben:
+  //   heute 12 Anrufe (Tim 8, Simon 4), 8 warm + 4 kalt, Vorgabe 26
+  //   gestern 20 Anrufe bei Vorgabe 20, vorgestern 3 bei 18
+  // Calls je Person (letzte 4 Wochen):
+  //   Tim   21 Anrufe, 20 erreicht, 2 kalte Leads, 0 davon mit Termin
+  //   Simon 14 Anrufe, 14 erreicht, 1 warmer Lead mit Termin (Epsilon, heute gebucht)
+  // Seit 13.07. kommen die Augustanrufe auf Eta und Iota dazu:
+  //   Tim   kalte Leads -> Termin 1 von 3 (Eta)
+  //   Simon -> Close 1 (Iota, Auftrag am 15.08. gewonnen)
+  sales_calls: [
+    ...[1,2,3,4,5].map(i=>anruf("t" + i, tagRelativ(0), "tim", "Warm")),
+    anruf("t6", tagRelativ(0), "tim", "Cold"),
+    anruf("t7", tagRelativ(0), "tim", "Cold"),
+    anruf("t8", tagRelativ(0), "tim", "Cold", { reached: false, reached_reason: "Notiz „ne“", duration: 0 }),
+    ...[1,2,3].map(i=>anruf("s" + i, tagRelativ(0), "simon", "Warm")),
+    anruf("s4", tagRelativ(0), "simon", "Keine Interesse"),
+    ...[1,2,3,4,5,6,7,8,9,10].map(i=>anruf("y" + i, tagRelativ(-1), "tim", "Warm")),
+    anruf("z1", tagRelativ(-1), "simon", "Interested", { lead_id: "lead_e" }),
+    ...[2,3,4,5,6,7,8,9,10].map(i=>anruf("z" + i, tagRelativ(-1), "simon", "Warm")),
+    ...[1,2,3].map(i=>anruf("w" + i, tagRelativ(-2), "tim", "Warm")),
+    anruf("eta", "2026-08-10", "tim", "Cold", { lead_id: "lead_h", started_at: "2026-08-10T08:00:00Z" }),
+    anruf("iota", "2026-08-11", "simon", "Warm", { lead_id: "lead_i", started_at: "2026-08-11T08:00:00Z" })
+  ],
+  daily_call_targets: [
+    {date:tagRelativ(0),  target:26, target_overdue:5},
+    {date:tagRelativ(-1), target:20, target_overdue:0},
+    {date:tagRelativ(-2), target:18, target_overdue:2}
+  ],
+  sync_status: [
+    {key:"termine", ok:true, detail:"8 Termine", updated_at:new Date().toISOString()},
+    {key:"anrufe", ok:true, detail:"35 Anrufe", updated_at:new Date().toISOString()},
+    {key:"kalender_tim", ok:true, detail:null, updated_at:new Date().toISOString()},
+    {key:"kalender_simon", ok:true, detail:null, updated_at:new Date().toISOString()}
   ],
   daily_calls: [
     {date:tagRelativ(0),  person:"tim", calls:12, calls_warm:8, calls_cold:4, target:26, target_overdue:5, source:"popup"},
@@ -167,7 +239,7 @@ function result(table){
   }
 
   const chain = {
-    select: ()=>chain, order: ()=>chain, limit: ()=>chain, single: ()=>chain,
+    select: ()=>chain, order: ()=>chain, limit: ()=>chain, single: ()=>chain, range: ()=>chain,
     eq: (feld, wert)=>{ filter.push([feld, wert]); return chain; },
     insert: (row)=>{ aktion = "insert"; nutzlast = row; return chain; },
     upsert: (row)=>{ aktion = "upsert"; nutzlast = row; return chain; },
@@ -355,6 +427,8 @@ setTimeout(async ()=>{
       document.getElementById("clZiel").textContent.includes("26"));
     pruefeDialog("Warm und kalt werden genannt",
       /8 warm · 4 kalt/.test(document.getElementById("clHeuteSub").textContent));
+    pruefeDialog("Calls heute nach Person getrennt",
+      /Tim 8 · Simon 4/.test(document.getElementById("clHeuteSub").textContent));
     // 26 - 12 = 14 offen x 3,35 EUR = 46,90 EUR
     pruefeDialog("Opportunitaetskosten gerechnet",
       /46,90/.test(document.getElementById("clKosten").textContent));
@@ -507,6 +581,67 @@ setTimeout(async ()=>{
     pruefeDialog("CSV wird erzeugt", text.split("\n").length > 20);
     pruefeDialog("CSV nutzt Semikolon", text.split("\n")[0].split(";").length === 11);
     pruefeDialog("CSV nutzt Komma als Dezimaltrennzeichen", !/\d+\.\d/.test(text));
+
+    // ---- Calls je Person (Vertrieb) ----
+    document.querySelector('[data-view="vertrieb"]').click();
+    await new Promise(r=>setTimeout(r, 150));
+    const personZeile = name=>[...document.querySelectorAll("#anrufPersonen tbody tr")]
+      .map(tr=>[...tr.children].map(td=>td.textContent.replace(/\s+/g, " ").trim()))
+      .find(z=>z[0] === name) || [];
+    const tim = personZeile("Tim"), simon = personZeile("Simon");
+    pruefeDialog("Calls je Person: Tim 21 Anrufe, 20 erreicht", tim[1] === "21" && /^20/.test(tim[2] || ""));
+    pruefeDialog("Calls je Person: Tim 2 kalte Leads, kein Termin daraus",
+      tim[3] === "2" && /^0/.test(tim[4] || ""));
+    pruefeDialog("Calls je Person: Simon 1 warm -> Termin", simon[1] === "14" && /^1/.test(simon[6] || ""));
+    const zeitraum = document.getElementById("anrufZeitraum");
+    zeitraum.value = "alles";
+    zeitraum.dispatchEvent(new Event("change", { bubbles: true }));
+    await new Promise(r=>setTimeout(r, 80));
+    const timAlles = personZeile("Tim"), simonAlles = personZeile("Simon");
+    pruefeDialog("Seit 13.07.: Tim kalt -> Termin 1 von 3 (33 %)",
+      timAlles[3] === "3" && /^1\s*33\s*%/.test(timAlles[4] || ""));
+    pruefeDialog("Seit 13.07.: Simon -> Close 1", /^1/.test(simonAlles[7] || ""));
+    pruefeDialog("Stand des Anruf-Abgleichs wird genannt", /Abgleich\s(gerade\seben|vor)/.test(document.getElementById("anrufStand").textContent));
+
+    // ---- Termine aus dem Close-Kalender ----
+    const showupText = ()=>document.getElementById("showupHinweis").textContent;
+    const zahl = id=>document.getElementById(id).textContent.trim().split(/\s/)[0];
+    pruefeDialog("Termine: nur Erstgespraeche gebucht (6)", zahl("statTermineGebucht") === "6");
+    pruefeDialog("Termine: gefuehrt (5)", zahl("statTermineShowup") === "5");
+    pruefeDialog("Show-up-Rate 5 von 6", /83\s*%\s*\(5\s+von\s+6\)/.test(showupText()));
+    pruefeDialog("Abgleich-Stand wird genannt", /Abgleich\s(gerade\seben|vor)/.test(document.getElementById("termineStand").textContent));
+
+    // Termin ohne Spur bestaetigen: Beta war kein Gespraech
+    const unklarBtn = document.getElementById("unklarBtn");
+    pruefeDialog("Termin ohne Spur wird gemeldet", !!unklarBtn && /1 ohne Spur/.test(unklarBtn.textContent));
+    unklarBtn.click();
+    await new Promise(r=>setTimeout(r, 80));
+    const dlgU = document.querySelector("dialog.dlg[open]");
+    pruefeDialog("Bestaetigen-Dialog nennt den Termin", !!dlgU && /Beta x XPO/.test(dlgU.textContent));
+    dlgU.querySelector('[name="t0"]').value = "no_show";
+    dlgU.querySelector('[data-dlg="submit"]').click();
+    await new Promise(r=>setTimeout(r, 250));
+    pruefeDialog("Bestaetigung wirkt: 4 von 6", zahl("statTermineShowup") === "4" && /67\s*%/.test(showupText()));
+    pruefeDialog("Kein Termin mehr ohne Spur", !document.getElementById("unklarBtn"));
+
+    // Korrektur im Nachtragen-Dialog: Gamma doch als Erstgespraech zaehlen.
+    // Gamma ist von sich aus ein Erstgespraech — die Korrektur wird also
+    // zurueckgenommen statt ein zweites Mal gespeichert.
+    const tagFeld = document.getElementById("entryDate");
+    tagFeld.value = "2026-08-12";
+    tagFeld.dispatchEvent(new Event("change", { bubbles: true }));
+    await new Promise(r=>setTimeout(r, 80));
+    const zeilen = document.querySelectorAll("#termineListe .termin-zeile");
+    pruefeDialog("Wochenliste zeigt die Termine der Woche", zeilen.length === 8);
+    pruefeDialog("Nachgetragener Termin ist loeschbar", !!document.querySelector('[data-termin-weg="hand_f1"]'));
+    const gammaArt = document.querySelector('[data-termin-art="cal_c1"]');
+    pruefeDialog("Korrektur steht in der Liste", !!gammaArt && gammaArt.value === "folge");
+    gammaArt.value = "erst";
+    gammaArt.dispatchEvent(new Event("change", { bubbles: true }));
+    await new Promise(r=>setTimeout(r, 250));
+    pruefeDialog("Korrektur zaehlt sofort: 7 gebucht", zahl("statTermineGebucht") === "7");
+    pruefeDialog("Korrektur zurueckgenommen statt gespeichert",
+      FAKE.sales_meetings.find(t=>t.id === "cal_c1").kind_override === null);
   }catch(e){
     window.__dialogChecks.push("Dialogpruefung abgebrochen: " + (e && e.message));
   }

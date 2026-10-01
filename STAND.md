@@ -27,6 +27,24 @@ im Dashboard, das Popup zieht sie automatisch.
 
 ## Offen
 
+**Termine und Anrufe aus Close (seit 01.10.2026) — in dieser Reihenfolge:**
+
+1. **`sql/010_termine_aus_kalender.sql` und `sql/011_anrufe_aus_close.sql`** im
+   Supabase-SQL-Editor ausführen. Legen nur Tabellen an, löschen nichts.
+2. **In Railway am Service `XPO_Agentic_Workflow`** (nicht `web`) drei Variablen
+   eintragen: `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `APP_SECRET`. Werte und Gründe im
+   README von `tools/vertrieb_sync/` im Workflow-Repo.
+3. **Beide Repos pushen** — Workflow-Repo zuerst. Der erste Cron-Lauf holt alles ab
+   13.07. und dauert rund 8 Minuten; danach stellt das Dashboard von selbst um.
+4. **Prüfen:** Unter „Termine gebucht" und bei „Calls je Person" steht „Abgleich
+   vor … Min.", nichts ist orange.
+5. **Erst dann auf Tims Mac `./time_tracker/install.sh` erneut ausführen.** Es
+   entfernt den alten Close-Abgleich (LaunchAgent `com.xpo.closesync`). Bei Simon
+   schadet es nicht, es findet dort nur nichts zum Entfernen.
+6. **Einmal durchklicken:** „ohne Spur – bestätigen" unter der Show-up-Kennzahl
+   (seit Juli 8 Erstgespräche ohne Aufnahme oder Telefonat) und im
+   Nachtragen-Dialog „Sebastian x XPO" (10.09.) auf Folgetermin stellen.
+
 0. **`sql/002_projekte.sql` ausführen** — drei zusätzliche Spalten für
    Fristen an Schritten, Aufgaben-Verknüpfung und Kundenbezug. Legt nur an,
    löscht nichts.
@@ -103,10 +121,39 @@ Ads vs. GEO), Stundenbudget je Auftrag (Betrag ÷ Ziel-Stundensatz, Warnung ab
 verpasstes Popup nicht erfasst hat: Termine, Lead-Gen-Stunden, Hebel, Calls.
 
 **Was automatisch kommt:** Zeit je Kunde, Hebel-Stunden und Lead-Gen-Stunden
-(Zeit auf „Neukunden") aus dem Zeittracker-Popup. Calls, Tagesvorgabe,
-gebuchte Termine und Show-ups aus Close — über `time_tracker/close_sync.py`,
-alle 30 Minuten als eigener LaunchAgent (braucht `sql/008` und `install.sh`).
-Von Hand bleibt nichts mehr außer Korrekturen.
+(Zeit auf „Neukunden") aus dem Zeittracker-Popup. Calls, Tagesvorgabe und
+Termine aus Close über den Abgleich auf Railway (siehe unten). Von Hand bleibt
+nichts mehr außer Korrekturen.
+
+**Calls seit 01.10.2026 einzeln aus Close** (`sql/011`, `tools/vertrieb_sync/anrufe.py`).
+Die Person kommt aus der Leitung („Tim Business"/„Simon Business") — Simon hat
+keinen eigenen Close-Nutzer, ruft aber mit seiner Leitung über Close an. Vorher
+zählte `time_tracker/close_sync.py` abgehakte Tasks und schrieb alles Tim zu
+(28.09.: 49 bei Tim, tatsächlich 10 Tim und 37 Simon); das Skript ist entfernt.
+Kalt/warm nach dem Lead-Status vor dem Anruf; dazu je Person, wie viele der
+erreichten kalten bzw. warmen Leads binnen 30 Tagen ein Erstgespräch bekamen
+(Call-to-Termin) und binnen 180 Tagen einen Auftrag (Call-to-Close) —
+`anrufKennzahlen()` in `js/state.js`, die Karte „Calls je Person" im
+Vertrieb-Reiter. Gerechnet je Lead: Nach dem letzten Anruf vor der Buchung lag
+„kalt → Termin" fast immer bei 0, weil erst ein Folgeanruf den Termin legt. Die Tagesvorgabe ist eine Teamzahl
+(`daily_call_targets`), weil alle Tasks an Tims Close-Nutzer hängen.
+
+**Seit 01.10.2026 lädt das Dashboard `time_entries` seitenweise.** Supabase
+liefert je Abfrage höchstens 1000 Zeilen, ohne Fehlermeldung; die Tabelle hatte
+an dem Tag 1014, die neuesten fehlten. Neue große Tabellen über `alleZeilen()`
+in `js/data.js` laden.
+
+**Termine seit 01.10.2026 aus dem Close-Kalender** (`sql/010`, Abgleich im
+Workflow-Repo unter `tools/vertrieb_sync/`, läuft auf Railway). Als Termin zählt
+nur das Erstgespräch, je Lead einmal am Tag der ersten Buchung. Was ein
+Erstgespräch ist, rechnet `termineMitArt()` in `js/state.js`; der Abgleich
+liefert nur Fakten und je Termin ein vorgeschlagenes Ergebnis. Korrigiert wird
+je Termin im Nachtragen-Dialog (`js/views/termine.js`), nicht mehr mit Zahlen
+pro Tag. Die alten Handeingaben (`daily_team`) und die Task-Zählung
+(`daily_meetings`) bleiben in der Datenbank, zählen aber nicht mehr mit.
+Vorher stand für 21.–30.09. „16 gebucht, 19 Show-ups" da — tatsächlich waren
+es 6 und 6. Plan für die nächsten Schritte (Calls, Quelle je Kanal,
+Kunden-Steckbrief): DECISIONS.md im Workflow-Repo, Eintrag vom 01.10.2026.
 
 ## Kurzbefehle
 

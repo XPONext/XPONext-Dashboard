@@ -41,7 +41,7 @@ a{color:inherit;}
 /* Textfelder gehoeren seit dem Angebots-Reiter dazu. Vorher waren sie nur in
    Dialogen gestaltet (.dlg-body textarea, gleiche Werte) und standen sonst
    klein und in Schreibmaschinenschrift da — ausgerechnet das Transkript. */
-select, input[type=number], input[type=date], input[type=text], textarea{
+select, input[type=number], input[type=date], input[type=time], input[type=text], textarea{
   font-family:var(--font);
   border:1.5px solid var(--border);
   border-radius:var(--r-sm);

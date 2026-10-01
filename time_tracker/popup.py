@@ -12,9 +12,10 @@ zwischen den Dialogen), damit es sich beim Durchklicken flüssig anfühlt:
   3. Was? — der State, ebenfalls live aus Supabase
   4. POST an Supabase
 
-Die Call- und Terminzahlen kommen NICHT mehr über ein Fenster: Das übernimmt
-close_sync.py im Hintergrund. Das frühere 18-Uhr-Fenster kam praktisch nie,
-weil der Tracker um 18 Uhr meist schon im Feierabend war.
+Die Call- und Terminzahlen kommen NICHT über ein Fenster: Das übernimmt seit
+01.10.2026 der Abgleich auf Railway (tools/vertrieb_sync/ im Workflow-Repo).
+Das frühere 18-Uhr-Fenster kam praktisch nie, weil der Tracker um 18 Uhr
+meist schon im Feierabend war.
 
 Beide Listen kommen aus der Datenbank, nicht aus diesem Skript. Kategorien
 ändern heißt deshalb: eine Zeile in Supabase ändern — kein erneutes install.sh

@@ -19,12 +19,12 @@ PLIST_DEST="$HOME/Library/LaunchAgents/$LABEL.plist"
 START_DELAY=60     # Sekunden nach dem Anmelden/Aufwachen, bevor das erste Popup kommt
 CHECK_INTERVAL=300 # wie oft geprüft wird, ob der Loop (noch) laufen soll
 
-# Zweiter Agent: Abgleich mit Close (Calls, Termine, Show-ups). Bewusst getrennt
-# vom Popup-Loop — er soll auch laufen, wenn Feierabend gedrückt wurde oder
-# niemand am Rechner sitzt.
+# Früher lief hier ein zweiter Agent: der Abgleich mit Close (close_sync.py).
+# Seit 01.10.2026 läuft er auf Railway (tools/vertrieb_sync/ im Workflow-Repo) —
+# unabhängig davon, ob ein Mac wach ist, und ohne doppelte Zählung, wenn ihn
+# beide installieren. Wer dieses Skript ausführt, räumt den alten Agenten ab.
 SYNC_LABEL="com.xpo.closesync"
 SYNC_PLIST="$HOME/Library/LaunchAgents/$SYNC_LABEL.plist"
-SYNC_INTERVAL=1800
 
 if [ ! -f "$DIR/.env" ]; then
   echo "Fehler: $DIR/.env fehlt. Erst .env.example kopieren und ausfüllen."
@@ -44,7 +44,7 @@ launchctl bootout "gui/$UID/$SYNC_LABEL" 2>/dev/null || launchctl unload "$SYNC_
 
 mkdir -p "$DEPLOY_DIR/.tmp" "$HOME/Library/LaunchAgents"
 cp "$DIR/popup.py" "$DEPLOY_DIR/popup.py"
-cp "$DIR/close_sync.py" "$DEPLOY_DIR/close_sync.py"
+rm -f "$SYNC_PLIST" "$DEPLOY_DIR/close_sync.py"
 cp "$DIR/.env" "$DEPLOY_DIR/.env"
 cp "$DIR/start_loop.sh" "$DEPLOY_DIR/start_loop.sh"
 cp "$DIR/stop_loop.sh" "$DEPLOY_DIR/stop_loop.sh"
@@ -91,40 +91,10 @@ PLIST
 
 launchctl bootstrap "gui/$UID" "$PLIST_DEST" 2>/dev/null || launchctl load "$PLIST_DEST"
 
-cat > "$SYNC_PLIST" <<PLIST
-<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<plist version="1.0">
-<dict>
-  <key>Label</key>
-  <string>$SYNC_LABEL</string>
-  <key>ProgramArguments</key>
-  <array>
-    <string>/usr/bin/python3</string>
-    <string>$DEPLOY_DIR/close_sync.py</string>
-  </array>
-  <key>RunAtLoad</key>
-  <true/>
-  <!-- Alle 30 Minuten. Trigger, die in den Ruhezustand fallen, holt launchd
-       nach dem Aufwachen nach — der Abgleich läuft also auch dann, wenn der
-       Rechner um 17 Uhr zu war. -->
-  <key>StartInterval</key>
-  <integer>$SYNC_INTERVAL</integer>
-  <key>StandardOutPath</key>
-  <string>$DEPLOY_DIR/.tmp/close_sync.log</string>
-  <key>StandardErrorPath</key>
-  <string>$DEPLOY_DIR/.tmp/close_sync_error.log</string>
-</dict>
-</plist>
-PLIST
-
-launchctl bootstrap "gui/$UID" "$SYNC_PLIST" 2>/dev/null || launchctl load "$SYNC_PLIST"
-
 echo "Installiert nach $DEPLOY_DIR."
 echo "Der Zeittracker läuft ab jetzt automatisch beim Anmelden (erstes Popup nach $START_DELAY Sek.)"
 echo "und kommt nach dem Aufklappen des Laptops von selbst zurück (Prüfung alle $((CHECK_INTERVAL / 60)) Min)."
 echo "Stoppen für heute: im Popup auf 'Feierabend' — am nächsten Morgen läuft er wieder."
 echo "Zum Testen sofort: python3 $DEPLOY_DIR/popup.py"
-echo "Close-Abgleich (Calls, Termine, Show-ups): alle $((SYNC_INTERVAL / 60)) Min im Hintergrund."
-echo "  sofort ausführen: python3 $DEPLOY_DIR/close_sync.py"
-echo "  Protokoll:        tail $DEPLOY_DIR/.tmp/close_sync.log"
+echo "Calls und Termine aus Close kommen seit 01.10.2026 vom Abgleich auf Railway —"
+echo "auf diesem Mac läuft dafür nichts mehr (ein alter Close-Abgleich wurde entfernt)."

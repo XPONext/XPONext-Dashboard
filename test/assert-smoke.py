@@ -5,7 +5,8 @@ Die erwarteten Werte ergeben sich aus den Testdaten in test/stub.html:
 
   Umsatz    2500 + 1800                        = 4.300 EUR
   Closes    zwei Eintraege im closes-Array     = 2
-  Termine   5 + 2                              = 7
+  Termine   aus sales_meetings, nach den Dialogen: 7 gebucht, 5 gefuehrt
+            (die Handeingaben in daily_team zaehlen nicht mehr mit)
   Wochen    nur KW 5 zaehlt; der Eintrag vom
             05.01.2025 liegt ausserhalb von
             WEEKS und faellt bewusst heraus    = 1
@@ -54,7 +55,7 @@ if banner is None:
     sys.exit(1)
 # Der Dialogteil muss wirklich gelaufen sein — sonst prueft der Test die
 # Popups gar nicht und meldet trotzdem "bestanden".
-ERWARTETE_DIALOGPRUEFUNGEN = 88   # +3 am 28.09.2026: Monatsprojekt, Engpass, Umsatzbalken im Kopf
+ERWARTETE_DIALOGPRUEFUNGEN = 108  # +13 am 01.10.2026: Termine aus dem Close-Kalender, +7 Calls je Person
 
 if not banner.startswith("SMOKE: OK"):
     m = re.search(r'id="smokeResult"[^>]*>(.*?)</div>', dom, re.S)
@@ -76,10 +77,16 @@ if int(m.group(1)) != ERWARTETE_DIALOGPRUEFUNGEN:
 # aus der Summe der Closes in der Wochen-Eingabe: 3.000 Retainer + 800 einmalig.
 check("Umsatz gesamt", text_of("dashUmsatzIst"), "€3.800")
 check("Closes", text_of("statCloses"), "2")
-# 7 von Hand (daily_team) + 3 aus dem Close-Abgleich (daily_meetings: 2 Tim, 1 Simon)
-check("Termine gebucht", text_of("statTermineGebucht"), "10")
-# 5 von Hand + 2 Show-ups aus Close; der No-Show zaehlt nicht mit
-check("Termine Show-up", text_of("statTermineShowup"), "7")
+# Termine kommen nur noch aus dem Close-Kalender (sales_meetings). Die
+# Handeingaben (daily_team: 7) und die Task-Zaehlung (daily_meetings: 3)
+# stehen weiter in den Testdaten und duerfen NICHT mitzaehlen.
+# Stand nach den Dialogen: 6 Erstgespraeche + Gamma, das per Korrektur zum
+# Erstgespraech wurde = 7 gebucht. Gefuehrt: Alpha, Zeta, Eta, Iota, Gamma = 5
+# — Beta wurde im Dialog als No-Show bestaetigt. Show-up-Rate 5 von 7.
+check("Termine gebucht", text_of("statTermineGebucht"), "7")
+check("Termine Show-up", text_of("statTermineShowup"), "5")
+if not re.search(r'id="showupHinweis"[^>]*><div>Show-up-Rate <strong>71(&nbsp;|\u00a0)%</strong> \(5(&nbsp;|\u00a0)von(&nbsp;|\u00a0)7\)', dom):
+    failures.append("Show-up-Rate: erwartet 71 % (5 von 7)")
 # 2: die Testwoche aus daily_personal plus die laufende Woche, in der die
 # getrackten Hebel-Stunden aus dem Zeittracker liegen.
 check("Erfasste Wochen", text_of("streakWeeksLogged"), "2")

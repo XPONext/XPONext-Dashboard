@@ -28,7 +28,12 @@ laden ES-Module nicht mehr über `file://`). Browser-Konsole offen lassen:
 - [ ] Person umschalten (Tim/Simon) lädt andere Werte
 - [ ] Lead-Gen-Stunden eintragen und speichern → Bestätigung erscheint
 - [ ] Seite neu laden → gespeicherter Wert ist noch da
-- [ ] Termine/Show-up speichern funktioniert
+- [ ] Nachtragen → Termine: Liste zeigt die Termine der gewählten Woche, Datum wechseln zieht mit
+- [ ] Art eines Termins umstellen → „Termine gebucht" im Vertrieb ändert sich sofort
+- [ ] Ergebnis zurück auf den Vorschlag stellen → Zusatz „von Hand korrigiert" verschwindet
+- [ ] „+ Termin ohne Einladung" → Termin erscheint in der Liste, lässt sich wieder löschen
+- [ ] Vertrieb: unter „Termine gebucht" steht der letzte Close-Abgleich (nicht orange)
+- [ ] Vertrieb: „… ohne Spur – bestätigen" öffnet den Dialog, Auswahl ändert die Show-up-Rate
 - [ ] Close hinzufügen (mit Auftragswert) → erscheint in der Liste
 - [ ] Close löschen funktioniert
 - [ ] Wochenprojekt setzen (Überschrift + Beschreibung) → Banner zeigt beides

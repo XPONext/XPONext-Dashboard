@@ -1,4 +1,4 @@
-/* Ansicht: Wochen-Eingabe — Termine, Lead-Gen-Stunden, Wochenprojekt, Commitments.
+/* Ansicht: Wochen-Eingabe — Lead-Gen-Stunden, Wochenprojekt, Commitments.
 
    Umsatz und Auftraege stehen hier bewusst NICHT mehr: Sie kommen aus den
    Kundeneintraegen im Reiter "Kunden". Zwei Eingabeorte fuer dieselbe Zahl
@@ -9,7 +9,7 @@ import { num, euro, weekLabel, barClass, escapeHtml, todayIso } from "../utils/f
 import { weekIndexForDate, findCurrentWeekIndex } from "../utils/weeks.js";
 import { db } from "../supabase.js";
 import { state, combinedEntry, buildWeeklyAggregates, gewaehlterTag } from "../state.js";
-import { upsertDailyPersonal, upsertDailyTeam, fetchAllData } from "../data.js";
+import { upsertDailyPersonal, fetchAllData } from "../data.js";
 import { openModal, confirmDialog } from "../ui/modal.js";
 import { onRender, renderAll, showErrorBanner, speichern } from "../ui/bus.js";
 import { personBadge, pruefe, PERSON_OPTIONS } from "../ui/components.js";
@@ -43,10 +43,8 @@ function loadDayIntoForm(){
   const person = document.getElementById("personSelect").value;
   const dp = (state.dailyPersonal[date] && state.dailyPersonal[date][person]) || {leadGenHours:0};
   document.getElementById("inLeadGen").value = dp.leadGenHours || 0;
-
-  const dt = state.dailyTeam[date] || {termineGebucht:0, termineShowup:0};
-  document.getElementById("inTermineGebucht").value = dt.termineGebucht || 0;
-  document.getElementById("inTermineShowup").value = dt.termineShowup || 0;
+  // Termine stehen hier nicht mehr als Zahlenfelder: Sie kommen aus dem
+  // Close-Kalender und werden je Termin korrigiert (views/termine.js).
 
   const wi = weekIndexForDate(date);
   document.getElementById("entryWeekInfo").textContent = wi>=0 ? ("gehört zu "+weekLabel(wi)) : "";
@@ -181,17 +179,6 @@ document.getElementById("saveWeekBtn").addEventListener("click", async ()=>{
   }, "saveMsg", fetchAllData);
 });
 
-document.getElementById("saveTeamBtn").addEventListener("click", async ()=>{
-  const date = document.getElementById("entryDate").value;
-  state.dailyTeam[date] = {
-    termineGebucht: Number(document.getElementById("inTermineGebucht").value)||0,
-    termineShowup: Number(document.getElementById("inTermineShowup").value)||0,
-  };
-  await speichern(async ()=>{
-    await upsertDailyTeam(date);
-    buildWeeklyAggregates();
-  }, "saveTeamMsg", fetchAllData);
-});
 /* ---------- Wochen-Navigation auf "Heute" ---------- */
 document.getElementById("fokusPrevWeek").addEventListener("click", ()=>fokusWechsel(-1));
 document.getElementById("fokusNextWeek").addEventListener("click", ()=>fokusWechsel(+1));
