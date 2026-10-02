@@ -29,16 +29,18 @@ im Dashboard, das Popup zieht sie automatisch.
 
 **Finanzen läuft (seit 02.10.2026).** Ausgaben aus den Rechnungs-Mails (Railway,
 `tools/finanzen/` im Workflow-Repo, stündlich, API-Kosten stehen im Status),
-seit Juni komplett: 63 Rechnungen, 1.424 € netto. Tool-Stack in `fixed_costs`
-(rund 316 € netto im Monat) — ohne Rechnung „erwartet" bis zum üblichen
-Abrechnungstag, danach „Rechnung fehlt". Rechnung in `state.js` → `finanzen`:
+seit Juni komplett. Es zählen nur Rechnungen, die da sind — keine Schätzung
+für noch nicht abgerechnete Tools (Tim, 02.10.2026). Die Tabelle `fixed_costs`
+(Tool-Stack, rund 315 € netto im Monat) bleibt stehen, das Dashboard liest sie
+nicht mehr. Rechnung in `state.js` → `finanzen`:
 USt ab dem ersten Euro (regelbesteuert, Rechnungen mit 19 %), Steuer-Rücklage
 30 % erst auf den Jahresgewinn über 24.500 € (Gewerbesteuer-Freibetrag; Tim und
 Simon haben sonst kein Einkommen), Puffer von 3 Monatsausgaben aus den ersten
 Gewinnen. Stellschrauben in `settings`: `steuer_ruecklage_prozent`,
 `steuerfrei_gewinn_jahr`, `puffer_monatsausgaben`, `auszahlung_anteil_tim`.
-Offen: im STRATO-Login info@xponext.de für den Rechnungsversand eintragen,
-dann kommen auch deren Belege als PDF.
+STRATO und Google Workspace schicken die Rechnungen seit 02.10. per Mail.
+Google Workspace Juli–September fehlt noch — aus admin.google.com
+herunterladen und an info@ schicken, dann liest der Abgleich sie ein.
 
 **Termine, Anrufe, Kanäle, Kampagnen** laufen über Railway (`sql/010`–`014`
 ausgeführt, alter Close-Abgleich auf dem Mac entfernt). Noch offen:

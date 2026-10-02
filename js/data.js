@@ -29,7 +29,7 @@ export async function fetchAllData(){
   const [personalRes, teamRes, timeRes, tasksRes, goalsRes, commitRes, projRes, stepRes,
          custRes, revMonRes, revRes, callsRes, setRes, leistRes, meetRes,
          monthRes, salesRes, anrufRes, vorgabeRes, syncRes, leadRes, instRes,
-         ausgabenRes, fixRes] = await Promise.all([
+         ausgabenRes] = await Promise.all([
     db.from("daily_personal").select("*"),
     db.from("daily_team").select("*"),
     alleZeilen("time_entries", "id"),
@@ -52,8 +52,7 @@ export async function fetchAllData(){
     db.from("sync_status").select("*"),
     db.from("sales_leads").select("*"),
     alleZeilen("instantly_daily", ["date", "campaign_id"]),
-    alleZeilen("expenses", "id"),
-    db.from("fixed_costs").select("*")
+    alleZeilen("expenses", "id")
   ]);
   if(projRes.error){ console.error(projRes.error); state.projects = []; }
   else{ state.projects = projRes.data; }
@@ -120,10 +119,9 @@ export async function fetchAllData(){
   state.salesLeadsTabelleDa = !leadRes.error;
   // Cold Emails je Kampagne und Tag aus Instantly (sql/013)
   state.instantlyDaily = instRes.error ? [] : instRes.data;
-  // Finanzen (sql/014): Ausgaben aus den Rechnungs-Mails und feste Kosten
+  // Finanzen (sql/014): Ausgaben aus den Rechnungs-Mails
   state.finanzenTabelleDa = !ausgabenRes.error;
   state.expenses = ausgabenRes.error ? [] : ausgabenRes.data;
-  state.fixedCosts = fixRes.error ? [] : fixRes.data;
   if(setRes.error){ console.error(setRes.error); state.settings = {}; }
   else{
     state.settings = {};

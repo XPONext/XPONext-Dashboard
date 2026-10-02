@@ -34,7 +34,6 @@ export const state = {
   salesLeadsTabelleDa: false,
   instantlyDaily: [], // Cold Emails je Kampagne und Tag ("instantly_daily", sql/013)
   expenses:      [], // Ausgaben aus Rechnungs-Mails und von Hand ("expenses", sql/014)
-  fixedCosts:    [], // Feste Kosten aus dem Tool-Stack ("fixed_costs", sql/014)
   finanzenTabelleDa: false,
   calls:         [], // Calls je Tag und Person aus "daily_calls"
   settings:      {}, // Stellschrauben aus "settings", key -> Zahl
@@ -925,9 +924,11 @@ export function gewaehlterTag(){
 
    Einnahmen aus den Auftraegen im Kunden-Reiter (revenue_months, netto),
    Ausgaben aus den Rechnungs-Mails (expenses) — das Geschaeftskonto ist
-   bewusst nicht angebunden (Tim, 01.10.2026). Kam fuer ein Tool aus dem
-   Tool-Stack (fixed_costs) im Monat keine Rechnung, zaehlt sein Betrag als
-   erwartete Ausgabe, damit der Monat vollstaendig ist.
+   bewusst nicht angebunden (Tim, 01.10.2026). Es zaehlen nur Rechnungen, die
+   da sind — keine Schaetzung fuer noch nicht abgerechnete Tools (Tim,
+   02.10.2026: „Es geht darum, was wir jetzt schon fuer Rechnungen bekommen
+   haben. Alle weiteren werden eingefuegt, wenn die kommen."). Die Tabelle
+   fixed_costs aus sql/014 bleibt stehen, wird aber nicht mehr gelesen.
 
    Gerechnet wird je Monat, in Euro, netto:
      Gewinn          = Einnahmen - Ausgaben
@@ -978,40 +979,6 @@ export function zaehlendeAusgaben(von, bis){
 }
 
 /* Tag im Monat, an dem der Anbieter zuletzt abgerechnet hat — oder null. */
-function abrechnungsTag(such){
-  const letzte = state.expenses
-    .filter(e=>(e.status === "ok" || e.status === "pruefen") && e.rechnungsdatum &&
-               String(e.lieferant || "").toLowerCase().includes(such))
-    .map(e=>e.rechnungsdatum).sort().pop();
-  return letzte ? Number(letzte.slice(8, 10)) : null;
-}
-
-/* Feste Kosten, fuer die im Monat keine Rechnung kam — als erwartete Ausgabe.
-   „fehlt" erst, wenn der uebliche Abrechnungstag (plus 3 Tage) vorbei ist; davor
-   und in kommenden Monaten „erwartet". Tim, 02.10.2026: Am 2. stand Instantly
-   als „Rechnung fehlt" da, obwohl Instantly erst am 29. abbucht. */
-function fehlendeFixkosten(monatsStartStr){
-  const ende = letzterTagDesMonats(monatsStartStr);
-  const imMonat = zaehlendeAusgaben(monatsStartStr, ende);
-  const heute = localDateStr(new Date());
-  const laufend = monatsStart(heute);
-  const suchwort = f=>String(f.suchwort || f.name).toLowerCase();
-  return state.fixedCosts.filter(f=>{
-    if(f.ab > ende || (f.bis && f.bis < monatsStartStr)) return false;
-    if(f.rhythmus === "jaehrlich" && f.ab.slice(5, 7) !== monatsStartStr.slice(5, 7)) return false;
-    return !imMonat.some(e=>String(e.lieferant || "").toLowerCase().includes(suchwort(f)));
-  }).map(f=>{
-    const tag = abrechnungsTag(suchwort(f));
-    const erwartet = monatsStartStr > laufend ||
-      (monatsStartStr === laufend && (tag === null || Number(heute.slice(8, 10)) <= tag + 3));
-    return {
-      name: f.name, kategorie: f.kategorie || "Software & Tools",
-      netto: f.ist_netto ? Number(f.betrag) : Number(f.betrag) / 1.19,
-      waehrung: f.waehrung, tag, status: erwartet ? "erwartet" : "fehlt"
-    };
-  });
-}
-
 function monateZwischen(von, bis){
   const raus = [];
   let m = monatsStart(von);
@@ -1026,29 +993,29 @@ function monateZwischen(von, bis){
 /* Kennzahlen je Monat und fuer den ganzen Zeitraum. */
 export function finanzen(von, bis){
   const e = finanzEinstellungen();
-  // Der Puffer baut sich ueber alle Monate seit dem ersten Umsatz, der ersten
-  // Ausgabe oder den ersten festen Kosten auf — darum ab dort rechnen, auch wenn
-  // nur ein Monat angezeigt wird.
+  // Puffer und Jahres-Ruecklage bauen sich ueber alle Monate seit dem ersten
+  // Umsatz oder der ersten Rechnung auf — darum ab dort rechnen, auch wenn nur
+  // ein Monat angezeigt wird.
   const erster = [
     ...state.revenueMonths.map(r=>r.month_start),
-    ...state.expenses.filter(x=>x.status === "ok" || x.status === "pruefen").map(ausgabeTag),
-    ...state.fixedCosts.map(f=>f.ab)
+    ...state.expenses.filter(x=>x.status === "ok" || x.status === "pruefen").map(ausgabeTag)
   ].filter(Boolean).map(monatsStart).sort()[0];
   const alle = monateZwischen(erster && erster < von ? erster : von, bis).map(m=>{
     const ende = letzterTagDesMonats(m);
     const einnahmen = state.revenueMonths.filter(r=>r.month_start === m)
       .reduce((s, r)=>s + (Number(r.amount) || 0), 0);
     const rechnungen = zaehlendeAusgaben(m, ende);
-    const fehlend = fehlendeFixkosten(m);
-    const ausgaben = rechnungen.reduce((s, x)=>s + ausgabeNetto(x), 0) + fehlend.reduce((s, f)=>s + f.netto, 0);
+    const ausgaben = rechnungen.reduce((s, x)=>s + ausgabeNetto(x), 0);
     const vorsteuer = rechnungen.filter(x=>!x.reverse_charge).reduce((s, x)=>s + (Number(x.ust_eur) || 0), 0);
     const gewinn = einnahmen - ausgaben;
     const ustZahllast = einnahmen * e.ust - vorsteuer;
     // Steuerruecklage, Puffer und Auszahlbares haengen an den Vormonaten — siehe unten.
     return { monat: m, einnahmen, ausgaben, vorsteuer, gewinn, ustZahllast, steuer: 0, auszahlbar: 0,
-             fehlend, pruefen: rechnungen.filter(x=>x.status === "pruefen").length };
+             rechnungen: rechnungen.length, pruefen: rechnungen.filter(x=>x.status === "pruefen").length };
   });
-  // Puffer: Ziel = 3 x Durchschnitt der Ausgaben der letzten (bis zu) 3 Monate.
+  // Puffer: Ziel = 3 x Durchschnitt der Ausgaben der (bis zu) 3 Monate davor —
+  // der laufende Monat hat erst einen Teil seiner Rechnungen und wuerde das
+  // Ziel druecken. Im ersten Monat zaehlt er selbst.
   // Aufgefuellt wird aus dem Gewinn nach Steuerruecklage, nie aus einem Verlust.
   let bestand = 0, jahr = null, gewinnJahr = 0;
   alle.forEach((m, i)=>{
@@ -1060,7 +1027,7 @@ export function finanzen(von, bis){
     m.gewinnJahr = gewinnJahr;
     m.steuer = Math.max(0, gewinnJahr - e.freibetrag) * e.ruecklage - vorher;
     m.auszahlbar = m.gewinn - m.steuer;
-    const letzte = alle.slice(Math.max(0, i - 2), i + 1);
+    const letzte = i ? alle.slice(Math.max(0, i - 3), i) : [m];
     m.pufferZiel = e.pufferMonate * letzte.reduce((s, x)=>s + x.ausgaben, 0) / letzte.length;
     m.puffer = Math.min(Math.max(0, m.pufferZiel - bestand), Math.max(0, m.auszahlbar));
     bestand += m.puffer;
@@ -1070,7 +1037,7 @@ export function finanzen(von, bis){
   const monate = alle.filter(m=>m.monat >= monatsStart(von));
   const summe = feld => monate.reduce((s, m)=>s + m[feld], 0);
   const gesamt = {};
-  ["einnahmen", "ausgaben", "vorsteuer", "gewinn", "ustZahllast", "steuer", "puffer", "auszahlbar", "pruefen"].forEach(f=>{ gesamt[f] = summe(f); });
+  ["einnahmen", "ausgaben", "vorsteuer", "gewinn", "ustZahllast", "steuer", "puffer", "auszahlbar", "rechnungen", "pruefen"].forEach(f=>{ gesamt[f] = summe(f); });
   const letzter = monate[monate.length - 1];
   gesamt.pufferZiel = letzter ? letzter.pufferZiel : 0;
   gesamt.pufferBestand = letzter ? letzter.pufferBestand : 0;
@@ -1081,12 +1048,12 @@ export function finanzen(von, bis){
   return { monate, gesamt, einstellungen: e };
 }
 
-/* Ausgaben je Lieferant im Zeitraum, mit den fehlenden festen Kosten. */
+/* Ausgaben je Lieferant im Zeitraum. */
 export function ausgabenNachLieferant(von, bis){
   const gruppen = new Map();
   const gruppe = (name, kategorie)=>{
     const k = String(name || "Unbekannt").trim();
-    if(!gruppen.has(k)) gruppen.set(k, { name: k, kategorie, netto: 0, rechnungen: 0, pruefen: 0, fehlt: 0, erwartet: 0, tag: null });
+    if(!gruppen.has(k)) gruppen.set(k, { name: k, kategorie, netto: 0, rechnungen: 0, pruefen: 0 });
     return gruppen.get(k);
   };
   zaehlendeAusgaben(von, bis).forEach(x=>{
@@ -1095,11 +1062,5 @@ export function ausgabenNachLieferant(von, bis){
     g.rechnungen++;
     if(x.status === "pruefen") g.pruefen++;
   });
-  monateZwischen(von, bis).forEach(m=>fehlendeFixkosten(m).forEach(f=>{
-    const g = gruppe(f.name, f.kategorie);
-    g.netto += f.netto;
-    g[f.status]++;
-    g.tag = f.tag;
-  }));
   return [...gruppen.values()].sort((a, b)=>b.netto - a.netto);
 }

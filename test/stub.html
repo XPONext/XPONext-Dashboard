@@ -147,21 +147,18 @@ const FAKE = {
     {date:tagRelativ(-1), campaign_id:"camp1", campaign_name:"Architekten_Test_Kampagne", sent:50, replies:1, replies_auto:0, opportunities:0}
   ],
   // Finanzen (sql/014), laufender Monat: Einnahmen 3.800 (Protours + Chuong).
-  // Ausgaben netto: Close 50,80 (USA, Reverse Charge) + Telekom 100 + unsichere
-  // Rechnung 10 + Instantly 97 (Tool-Stack, keine Rechnung -> geschaetzt)
-  // = 257,80. Vorsteuer 19 + 1,90 = 20,90. Gewinn 3.542,20.
-  // USt ans Finanzamt 722 - 20,90 = 701,10; Ruecklage 30 % = 1.062,66;
-  // zuruecklegen 1.763,76; auszahlbar 2.479,54, je Person 1.239,77.
+  // Ausgaben netto, nur Rechnungen: Close 50,80 (USA, Reverse Charge) +
+  // Telekom 100 + unsichere Rechnung 10 = 160,80. Vorsteuer 19 + 1,90 = 20,90.
+  // Gewinn 3.639,20 (Marge 96 %). USt ans Finanzamt 722 - 20,90 = 701,10.
+  // Ruecklage 30 % ueber dem Test-Freibetrag 2.000 = 491,76. Puffer im ersten
+  // Monat 3 x 160,80 = 482,40. Zuruecklegen 1.675,26; auszahlbar 2.665,04,
+  // je Person 1.332,52.
   expenses: [
     {id:"gmail_e1", lieferant:"Close", rechnungsdatum:M+"-03", netto_eur:50.80, ust_eur:0, brutto_eur:50.80, reverse_charge:true, kategorie:"Software & Tools", status:"ok"},
     {id:"gmail_e2", lieferant:"Telekom", rechnungsdatum:M+"-05", netto_eur:100, ust_eur:19, brutto_eur:119, reverse_charge:false, kategorie:"Büro & Kommunikation", status:"ok"},
     {id:"gmail_e3", lieferant:null, rechnungsdatum:null, status:"verworfen", grund:"Newsletter"},
     {id:"gmail_e4", lieferant:"Unbekannt GmbH", rechnungsdatum:M+"-07", netto_eur:10, ust_eur:1.90, brutto_eur:11.90, reverse_charge:false,
      kategorie:"Sonstiges", status:"pruefen", grund:"beim Auslesen unsicher", absender:"rechnung@unbekannt.de", betreff:"Ihre Rechnung"}
-  ],
-  fixed_costs: [
-    {id:"f1", name:"Instantly", suchwort:"instantly", betrag:97, ist_netto:true, waehrung:"EUR", rhythmus:"monatlich", ab:"2026-07-01", bis:null, kategorie:"Werbung"},
-    {id:"f2", name:"Close", suchwort:"close", betrag:59, ist_netto:true, waehrung:"EUR", rhythmus:"monatlich", ab:"2026-06-01", bis:null, kategorie:"Software & Tools"}
   ],
   daily_call_targets: [
     {date:tagRelativ(0),  target:26, target_overdue:5},
@@ -715,21 +712,17 @@ setTimeout(async ()=>{
     document.querySelector('[data-view="finanzen"]').click();
     await new Promise(r=>setTimeout(r, 150));
     const fi = id=>document.getElementById(id).textContent.trim();
-    // Close (ab Juni) und Instantly (ab Juli) ohne Rechnung zaehlen in den Vormonaten
-    // als geschaetzte Ausgaben: Jun -59, Jul-Sep je -156, dieser Monat +3.542,20 —
-    // Jahresgewinn 3.015,20. Ruecklage 30 % ueber dem Freibetrag 2.000 = 304,56.
-    // Puffer: Ø der letzten 3 Monate (156, 156, 257,80) x 3 = 569,80.
-    // Auszahlbar 3.542,20 - 304,56 - 569,80 = 2.667,84, je Person 1.333,92.
-    pruefeDialog("Finanzen: Einnahmen 3.800, Ausgaben 258 (mit erwartetem Instantly)",
-      fi("fiEinnahmen") === "€3.800" && /4\.522 aufs Konto/.test(fi("fiEinnahmenFuss")) && fi("fiAusgaben") === "€258" && /1× erwartet/.test(fi("fiAusgabenFuss")));
-    pruefeDialog("Finanzen: Gewinn 3.542 gruen (Marge 93 %), je Person 1.334 nach Ruecklage und Puffer",
-      fi("fiGewinn") === "€3.542" && document.getElementById("fiGewinn").classList.contains("is-plus") &&
-      /Marge 93/.test(fi("fiGewinnFuss")) && fi("fiAuszahlbar") === "€1.334");
-    pruefeDialog("Finanzen: 1.575 zuruecklegen (USt 701 + Ruecklage 305 ueber Freibetrag + Puffer 570)",
-      /€1\.575/.test(fi("fiZuruecklegen")) && /€701/.test(fi("fiRechnung")) && /Jahresgewinn über €2\.000[^€]*€3\.015\)\s*€305/.test(fi("fiRechnung")) && /Puffer[^€]*€570/.test(fi("fiRechnung")));
-    pruefeDialog("Finanzen: verworfene Mail zaehlt nicht, Instantly im laufenden Monat 'erwartet'",
-      /Instantly\s*erwartet/.test(document.getElementById("fiLieferanten").textContent) &&
-      !/Newsletter/.test(document.getElementById("fiLieferanten").textContent));
+    pruefeDialog("Finanzen: Einnahmen 3.800, Ausgaben 161 aus 3 Rechnungen, nichts geschaetzt",
+      fi("fiEinnahmen") === "€3.800" && /4\.522 aufs Konto/.test(fi("fiEinnahmenFuss")) && fi("fiAusgaben") === "€161" &&
+      /3 Rechnungen · 1 zu prüfen/.test(fi("fiAusgabenFuss")));
+    pruefeDialog("Finanzen: Gewinn 3.639 gruen (Marge 96 %), je Person 1.333 nach Ruecklage und Puffer",
+      fi("fiGewinn") === "€3.639" && document.getElementById("fiGewinn").classList.contains("is-plus") &&
+      /Marge 96/.test(fi("fiGewinnFuss")) && fi("fiAuszahlbar") === "€1.333");
+    pruefeDialog("Finanzen: 1.675 zuruecklegen (USt 701 + Ruecklage 492 ueber Freibetrag + Puffer 482)",
+      /€1\.675/.test(fi("fiZuruecklegen")) && /€701/.test(fi("fiRechnung")) && /Jahresgewinn über €2\.000[^€]*€3\.639\)\s*€492/.test(fi("fiRechnung")) && /Puffer[^€]*€482/.test(fi("fiRechnung")));
+    pruefeDialog("Finanzen: verworfene Mail zaehlt nicht, keine Zeile ohne Rechnung",
+      !/Newsletter|erwartet|fehlt|geschätzt/.test(document.getElementById("fiLieferanten").textContent) &&
+      /Close/.test(document.getElementById("fiLieferanten").textContent));
     document.getElementById("fiPruefenBtn").click();
     await new Promise(r=>setTimeout(r, 80));
     const dlgF = document.querySelector("dialog.dlg[open]");
@@ -737,8 +730,8 @@ setTimeout(async ()=>{
     dlgF.querySelector('[name="netto_eur"]').value = "20";
     dlgF.querySelector('[data-dlg="submit"]').click();
     await new Promise(r=>setTimeout(r, 250));
-    pruefeDialog("Korrigierte Rechnung zaehlt sofort: Ausgaben 268, nicht mehr zu pruefen",
-      fi("fiAusgaben") === "€268" && FAKE.expenses.find(x=>x.id === "gmail_e4").status === "ok" &&
+    pruefeDialog("Korrigierte Rechnung zaehlt sofort: Ausgaben 171, nicht mehr zu pruefen",
+      fi("fiAusgaben") === "€171" && FAKE.expenses.find(x=>x.id === "gmail_e4").status === "ok" &&
       FAKE.expenses.find(x=>x.id === "gmail_e4").korrigiert === true);
   }catch(e){
     window.__dialogChecks.push("Dialogpruefung abgebrochen: " + (e && e.message));

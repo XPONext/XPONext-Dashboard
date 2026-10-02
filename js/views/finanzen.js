@@ -87,19 +87,14 @@ function renderFinanzen(){
   renderStand();
 
   const { monate, gesamt: g, einstellungen: e } = finanzen(z.von, z.bis);
-  const geschaetzt = monate.flatMap(m=>m.fehlend);
-  const fehlt = geschaetzt.filter(f=>f.status === "fehlt").length;
-  const erwartet = geschaetzt.length - fehlt;
-
   document.getElementById("fiEinnahmen").textContent = eur(g.einnahmen);
   // Die Auftraege sind netto gebucht; aufs Konto kommt der Betrag mit Umsatzsteuer.
   document.getElementById("fiEinnahmenFuss").textContent = g.einnahmen > 0
     ? `netto · mit ${num(e.ust * 100, 0)} % USt ${eur(g.einnahmen * (1 + e.ust))} aufs Konto`
     : "netto, aus den Aufträgen";
   document.getElementById("fiAusgaben").textContent = eur(g.ausgaben);
-  const offen = [erwartet ? `${erwartet}× erwartet` : "", fehlt ? `${fehlt}× Rechnung fehlt` : ""].filter(Boolean);
-  document.getElementById("fiAusgabenFuss").textContent = "netto" +
-    (offen.length ? ` · ${offen.join(", ")}, geschätzt` : "") +
+  document.getElementById("fiAusgabenFuss").textContent =
+    `netto · ${g.rechnungen} ${g.rechnungen === 1 ? "Rechnung" : "Rechnungen"}` +
     (g.pruefen ? ` · ${g.pruefen} zu prüfen` : "");
   const vorzeichen = n=>n >= 0 ? " is-plus" : " is-minus";
   const gewinnEl = document.getElementById("fiGewinn");
@@ -139,9 +134,9 @@ function renderFinanzen(){
         <thead><tr><th></th><th>Kategorie</th><th class="zahl">netto</th></tr></thead>
         <tbody>${lieferanten.map(l=>`
           <tr>
-            <th scope="row">${escapeHtml(l.name)}${l.fehlt ? `<span class="rate-basis is-minus">Rechnung fehlt</span>` : ""}${l.erwartet && !l.fehlt ? `<span class="rate-basis">erwartet${l.tag ? ` am ${l.tag}.` : ""}</span>` : ""}${l.pruefen ? `<span class="rate-basis is-warn">${l.pruefen} zu prüfen</span>` : ""}</th>
+            <th scope="row">${escapeHtml(l.name)}${l.pruefen ? `<span class="rate-basis is-warn">${l.pruefen} zu prüfen</span>` : ""}</th>
             <td>${escapeHtml(l.kategorie || "–")}</td>
-            <td class="zahl"><span class="rate">${eur(l.netto)}</span><span class="rate-basis">${l.rechnungen ? `${l.rechnungen} ${l.rechnungen === 1 ? "Rechnung" : "Rechnungen"}` : "geschätzt"}</span></td>
+            <td class="zahl"><span class="rate">${eur(l.netto)}</span><span class="rate-basis">${l.rechnungen} ${l.rechnungen === 1 ? "Rechnung" : "Rechnungen"}</span></td>
           </tr>`).join("")}
         </tbody></table></div>`
     : `<p class="leer-hinweis">${state.finanzenTabelleDa ? "Im Zeitraum noch keine Ausgaben." : "Sobald sql/014 ausgeführt ist und der Rechnungsabgleich läuft, stehen hier die Ausgaben."}</p>`;
@@ -157,7 +152,7 @@ function renderFinanzen(){
           <tr${m.monat === monatsStart(todayIso()) ? ' class="is-laufend"' : ""}>
             <th scope="row">${escapeHtml(monatsName(m.monat))}${m.monat === monatsStart(todayIso()) ? '<span class="rate-basis">läuft</span>' : ""}</th>
             <td class="zahl"><span class="rate">${eur(m.einnahmen)}</span></td>
-            <td class="zahl"><span class="rate">${eur(m.ausgaben)}</span>${m.fehlend.length ? `<span class="rate-basis">${m.fehlend.length}× geschätzt</span>` : ""}</td>
+            <td class="zahl"><span class="rate">${eur(m.ausgaben)}</span>${m.rechnungen ? `<span class="rate-basis">${m.rechnungen} ${m.rechnungen === 1 ? "Rechnung" : "Rechnungen"}</span>` : ""}</td>
             <td class="zahl"><span class="rate${vorzeichen(m.gewinn)}">${eur(m.gewinn)}</span>${m.einnahmen > 0 ? `<span class="rate-basis">Marge ${num(m.gewinn / m.einnahmen * 100, 0)} %</span>` : ""}</td>
             <td class="zahl"><span class="rate">${eur(Math.max(0, m.ustZahllast))}</span></td>
             <td class="zahl"><span class="rate">${eur(m.steuer)}</span></td>

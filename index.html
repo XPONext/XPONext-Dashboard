@@ -422,7 +422,7 @@
         <div class="karten-kopf">
           <div>
             <h3>Ausgaben nach Lieferant</h3>
-            <p>Netto im Zeitraum. Ohne Rechnung zählt der Betrag aus dem Tool-Stack: „erwartet", solange der Abrechnungstag noch kommt, danach „Rechnung fehlt".</p>
+            <p>Netto im Zeitraum — nur Rechnungen, die schon da sind. Neue kommen automatisch dazu, sobald sie per Mail eintreffen.</p>
           </div>
           <button type="button" class="btn-leise" id="fiPruefenBtn">Rechnungen prüfen</button>
         </div>
@@ -443,9 +443,10 @@
       <details class="erklaerung">
         <summary>Wie gerechnet wird</summary>
         <p><strong>Einnahmen</strong>: die Aufträge im Kunden-Reiter, netto, im Monat ihrer Leistung (Retainer monatlich).
-        <strong>Ausgaben</strong>: die Rechnungen aus euren Postfächern, netto, im Monat des Rechnungsdatums; Fremdwährung zum EZB-Kurs am Rechnungsdatum. Kam für ein Tool aus dem Tool-Stack keine Rechnung, zählt sein eingetragener Betrag.
+        <strong>Ausgaben</strong>: die Rechnungen aus euren Postfächern, netto, im Monat des Rechnungsdatums; Fremdwährung zum EZB-Kurs am Rechnungsdatum. Es zählen nur Rechnungen, die da sind — nichts wird vorausgeschätzt.
         <strong>Umsatzsteuer</strong>: Satz auf die Einnahmen minus Vorsteuer aus den Rechnungen mit deutscher Umsatzsteuer — bei Reverse Charge (ausländische Anbieter) heben sich beide Seiten auf.
-        <strong>Rücklage</strong> für Einkommen- und Gewerbesteuer: ein fester Anteil vom Gewinn, bis euer Steuerberater einen genauen Satz nennt. Das ist eine vorsichtige Schätzung, keine Steuerberechnung.</p>
+        <strong>Rücklage</strong> für Einkommen- und Gewerbesteuer: ein fester Anteil vom Jahresgewinn über dem Freibetrag (24.500 €), bis euer Steuerberater einen genauen Satz nennt — eine vorsichtige Näherung, keine Steuerberechnung.
+        <strong>Puffer</strong>: drei Monatsausgaben (Schnitt der Vormonate), aus den ersten Gewinnen aufgebaut; erst was darüber liegt, ist auszahlbar.</p>
       </details>
     </div>
   </div>
