@@ -29,7 +29,7 @@ export async function fetchAllData(){
   const [personalRes, teamRes, timeRes, tasksRes, goalsRes, commitRes, projRes, stepRes,
          custRes, revMonRes, revRes, callsRes, setRes, leistRes, meetRes,
          monthRes, salesRes, anrufRes, vorgabeRes, syncRes, leadRes, instRes,
-         ausgabenRes] = await Promise.all([
+         ticketRes, sprintRes, ausgabenRes] = await Promise.all([
     db.from("daily_personal").select("*"),
     db.from("daily_team").select("*"),
     alleZeilen("time_entries", "id"),
@@ -52,6 +52,8 @@ export async function fetchAllData(){
     db.from("sync_status").select("*"),
     db.from("sales_leads").select("*"),
     alleZeilen("instantly_daily", ["date", "campaign_id"]),
+    db.from("tickets").select("*").order("id", { ascending: true }),
+    db.from("sprints").select("*").order("nummer", { ascending: true }),
     alleZeilen("expenses", "id")
   ]);
   if(projRes.error){ console.error(projRes.error); state.projects = []; }
@@ -119,7 +121,12 @@ export async function fetchAllData(){
   state.salesLeadsTabelleDa = !leadRes.error;
   // Cold Emails je Kampagne und Tag aus Instantly (sql/013)
   state.instantlyDaily = instRes.error ? [] : instRes.data;
-  // Finanzen (sql/014): Ausgaben aus den Rechnungs-Mails
+  // Tickets und Sprints gibt es erst nach sql/014_tickets. Bis dahin erklaert
+  // der Reiter, was fehlt — "keine Tickets" saehe sonst aus wie ein leeres Board.
+  state.ticketTabelleDa = !ticketRes.error && !sprintRes.error;
+  state.tickets = ticketRes.error ? [] : ticketRes.data;
+  state.sprints = sprintRes.error ? [] : sprintRes.data;
+  // Finanzen (sql/014_finanzen): Ausgaben aus den Rechnungs-Mails
   state.finanzenTabelleDa = !ausgabenRes.error;
   state.expenses = ausgabenRes.error ? [] : ausgabenRes.data;
   if(setRes.error){ console.error(setRes.error); state.settings = {}; }
@@ -308,6 +315,61 @@ export async function einstellungSpeichern(key, wert){
     throw new Error("Einstellung konnte nicht gespeichert werden: " + error.message);
   }
   if(!data || !data.length) throw new Error("Die Datenbank hat die Änderung nicht übernommen — bitte die Seite neu laden.");
+  return data[0];
+}
+
+
+/* ---------- Tickets und Sprints (sql/014_tickets) ----------
+   Dieselben Zeilen liest und schreibt Claude ueber tools/tickets/ im
+   jeweiligen Repo — Feldnamen deshalb nur zusammen mit dem Tool aendern. */
+
+function sqlFehlt(error){
+  // Fehlt die Tabelle, meldet Supabase "schema cache" — damit weiss niemand,
+  // was zu tun ist.
+  return /schema cache|does not exist/i.test(error.message || "");
+}
+
+export async function ticketSpeichern(nutzlast, id){
+  const zeile = { ...nutzlast, updated_at: new Date().toISOString() };
+  const antwort = id
+    ? await db.from("tickets").update(zeile).eq("id", id).select()
+    : await db.from("tickets").insert(zeile).select();
+  if(antwort.error){
+    console.error(antwort.error);
+    if(sqlFehlt(antwort.error)){
+      throw new Error("Die Tickets fehlen noch in der Datenbank. Dafür einmal sql/014_tickets.sql im Supabase-SQL-Editor ausführen.");
+    }
+    // Der Schluessel ist eindeutig. Passiert, wenn jemand anderes (oder
+    // Claude) gerade ein Ticket angelegt hat, das hier noch nicht geladen war.
+    if(String(antwort.error.code) === "23505"){
+      throw new Error("Diese Ticket-Nummer ist inzwischen vergeben. Bitte die Seite neu laden und erneut anlegen.");
+    }
+    throw new Error("Ticket konnte nicht gespeichert werden: " + antwort.error.message);
+  }
+  if(!antwort.data || !antwort.data.length) throw new Error("Die Datenbank hat das Ticket nicht übernommen — bitte die Seite neu laden.");
+  return antwort.data[0];
+}
+
+export async function ticketLoeschen(id){
+  const { error } = await db.from("tickets").delete().eq("id", id);
+  if(error){
+    console.error(error);
+    throw new Error("Ticket konnte nicht gelöscht werden: " + error.message);
+  }
+}
+
+export async function sprintSpeichern(nutzlast){
+  const { data, error } = await db.from("sprints")
+    .upsert({ ...nutzlast, updated_at: new Date().toISOString() }, { onConflict: "board,nummer" })
+    .select();
+  if(error){
+    console.error(error);
+    if(sqlFehlt(error)){
+      throw new Error("Die Sprints fehlen noch in der Datenbank. Dafür einmal sql/014_tickets.sql im Supabase-SQL-Editor ausführen.");
+    }
+    throw new Error("Sprint konnte nicht gespeichert werden: " + error.message);
+  }
+  if(!data || !data.length) throw new Error("Die Datenbank hat den Sprint nicht übernommen — bitte die Seite neu laden.");
   return data[0];
 }
 

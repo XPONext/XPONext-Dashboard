@@ -20,6 +20,7 @@ import "./views/finanzen.js";
 import { loadDayIntoHebelForm } from "./views/hebel.js";
 import "./views/aufgaben.js";
 import "./views/projekte.js";
+import "./views/tickets.js";
 import "./views/calls.js";
 import "./views/kunden.js";
 import "./views/zeittracking.js";

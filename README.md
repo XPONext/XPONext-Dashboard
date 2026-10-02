@@ -66,7 +66,7 @@ passenden Datei unter `js/views/`.
 
 ## Reiter
 
-Die Seite hat sechs Reiter (Heute, Vertrieb, Kunden, Verlauf, Arbeit, Angebote & Verträge)
+Die Seite hat sieben Reiter (Heute, Vertrieb, Kunden, Verlauf, Arbeit, Projekte, Angebote & Verträge)
 und einen „+ Nachtragen"-Dialog. Die Module unter `js/views/` sind nach Datenquelle
 geschnitten (calls.js, hebel.js, zeittracking.js …) und finden ihre Elemente
 über IDs — ein Block darf deshalb in `index.html` zwischen Reitern umziehen,
