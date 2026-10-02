@@ -46,14 +46,16 @@
   .tab-btn.active{border-left-color:transparent;}
 }
 
-.hero{padding:3rem 5% 1.6rem;max-width:1180px;margin:0 auto;}
+/* Filigran und flach (Tim, 02.10.2026: weniger scrollen) — vorher nahm der
+   Kopf rund 300 px, bevor der Reiter ueberhaupt anfing. */
+.hero{padding:1.6rem 5% 0.4rem;max-width:1180px;margin:0 auto;}
 .hero h1{
-  font-size:clamp(1.75rem,3.4vw,2.4rem);
-  font-weight:900;color:var(--text-primary);
-  margin-bottom:0.45rem;letter-spacing:-0.015em;
+  font-size:clamp(1.25rem,2.2vw,1.55rem);
+  font-weight:var(--fw-bold);color:var(--text-primary);
+  margin-bottom:0.2rem;letter-spacing:-0.015em;
 }
 .hero h1 span{color:var(--accent);}
-.hero p{color:var(--text-body);font-size:1rem;}
+.hero p{color:var(--text-muted);font-size:var(--fs-sm);}
 
 /* Den seitlichen Rand gibt der .container — vorher kamen 5 % hier und 5 % dort
    zusammen, und der Inhalt stand gegenueber dem Umsatz-Kopf eingerueckt.
@@ -65,35 +67,35 @@ section.view.active{display:block;}
 
 /* ---------- Raster ---------- */
 .grid4{display:grid;grid-template-columns:repeat(4,1fr);gap:1rem;}
-.grid2{display:grid;grid-template-columns:1fr 1fr;gap:1.3rem;align-items:start;}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:1rem;align-items:start;}
 .grid2 .card{margin-bottom:0;}
 @media(max-width:800px){.grid4{grid-template-columns:repeat(2,1fr);} .grid2{grid-template-columns:1fr;}}
 
 /* ---------- Dunkle Flaechen: Hero-Fortschritt und Wochenprojekt ---------- */
 .hero-progress{
   background:var(--bg-dark);
-  border-radius:16px;
-  padding:2.1rem 1.9rem;
+  border-radius:14px;
+  padding:1.05rem 1.4rem 1rem;
   color:var(--text-on-dark);
-  margin-bottom:1.3rem;
+  margin-bottom:1rem;
   box-shadow:var(--shadow-md);
 }
-.hero-progress .row{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:0.8rem;flex-wrap:wrap;gap:0.4rem;}
+.hero-progress .row{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:0.55rem;flex-wrap:wrap;gap:0.4rem;}
 .hero-progress .row .label{
-  font-size:var(--fs-sm);
+  font-size:0.7rem;
   color:var(--text-on-dark-muted);
   font-weight:var(--fw-semi);
   text-transform:uppercase;
   letter-spacing:0.05em;
 }
-.hero-progress .row .value{font-size:var(--fs-display);font-weight:900;letter-spacing:-0.02em;}
+.hero-progress .row .value{font-size:1.4rem;font-weight:var(--fw-semi);letter-spacing:-0.02em;}
 .hero-progress .value span{color:var(--accent-light);}
-.hero-progress .meta{margin-top:0.7rem;font-size:0.83rem;color:var(--text-on-dark-soft);}
+.hero-progress .meta{margin-top:0.45rem;font-size:0.74rem;color:var(--text-on-dark-soft);}
 
 .bar-track-lg{
   background:rgba(255,255,255,0.1);
   border-radius:var(--r-pill);
-  height:20px;overflow:hidden;position:relative;
+  height:10px;overflow:hidden;position:relative;
   box-shadow:inset 0 1px 2px rgba(0,0,0,0.2);
 }
 .bar-fill-lg{
@@ -776,7 +778,7 @@ tr.leerzeile td{
 .constraint-text.empty{ color:var(--text-muted); }
 
 /* Der Umsatzbalken steht jetzt im Kopf über allen Reitern. */
-.hero .hero-progress{ margin-top:1.2rem; }
+.hero .hero-progress{ margin-top:0.8rem; }
 
 /* ═══ Angebote ═══════════════════════════════════════════════════════════
    Nutzt das Raster und die Kacheln des Auftrags-Reiters. Neu sind nur die
@@ -830,11 +832,14 @@ tr.leerzeile td{
 
 /* Seitenkopf: Titel links, Stand und Zeitraum rechts — der eine Filter
    gilt fuer alles darunter. */
+/* Tim, 02.10.2026: „kleiner schreiben, weniger fett, filigraner — ich will
+   nicht so viel scrollen". Darum ab hier leichtere Gewichte und engere Abstaende
+   fuer Kopf, Kacheln, Kartenkoepfe und ruhige Tabellen in allen Reitern. */
 .seiten-kopf{
   display:flex;align-items:center;justify-content:space-between;
-  gap:var(--sp-4);flex-wrap:wrap;margin-bottom:var(--sp-5);
+  gap:var(--sp-4);flex-wrap:wrap;margin-bottom:var(--sp-4);
 }
-.seiten-kopf h2{font-size:var(--fs-h1);font-weight:var(--fw-black);letter-spacing:-0.02em;color:var(--text-primary);}
+.seiten-kopf h2{font-size:1.35rem;font-weight:var(--fw-bold);letter-spacing:-0.02em;color:var(--text-primary);}
 .seiten-kopf-rechts{display:flex;align-items:center;gap:var(--sp-4);flex-wrap:wrap;}
 .stand{font-size:var(--fs-xs);color:var(--text-muted);}
 .stand.is-warn{color:var(--amber);font-weight:var(--fw-semi);}
@@ -853,10 +858,10 @@ tr.leerzeile td{
 .segment button.active{background:var(--accent-light);color:var(--accent-dark);}
 
 /* Kennzahl-Reihe: vier gleich gebaute Kacheln */
-.kpi-reihe{display:grid;grid-template-columns:repeat(4,1fr);gap:var(--sp-4);margin-bottom:var(--sp-5);}
+.kpi-reihe{display:grid;grid-template-columns:repeat(4,1fr);gap:var(--sp-3);margin-bottom:var(--sp-4);}
 .kpi{
   background:var(--bg);border:1px solid var(--border);border-radius:12px;
-  padding:1.15rem 1.25rem 1.05rem;box-shadow:var(--shadow-sm);
+  padding:0.85rem 1rem 0.8rem;box-shadow:var(--shadow-sm);
   display:flex;flex-direction:column;
 }
 .kpi-lbl{
@@ -864,15 +869,18 @@ tr.leerzeile td{
   text-transform:uppercase;letter-spacing:0.06em;
 }
 .kpi-wert{
-  font-size:1.85rem;font-weight:var(--fw-black);color:var(--text-primary);
-  letter-spacing:-0.025em;line-height:1.15;margin-top:0.45rem;
+  font-size:1.45rem;font-weight:var(--fw-semi);color:var(--text-primary);
+  letter-spacing:-0.02em;line-height:1.15;margin-top:0.3rem;
 }
+/* Gruen und Rot nur als Wertung: Gewinn, Auszahlbares, fehlende Rechnung */
+.kpi-wert.is-plus, table.ruhig .rate.is-plus, .rechnung-zeile.is-plus span:last-child{color:var(--green);}
+.kpi-wert.is-minus, table.ruhig .rate.is-minus, .rechnung-zeile.is-minus span:last-child{color:var(--red);}
 .kpi-wert small{font-size:var(--fs-sm);font-weight:var(--fw-normal);color:var(--text-muted);letter-spacing:0;}
 .kpi-meter{height:4px;border-radius:var(--r-pill);background:var(--accent-light);margin:0.75rem 0 0.6rem;overflow:hidden;}
 .kpi-fill{height:100%;width:0;border-radius:var(--r-pill);background:var(--accent);transition:width .35s var(--ease);}
 .kpi-fill.is-warn{background:var(--amber-strong);}
 .kpi-fill.is-low{background:var(--red-strong);}
-.kpi-fuss{font-size:0.78rem;color:var(--text-muted);line-height:1.5;}
+.kpi-fuss{font-size:0.72rem;color:var(--text-muted);line-height:1.45;}
 .kpi-fuss + .kpi-fuss{margin-top:0.15rem;}
 
 /* Vergleich mit dem Vorzeitraum: Pfeil traegt die Richtung, Farbe nur dazu */
@@ -886,11 +894,11 @@ tr.leerzeile td{
 .delta.is-gleich{background:var(--bg-subtle);color:var(--text-muted);}
 
 /* Kartenkopf: Titel und eine Zeile Erklaerung, rechts eine Zahl oder Aktion */
-.karten-kopf{display:flex;justify-content:space-between;align-items:flex-start;gap:var(--sp-4);margin-bottom:1.1rem;}
-.karten-kopf h3{font-size:1.02rem;font-weight:var(--fw-black);color:var(--text-primary);letter-spacing:-0.01em;}
-.karten-kopf p{font-size:var(--fs-sm);color:var(--text-muted);margin-top:0.2rem;line-height:var(--lh-normal);}
+.karten-kopf{display:flex;justify-content:space-between;align-items:flex-start;gap:var(--sp-4);margin-bottom:0.75rem;}
+.karten-kopf h3{font-size:0.92rem;font-weight:var(--fw-semi);color:var(--text-primary);letter-spacing:-0.01em;}
+.karten-kopf p{font-size:0.74rem;color:var(--text-muted);margin-top:0.15rem;line-height:var(--lh-normal);}
 .karten-kopf-zahl{text-align:right;white-space:nowrap;}
-.karten-kopf-zahl > div{font-size:1.35rem;font-weight:var(--fw-black);color:var(--text-primary);letter-spacing:-0.02em;}
+.karten-kopf-zahl > div{font-size:1.15rem;font-weight:var(--fw-semi);color:var(--text-primary);letter-spacing:-0.02em;}
 .karten-kopf-zahl > div small{font-size:var(--fs-sm);font-weight:var(--fw-normal);color:var(--text-muted);letter-spacing:0;}
 .karten-kopf-zahl > small{font-size:var(--fs-xs);color:var(--text-muted);}
 
@@ -907,18 +915,18 @@ tr.leerzeile td{
 table.ruhig{width:100%;border-collapse:collapse;}
 table.ruhig thead th{
   background:none;color:var(--text-muted);
-  font-size:0.7rem;font-weight:var(--fw-semi);text-transform:uppercase;letter-spacing:0.06em;
-  padding:0 0.7rem 0.6rem;border-bottom:1px solid var(--border);text-align:left;
+  font-size:0.66rem;font-weight:var(--fw-semi);text-transform:uppercase;letter-spacing:0.06em;
+  padding:0 0.6rem 0.45rem;border-bottom:1px solid var(--border);text-align:left;
 }
-table.ruhig tbody th, table.ruhig tbody td{padding:0.85rem 0.7rem;border-bottom:1px solid var(--border);background:none;}
+table.ruhig tbody th, table.ruhig tbody td{padding:0.5rem 0.6rem;border-bottom:1px solid var(--border);background:none;}
 table.ruhig tbody tr:last-child th, table.ruhig tbody tr:last-child td{border-bottom:none;}
-table.ruhig tbody th{font-weight:var(--fw-bold);color:var(--text-primary);text-align:left;font-size:var(--fs-body);text-transform:none;letter-spacing:0;}
+table.ruhig tbody th{font-weight:var(--fw-normal);color:var(--text-primary);text-align:left;font-size:var(--fs-sm);text-transform:none;letter-spacing:0;}
 .table-wrap.is-ruhig{border:none;border-radius:0;}
 .tabellen-fuss{font-size:var(--fs-xs);color:var(--text-muted);margin-top:var(--sp-2);}
 table.ruhig tbody tr:hover{background:none;}
 table.ruhig .zahl{text-align:right;font-variant-numeric:tabular-nums;}
-table.ruhig .rate{display:block;font-weight:var(--fw-bold);color:var(--text-primary);font-size:0.95rem;}
-table.ruhig .rate-basis{display:block;font-size:0.72rem;color:var(--text-muted);margin-top:0.1rem;}
+table.ruhig .rate{display:block;font-weight:var(--fw-normal);color:var(--text-primary);font-size:0.84rem;}
+table.ruhig .rate-basis{display:block;font-size:0.68rem;color:var(--text-muted);margin-top:0.05rem;}
 
 /* Vergleich mit dem Vorzeitraum in der Kachel: Abzeichen plus, womit
    verglichen wird — eine nackte "▼ 35" war nicht zu verstehen. */
@@ -933,13 +941,15 @@ table.ruhig .rate-basis{display:block;font-size:0.72rem;color:var(--text-muted);
 .mini-balken{display:block;width:72px;height:3px;margin:0.4rem 0 0 auto;border-radius:var(--r-pill);background:var(--accent-light);overflow:hidden;}
 .mini-balken > span{display:block;height:100%;border-radius:var(--r-pill);background:var(--accent);}
 table.ruhig tr.is-laufend th, table.ruhig tr.is-laufend td{background:var(--bg-subtle);}
+/* Kompakte Tabelle (Finanzen je Monat): Monat und Unterzeile nicht umbrechen */
+table.ruhig.kompakt tbody th, table.ruhig.kompakt .rate-basis{white-space:nowrap;}
 table.ruhig.wochen tbody th .rate-basis{font-weight:var(--fw-normal);}
 
 /* Trichter: Termin -> gefuehrt -> Angebot -> Auftrag, zwischen den Stufen
    der Anteil, der weiterkommt. Rechts die offenen Angebote (Stand heute). */
-.trichter{display:flex;align-items:stretch;flex-wrap:wrap;gap:var(--sp-2) 0;margin-bottom:var(--sp-5);}
-.trichter-stufe{flex:1 1 110px;padding:0.85rem 1rem;background:var(--bg-subtle);border:1px solid var(--border);border-radius:10px;}
-.trichter-zahl{font-size:1.45rem;font-weight:var(--fw-black);color:var(--text-primary);letter-spacing:-0.02em;margin-top:0.3rem;}
+.trichter{display:flex;align-items:stretch;flex-wrap:wrap;gap:var(--sp-2) 0;margin-bottom:var(--sp-4);}
+.trichter-stufe{flex:1 1 110px;padding:0.65rem 0.9rem;background:var(--bg-subtle);border:1px solid var(--border);border-radius:10px;}
+.trichter-zahl{font-size:1.25rem;font-weight:var(--fw-semi);color:var(--text-primary);letter-spacing:-0.02em;margin-top:0.2rem;}
 .trichter-pfeil{
   flex:0 0 64px;display:flex;flex-direction:column;align-items:center;justify-content:center;
   font-size:0.72rem;font-weight:var(--fw-semi);color:var(--text-body);
@@ -985,9 +995,10 @@ details.erklaerung p{font-size:0.8rem;color:var(--text-muted);line-height:1.65;m
    "Zuruecklegen" als kleine Rechnung: jede Zeile ein Schritt, Zwischensummen
    mit Haarlinie, die Summe kraeftig. */
 .rechnung{display:flex;flex-direction:column;}
-.rechnung-zeile{display:flex;justify-content:space-between;gap:var(--sp-4);padding:0.45rem 0;font-size:var(--fs-sm);color:var(--text-body);font-variant-numeric:tabular-nums;}
+.rechnung-zeile{display:flex;justify-content:space-between;gap:var(--sp-4);padding:0.3rem 0;font-size:0.8rem;color:var(--text-body);font-variant-numeric:tabular-nums;}
 .rechnung-zeile span:last-child{white-space:nowrap;}
-.rechnung-zeile.is-zwischen{border-top:1px solid var(--border);color:var(--text-primary);font-weight:var(--fw-semi);}
-.rechnung-zeile.is-summe{border-top:2px solid var(--text-primary);margin-top:0.2rem;padding-top:0.6rem;color:var(--text-primary);font-weight:var(--fw-black);font-size:var(--fs-body);}
+.rechnung-zeile.is-zwischen{border-top:1px solid var(--border);color:var(--text-primary);font-weight:var(--fw-normal);}
+.rechnung-zeile.is-summe{border-top:1px solid var(--text-primary);margin-top:0.15rem;padding-top:0.45rem;color:var(--text-primary);font-weight:var(--fw-semi);font-size:var(--fs-sm);}
 .rechnung-zeile.is-leise{color:var(--text-muted);padding-top:0.15rem;padding-bottom:0.15rem;}
 .rate-basis.is-warn{color:var(--amber);font-weight:var(--fw-semi);}
+.rate-basis.is-minus{color:var(--red);font-weight:var(--fw-semi);}

@@ -933,15 +933,28 @@ export function gewaehlterTag(){
      Gewinn          = Einnahmen - Ausgaben
      USt-Zahllast    = Einnahmen x USt-Satz - Vorsteuer aus den Rechnungen
                        (Reverse Charge hebt sich auf und zaehlt nicht)
-     Steuerruecklage = Gewinn x Ruecklage-Satz (nur bei Gewinn)
-     Auszahlbar      = Gewinn - Steuerruecklage, aufgeteilt nach Anteil */
+     Steuerruecklage = Ruecklage-Satz auf den Jahresgewinn ueber dem Freibetrag
+                       (24.500 EUR: Gewerbesteuer-Freibetrag der GbR; die beiden
+                       Grundfreibetraege von je 12.348 EUR liegen knapp darueber —
+                       gilt, weil Tim und Simon sonst kein Einkommen haben,
+                       Tim 02.10.2026). Kumuliert je Kalenderjahr.
+     Puffer          = wird aus den Gewinnen nach Steuerruecklage aufgebaut, bis
+                       er 3 durchschnittliche Monatsausgaben deckt (Tim, 02.10.2026:
+                       „ein Puffer von 3 Monatsausgaben sollte definitiv bestehen")
+     Auszahlbar      = Gewinn - Steuerruecklage - Puffer-Zufuehrung, nach Anteil
+
+   Den Kontostand kennt das Dashboard nicht (keine Bankanbindung). Der Puffer gilt
+   darum als aufgebaut, wenn die Gewinne dafuer gereicht haben — vorausgesetzt,
+   ausgezahlt wurde nur, was hier als auszahlbar stand. */
 
 export function finanzEinstellungen(){
   const zahl = (k, vorgabe)=>{ const w = Number(state.settings[k]); return Number.isFinite(w) ? w : vorgabe; };
   return {
     ruecklage: zahl("steuer_ruecklage_prozent", 30) / 100,
     anteilTim: zahl("auszahlung_anteil_tim", 50) / 100,
-    ust: zahl("ust_satz_prozent", 19) / 100
+    ust: zahl("ust_satz_prozent", 19) / 100,
+    pufferMonate: zahl("puffer_monatsausgaben", 3),
+    freibetrag: zahl("steuerfrei_gewinn_jahr", 24500)
   };
 }
 
@@ -964,20 +977,39 @@ export function zaehlendeAusgaben(von, bis){
   });
 }
 
-/* Feste Kosten, fuer die im Monat keine Rechnung kam — als erwartete Ausgabe. */
+/* Tag im Monat, an dem der Anbieter zuletzt abgerechnet hat — oder null. */
+function abrechnungsTag(such){
+  const letzte = state.expenses
+    .filter(e=>(e.status === "ok" || e.status === "pruefen") && e.rechnungsdatum &&
+               String(e.lieferant || "").toLowerCase().includes(such))
+    .map(e=>e.rechnungsdatum).sort().pop();
+  return letzte ? Number(letzte.slice(8, 10)) : null;
+}
+
+/* Feste Kosten, fuer die im Monat keine Rechnung kam — als erwartete Ausgabe.
+   „fehlt" erst, wenn der uebliche Abrechnungstag (plus 3 Tage) vorbei ist; davor
+   und in kommenden Monaten „erwartet". Tim, 02.10.2026: Am 2. stand Instantly
+   als „Rechnung fehlt" da, obwohl Instantly erst am 29. abbucht. */
 function fehlendeFixkosten(monatsStartStr){
   const ende = letzterTagDesMonats(monatsStartStr);
   const imMonat = zaehlendeAusgaben(monatsStartStr, ende);
+  const heute = localDateStr(new Date());
+  const laufend = monatsStart(heute);
+  const suchwort = f=>String(f.suchwort || f.name).toLowerCase();
   return state.fixedCosts.filter(f=>{
     if(f.ab > ende || (f.bis && f.bis < monatsStartStr)) return false;
     if(f.rhythmus === "jaehrlich" && f.ab.slice(5, 7) !== monatsStartStr.slice(5, 7)) return false;
-    const such = String(f.suchwort || f.name).toLowerCase();
-    return !imMonat.some(e=>String(e.lieferant || "").toLowerCase().includes(such));
-  }).map(f=>({
-    name: f.name, kategorie: f.kategorie || "Software & Tools",
-    netto: f.ist_netto ? Number(f.betrag) : Number(f.betrag) / 1.19,
-    waehrung: f.waehrung
-  }));
+    return !imMonat.some(e=>String(e.lieferant || "").toLowerCase().includes(suchwort(f)));
+  }).map(f=>{
+    const tag = abrechnungsTag(suchwort(f));
+    const erwartet = monatsStartStr > laufend ||
+      (monatsStartStr === laufend && (tag === null || Number(heute.slice(8, 10)) <= tag + 3));
+    return {
+      name: f.name, kategorie: f.kategorie || "Software & Tools",
+      netto: f.ist_netto ? Number(f.betrag) : Number(f.betrag) / 1.19,
+      waehrung: f.waehrung, tag, status: erwartet ? "erwartet" : "fehlt"
+    };
+  });
 }
 
 function monateZwischen(von, bis){
@@ -994,7 +1026,15 @@ function monateZwischen(von, bis){
 /* Kennzahlen je Monat und fuer den ganzen Zeitraum. */
 export function finanzen(von, bis){
   const e = finanzEinstellungen();
-  const monate = monateZwischen(von, bis).map(m=>{
+  // Der Puffer baut sich ueber alle Monate seit dem ersten Umsatz, der ersten
+  // Ausgabe oder den ersten festen Kosten auf — darum ab dort rechnen, auch wenn
+  // nur ein Monat angezeigt wird.
+  const erster = [
+    ...state.revenueMonths.map(r=>r.month_start),
+    ...state.expenses.filter(x=>x.status === "ok" || x.status === "pruefen").map(ausgabeTag),
+    ...state.fixedCosts.map(f=>f.ab)
+  ].filter(Boolean).map(monatsStart).sort()[0];
+  const alle = monateZwischen(erster && erster < von ? erster : von, bis).map(m=>{
     const ende = letzterTagDesMonats(m);
     const einnahmen = state.revenueMonths.filter(r=>r.month_start === m)
       .reduce((s, r)=>s + (Number(r.amount) || 0), 0);
@@ -1004,17 +1044,40 @@ export function finanzen(von, bis){
     const vorsteuer = rechnungen.filter(x=>!x.reverse_charge).reduce((s, x)=>s + (Number(x.ust_eur) || 0), 0);
     const gewinn = einnahmen - ausgaben;
     const ustZahllast = einnahmen * e.ust - vorsteuer;
-    const steuer = Math.max(0, gewinn) * e.ruecklage;
-    const auszahlbar = gewinn - steuer;
-    return { monat: m, einnahmen, ausgaben, vorsteuer, gewinn, ustZahllast, steuer, auszahlbar,
+    // Steuerruecklage, Puffer und Auszahlbares haengen an den Vormonaten — siehe unten.
+    return { monat: m, einnahmen, ausgaben, vorsteuer, gewinn, ustZahllast, steuer: 0, auszahlbar: 0,
              fehlend, pruefen: rechnungen.filter(x=>x.status === "pruefen").length };
   });
+  // Puffer: Ziel = 3 x Durchschnitt der Ausgaben der letzten (bis zu) 3 Monate.
+  // Aufgefuellt wird aus dem Gewinn nach Steuerruecklage, nie aus einem Verlust.
+  let bestand = 0, jahr = null, gewinnJahr = 0;
+  alle.forEach((m, i)=>{
+    // Steuerruecklage auf den Jahresgewinn ueber dem Freibetrag: Ein Verlustmonat
+    // gibt Ruecklage wieder frei, weil am Ende nur der Jahresgewinn zaehlt.
+    if(m.monat.slice(0, 4) !== jahr){ jahr = m.monat.slice(0, 4); gewinnJahr = 0; }
+    const vorher = Math.max(0, gewinnJahr - e.freibetrag) * e.ruecklage;
+    gewinnJahr += m.gewinn;
+    m.gewinnJahr = gewinnJahr;
+    m.steuer = Math.max(0, gewinnJahr - e.freibetrag) * e.ruecklage - vorher;
+    m.auszahlbar = m.gewinn - m.steuer;
+    const letzte = alle.slice(Math.max(0, i - 2), i + 1);
+    m.pufferZiel = e.pufferMonate * letzte.reduce((s, x)=>s + x.ausgaben, 0) / letzte.length;
+    m.puffer = Math.min(Math.max(0, m.pufferZiel - bestand), Math.max(0, m.auszahlbar));
+    bestand += m.puffer;
+    m.pufferBestand = bestand;
+    m.auszahlbar -= m.puffer;
+  });
+  const monate = alle.filter(m=>m.monat >= monatsStart(von));
   const summe = feld => monate.reduce((s, m)=>s + m[feld], 0);
   const gesamt = {};
-  ["einnahmen", "ausgaben", "vorsteuer", "gewinn", "ustZahllast", "steuer", "auszahlbar", "pruefen"].forEach(f=>{ gesamt[f] = summe(f); });
+  ["einnahmen", "ausgaben", "vorsteuer", "gewinn", "ustZahllast", "steuer", "puffer", "auszahlbar", "pruefen"].forEach(f=>{ gesamt[f] = summe(f); });
+  const letzter = monate[monate.length - 1];
+  gesamt.pufferZiel = letzter ? letzter.pufferZiel : 0;
+  gesamt.pufferBestand = letzter ? letzter.pufferBestand : 0;
+  gesamt.gewinnJahr = letzter ? letzter.gewinnJahr : 0;
   gesamt.tim = gesamt.auszahlbar * e.anteilTim;
   gesamt.simon = gesamt.auszahlbar - gesamt.tim;
-  gesamt.zuruecklegen = Math.max(0, gesamt.ustZahllast) + gesamt.steuer;
+  gesamt.zuruecklegen = Math.max(0, gesamt.ustZahllast) + gesamt.steuer + gesamt.puffer;
   return { monate, gesamt, einstellungen: e };
 }
 
@@ -1023,7 +1086,7 @@ export function ausgabenNachLieferant(von, bis){
   const gruppen = new Map();
   const gruppe = (name, kategorie)=>{
     const k = String(name || "Unbekannt").trim();
-    if(!gruppen.has(k)) gruppen.set(k, { name: k, kategorie, netto: 0, rechnungen: 0, pruefen: 0, fehlt: 0 });
+    if(!gruppen.has(k)) gruppen.set(k, { name: k, kategorie, netto: 0, rechnungen: 0, pruefen: 0, fehlt: 0, erwartet: 0, tag: null });
     return gruppen.get(k);
   };
   zaehlendeAusgaben(von, bis).forEach(x=>{
@@ -1035,7 +1098,8 @@ export function ausgabenNachLieferant(von, bis){
   monateZwischen(von, bis).forEach(m=>fehlendeFixkosten(m).forEach(f=>{
     const g = gruppe(f.name, f.kategorie);
     g.netto += f.netto;
-    g.fehlt++;
+    g[f.status]++;
+    g.tag = f.tag;
   }));
   return [...gruppen.values()].sort((a, b)=>b.netto - a.netto);
 }

@@ -87,18 +87,30 @@ function renderFinanzen(){
   renderStand();
 
   const { monate, gesamt: g, einstellungen: e } = finanzen(z.von, z.bis);
-  const fehlend = monate.reduce((s, m)=>s + m.fehlend.length, 0);
+  const geschaetzt = monate.flatMap(m=>m.fehlend);
+  const fehlt = geschaetzt.filter(f=>f.status === "fehlt").length;
+  const erwartet = geschaetzt.length - fehlt;
 
   document.getElementById("fiEinnahmen").textContent = eur(g.einnahmen);
+  // Die Auftraege sind netto gebucht; aufs Konto kommt der Betrag mit Umsatzsteuer.
+  document.getElementById("fiEinnahmenFuss").textContent = g.einnahmen > 0
+    ? `netto · mit ${num(e.ust * 100, 0)} % USt ${eur(g.einnahmen * (1 + e.ust))} aufs Konto`
+    : "netto, aus den Aufträgen";
   document.getElementById("fiAusgaben").textContent = eur(g.ausgaben);
+  const offen = [erwartet ? `${erwartet}× erwartet` : "", fehlt ? `${fehlt}× Rechnung fehlt` : ""].filter(Boolean);
   document.getElementById("fiAusgabenFuss").textContent = "netto" +
-    (fehlend ? ` · ${fehlend}× Rechnung fehlt, geschätzt` : "") +
+    (offen.length ? ` · ${offen.join(", ")}, geschätzt` : "") +
     (g.pruefen ? ` · ${g.pruefen} zu prüfen` : "");
-  document.getElementById("fiGewinn").textContent = eur(g.gewinn);
+  const vorzeichen = n=>n >= 0 ? " is-plus" : " is-minus";
+  const gewinnEl = document.getElementById("fiGewinn");
+  gewinnEl.textContent = eur(g.gewinn);
+  gewinnEl.className = "kpi-wert" + vorzeichen(g.gewinn);
   document.getElementById("fiGewinnFuss").textContent = g.einnahmen > 0
-    ? num(g.gewinn / g.einnahmen * 100, 0) + " % der Einnahmen"
+    ? "Marge " + num(g.gewinn / g.einnahmen * 100, 0) + " %"
     : "noch keine Einnahmen";
-  document.getElementById("fiAuszahlbar").textContent = eur(Math.min(g.tim, g.simon));
+  const auszahlbarEl = document.getElementById("fiAuszahlbar");
+  auszahlbarEl.textContent = eur(Math.min(g.tim, g.simon));
+  auszahlbarEl.className = "kpi-wert" + vorzeichen(Math.min(g.tim, g.simon));
   document.getElementById("fiAuszahlbarFuss").textContent = e.anteilTim === 0.5
     ? `je Tim und Simon · zusammen ${eur(g.auszahlbar)}`
     : `Tim ${eur(g.tim)} · Simon ${eur(g.simon)}`;
@@ -112,9 +124,10 @@ function renderFinanzen(){
     ${zeile(`Umsatzsteuer auf die Einnahmen (${num(e.ust * 100, 0)} %)`, g.einnahmen * e.ust)}
     ${zeile("minus Vorsteuer aus euren Rechnungen", -g.vorsteuer)}
     ${zeile("Umsatzsteuer ans Finanzamt", Math.max(0, g.ustZahllast), "is-zwischen")}
-    ${zeile(`Einkommen- und Gewerbesteuer (${num(e.ruecklage * 100, 0)} % vom Gewinn)`, g.steuer, "is-zwischen")}
+    ${zeile(`Einkommen- und Gewerbesteuer (${num(e.ruecklage * 100, 0)} % auf den Jahresgewinn über ${eur(e.freibetrag)} · bisher ${eur(g.gewinnJahr)})`, g.steuer, "is-zwischen")}
+    ${zeile(`Puffer auf ${num(e.pufferMonate, 0)} Monatsausgaben (Ziel ${eur(g.pufferZiel)}, steht ${eur(g.pufferBestand)})`, g.puffer, "is-zwischen")}
     ${zeile("Zurücklegen", g.zuruecklegen, "is-summe")}
-    ${zeile("Gewinn nach Rücklage", g.auszahlbar)}
+    ${zeile("Auszahlbar nach Rücklage und Puffer", g.auszahlbar, vorzeichen(g.auszahlbar).trim())}
     ${zeile(`davon Tim (${num(e.anteilTim * 100, 0)} %)`, g.tim, "is-leise")}
     ${zeile(`davon Simon (${num((1 - e.anteilTim) * 100, 0)} %)`, g.simon, "is-leise")}
   </div>`;
@@ -126,7 +139,7 @@ function renderFinanzen(){
         <thead><tr><th></th><th>Kategorie</th><th class="zahl">netto</th></tr></thead>
         <tbody>${lieferanten.map(l=>`
           <tr>
-            <th scope="row">${escapeHtml(l.name)}${l.fehlt ? `<span class="rate-basis is-warn">Rechnung fehlt</span>` : ""}${l.pruefen ? `<span class="rate-basis is-warn">${l.pruefen} zu prüfen</span>` : ""}</th>
+            <th scope="row">${escapeHtml(l.name)}${l.fehlt ? `<span class="rate-basis is-minus">Rechnung fehlt</span>` : ""}${l.erwartet && !l.fehlt ? `<span class="rate-basis">erwartet${l.tag ? ` am ${l.tag}.` : ""}</span>` : ""}${l.pruefen ? `<span class="rate-basis is-warn">${l.pruefen} zu prüfen</span>` : ""}</th>
             <td>${escapeHtml(l.kategorie || "–")}</td>
             <td class="zahl"><span class="rate">${eur(l.netto)}</span><span class="rate-basis">${l.rechnungen ? `${l.rechnungen} ${l.rechnungen === 1 ? "Rechnung" : "Rechnungen"}` : "geschätzt"}</span></td>
           </tr>`).join("")}
@@ -137,18 +150,19 @@ function renderFinanzen(){
   const jahr = z.wahl === "jahr" ? monate : finanzen(todayIso().slice(0, 4) + "-01-01", todayIso()).monate;
   const sichtbar = jahr.filter(m=>m.einnahmen || m.ausgaben).reverse();
   document.getElementById("fiMonate").innerHTML = sichtbar.length
-    ? `<div class="table-wrap is-ruhig"><table class="ruhig">
+    ? `<div class="table-wrap is-ruhig"><table class="ruhig kompakt">
         <thead><tr><th>Monat</th><th class="zahl">Einnahmen</th><th class="zahl">Ausgaben</th><th class="zahl">Gewinn</th>
-          <th class="zahl">USt ans Finanzamt</th><th class="zahl">Rücklage</th><th class="zahl">Auszahlbar je Person</th></tr></thead>
+          <th class="zahl">USt ans Finanzamt</th><th class="zahl">Steuer-Rücklage</th><th class="zahl">Puffer</th><th class="zahl">Auszahlbar je Person</th></tr></thead>
         <tbody>${sichtbar.map(m=>`
           <tr${m.monat === monatsStart(todayIso()) ? ' class="is-laufend"' : ""}>
             <th scope="row">${escapeHtml(monatsName(m.monat))}${m.monat === monatsStart(todayIso()) ? '<span class="rate-basis">läuft</span>' : ""}</th>
             <td class="zahl"><span class="rate">${eur(m.einnahmen)}</span></td>
             <td class="zahl"><span class="rate">${eur(m.ausgaben)}</span>${m.fehlend.length ? `<span class="rate-basis">${m.fehlend.length}× geschätzt</span>` : ""}</td>
-            <td class="zahl"><span class="rate">${eur(m.gewinn)}</span></td>
+            <td class="zahl"><span class="rate${vorzeichen(m.gewinn)}">${eur(m.gewinn)}</span>${m.einnahmen > 0 ? `<span class="rate-basis">Marge ${num(m.gewinn / m.einnahmen * 100, 0)} %</span>` : ""}</td>
             <td class="zahl"><span class="rate">${eur(Math.max(0, m.ustZahllast))}</span></td>
             <td class="zahl"><span class="rate">${eur(m.steuer)}</span></td>
-            <td class="zahl"><span class="rate">${eur(m.auszahlbar * Math.min(e.anteilTim, 1 - e.anteilTim))}</span></td>
+            <td class="zahl"><span class="rate">${m.puffer ? eur(m.puffer) : "–"}</span></td>
+            <td class="zahl"><span class="rate${vorzeichen(m.auszahlbar)}">${eur(m.auszahlbar * Math.min(e.anteilTim, 1 - e.anteilTim))}</span></td>
           </tr>`).join("")}
         </tbody></table></div>`
     : `<p class="leer-hinweis">Noch keine Monate mit Einnahmen oder Ausgaben.</p>`;
