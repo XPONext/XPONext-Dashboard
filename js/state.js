@@ -33,6 +33,8 @@ export const state = {
   salesLeadsOk:  false,
   salesLeadsTabelleDa: false,
   instantlyDaily: [], // Cold Emails je Kampagne und Tag ("instantly_daily", sql/013)
+  expenses:      [], // Ausgaben aus Rechnungs-Mails und von Hand ("expenses", sql/014)
+  finanzenTabelleDa: false,
   calls:         [], // Calls je Tag und Person aus "daily_calls"
   settings:      {}, // Stellschrauben aus "settings", key -> Zahl
   leistungen:    [], // Leistungsarten aus tracker_options (kind = leistung)
@@ -954,4 +956,150 @@ export function zeitMixFuerKunde(customerId, vonMonat, bisMonat){
    Ansicht nach Mitternacht von selbst mitgeht, statt auf gestern stehenzubleiben. */
 export function gewaehlterTag(){
   return state.heuteTag || localDateStr(new Date());
+}
+
+
+/* ---------- Finanzen (sql/014) ----------
+
+   Einnahmen aus den Auftraegen im Kunden-Reiter (revenue_months, netto),
+   Ausgaben aus den Rechnungs-Mails (expenses) — das Geschaeftskonto ist
+   bewusst nicht angebunden (Tim, 01.10.2026). Es zaehlen nur Rechnungen, die
+   da sind — keine Schaetzung fuer noch nicht abgerechnete Tools (Tim,
+   02.10.2026: „Es geht darum, was wir jetzt schon fuer Rechnungen bekommen
+   haben. Alle weiteren werden eingefuegt, wenn die kommen."). Die Tabelle
+   fixed_costs aus sql/014 bleibt stehen, wird aber nicht mehr gelesen.
+
+   Gerechnet wird je Monat, in Euro, netto:
+     Gewinn          = Einnahmen - Ausgaben
+     USt-Zahllast    = Einnahmen x USt-Satz - Vorsteuer aus den Rechnungen
+                       (Reverse Charge hebt sich auf und zaehlt nicht)
+     Steuerruecklage = Ruecklage-Satz auf den Jahresgewinn ueber dem Freibetrag
+                       (24.500 EUR: Gewerbesteuer-Freibetrag der GbR; die beiden
+                       Grundfreibetraege von je 12.348 EUR liegen knapp darueber —
+                       gilt, weil Tim und Simon sonst kein Einkommen haben,
+                       Tim 02.10.2026). Kumuliert je Kalenderjahr.
+     Puffer          = wird aus den Gewinnen nach Steuerruecklage aufgebaut, bis
+                       er 3 durchschnittliche Monatsausgaben deckt (Tim, 02.10.2026:
+                       „ein Puffer von 3 Monatsausgaben sollte definitiv bestehen")
+     Auszahlbar      = Gewinn - Steuerruecklage - Puffer-Zufuehrung, nach Anteil
+
+   Den Kontostand kennt das Dashboard nicht (keine Bankanbindung). Der Puffer gilt
+   darum als aufgebaut, wenn die Gewinne dafuer gereicht haben — vorausgesetzt,
+   ausgezahlt wurde nur, was hier als auszahlbar stand. */
+
+export function finanzEinstellungen(){
+  const zahl = (k, vorgabe)=>{ const w = Number(state.settings[k]); return Number.isFinite(w) ? w : vorgabe; };
+  return {
+    ruecklage: zahl("steuer_ruecklage_prozent", 30) / 100,
+    anteilTim: zahl("auszahlung_anteil_tim", 50) / 100,
+    ust: zahl("ust_satz_prozent", 19) / 100,
+    pufferMonate: zahl("puffer_monatsausgaben", 3),
+    freibetrag: zahl("steuerfrei_gewinn_jahr", 24500)
+  };
+}
+
+function ausgabeTag(e){
+  return e.rechnungsdatum || (e.eingang_at ? localDateStr(e.eingang_at) : null);
+}
+
+/* Netto in Euro. Fehlt netto, aber brutto und USt sind da, wird gerechnet. */
+function ausgabeNetto(e){
+  if(e.netto_eur != null) return Number(e.netto_eur);
+  if(e.brutto_eur != null) return Number(e.brutto_eur) - (Number(e.ust_eur) || 0);
+  return 0;
+}
+
+export function zaehlendeAusgaben(von, bis){
+  return state.expenses.filter(e=>{
+    if(e.status !== "ok" && e.status !== "pruefen") return false;
+    const tag = ausgabeTag(e);
+    return tag && tag >= von && tag <= bis;
+  });
+}
+
+/* Tag im Monat, an dem der Anbieter zuletzt abgerechnet hat — oder null. */
+function monateZwischen(von, bis){
+  const raus = [];
+  let m = monatsStart(von);
+  while(m <= bis){
+    raus.push(m);
+    const [j, mo] = m.split("-").map(Number);
+    m = mo === 12 ? (j + 1) + "-01-01" : j + "-" + String(mo + 1).padStart(2, "0") + "-01";
+  }
+  return raus;
+}
+
+/* Kennzahlen je Monat und fuer den ganzen Zeitraum. */
+export function finanzen(von, bis){
+  const e = finanzEinstellungen();
+  // Puffer und Jahres-Ruecklage bauen sich ueber alle Monate seit dem ersten
+  // Umsatz oder der ersten Rechnung auf — darum ab dort rechnen, auch wenn nur
+  // ein Monat angezeigt wird.
+  const erster = [
+    ...state.revenueMonths.map(r=>r.month_start),
+    ...state.expenses.filter(x=>x.status === "ok" || x.status === "pruefen").map(ausgabeTag)
+  ].filter(Boolean).map(monatsStart).sort()[0];
+  const alle = monateZwischen(erster && erster < von ? erster : von, bis).map(m=>{
+    const ende = letzterTagDesMonats(m);
+    const einnahmen = state.revenueMonths.filter(r=>r.month_start === m)
+      .reduce((s, r)=>s + (Number(r.amount) || 0), 0);
+    const rechnungen = zaehlendeAusgaben(m, ende);
+    const ausgaben = rechnungen.reduce((s, x)=>s + ausgabeNetto(x), 0);
+    const vorsteuer = rechnungen.filter(x=>!x.reverse_charge).reduce((s, x)=>s + (Number(x.ust_eur) || 0), 0);
+    const gewinn = einnahmen - ausgaben;
+    const ustZahllast = einnahmen * e.ust - vorsteuer;
+    // Steuerruecklage, Puffer und Auszahlbares haengen an den Vormonaten — siehe unten.
+    return { monat: m, einnahmen, ausgaben, vorsteuer, gewinn, ustZahllast, steuer: 0, auszahlbar: 0,
+             rechnungen: rechnungen.length, pruefen: rechnungen.filter(x=>x.status === "pruefen").length };
+  });
+  // Puffer: Ziel = 3 x Durchschnitt der Ausgaben der (bis zu) 3 Monate davor —
+  // der laufende Monat hat erst einen Teil seiner Rechnungen und wuerde das
+  // Ziel druecken. Im ersten Monat zaehlt er selbst.
+  // Aufgefuellt wird aus dem Gewinn nach Steuerruecklage, nie aus einem Verlust.
+  let bestand = 0, jahr = null, gewinnJahr = 0;
+  alle.forEach((m, i)=>{
+    // Steuerruecklage auf den Jahresgewinn ueber dem Freibetrag: Ein Verlustmonat
+    // gibt Ruecklage wieder frei, weil am Ende nur der Jahresgewinn zaehlt.
+    if(m.monat.slice(0, 4) !== jahr){ jahr = m.monat.slice(0, 4); gewinnJahr = 0; }
+    const vorher = Math.max(0, gewinnJahr - e.freibetrag) * e.ruecklage;
+    gewinnJahr += m.gewinn;
+    m.gewinnJahr = gewinnJahr;
+    m.steuer = Math.max(0, gewinnJahr - e.freibetrag) * e.ruecklage - vorher;
+    m.auszahlbar = m.gewinn - m.steuer;
+    const letzte = i ? alle.slice(Math.max(0, i - 3), i) : [m];
+    m.pufferZiel = e.pufferMonate * letzte.reduce((s, x)=>s + x.ausgaben, 0) / letzte.length;
+    m.puffer = Math.min(Math.max(0, m.pufferZiel - bestand), Math.max(0, m.auszahlbar));
+    bestand += m.puffer;
+    m.pufferBestand = bestand;
+    m.auszahlbar -= m.puffer;
+  });
+  const monate = alle.filter(m=>m.monat >= monatsStart(von));
+  const summe = feld => monate.reduce((s, m)=>s + m[feld], 0);
+  const gesamt = {};
+  ["einnahmen", "ausgaben", "vorsteuer", "gewinn", "ustZahllast", "steuer", "puffer", "auszahlbar", "rechnungen", "pruefen"].forEach(f=>{ gesamt[f] = summe(f); });
+  const letzter = monate[monate.length - 1];
+  gesamt.pufferZiel = letzter ? letzter.pufferZiel : 0;
+  gesamt.pufferBestand = letzter ? letzter.pufferBestand : 0;
+  gesamt.gewinnJahr = letzter ? letzter.gewinnJahr : 0;
+  gesamt.tim = gesamt.auszahlbar * e.anteilTim;
+  gesamt.simon = gesamt.auszahlbar - gesamt.tim;
+  gesamt.zuruecklegen = Math.max(0, gesamt.ustZahllast) + gesamt.steuer + gesamt.puffer;
+  return { monate, gesamt, einstellungen: e };
+}
+
+/* Ausgaben je Lieferant im Zeitraum. */
+export function ausgabenNachLieferant(von, bis){
+  const gruppen = new Map();
+  const gruppe = (name, kategorie)=>{
+    const k = String(name || "Unbekannt").trim();
+    if(!gruppen.has(k)) gruppen.set(k, { name: k, kategorie, netto: 0, rechnungen: 0, pruefen: 0 });
+    return gruppen.get(k);
+  };
+  zaehlendeAusgaben(von, bis).forEach(x=>{
+    const g = gruppe(x.lieferant, x.kategorie);
+    g.netto += ausgabeNetto(x);
+    g.rechnungen++;
+    if(x.status === "pruefen") g.pruefen++;
+  });
+  return [...gruppen.values()].sort((a, b)=>b.netto - a.netto);
 }

@@ -27,30 +27,25 @@ im Dashboard, das Popup zieht sie automatisch.
 
 ## Offen
 
-**Kanal, Angebote, Kampagnen (seit 01.10.2026, nach dem ersten Push):**
-`sql/012_leads_kanal.sql` und `sql/013_instantly_kampagnen.sql` im
-Supabase-SQL-Editor ausführen (012 auch dann, wenn es schon einmal lief — es
-ergänzt Spalten), dann das Workflow-Repo pushen (`tools/vertrieb_sync/leads.py`,
-`instantly.py`). Bis dahin zeigt die Karte „Woher kommen Termine
-und Aufträge?" einen Hinweis. Optional in Close beim Feld „Quelle" Auswahlwerte
-anlegen (z. B. Empfehlung, Externer Setter, Cold Email, Cold Call) — gesetzt
-schlägt es die automatische Zuordnung.
+**Finanzen läuft (seit 02.10.2026).** Ausgaben aus den Rechnungs-Mails (Railway,
+`tools/finanzen/` im Workflow-Repo, stündlich, API-Kosten stehen im Status),
+seit Juni komplett. Es zählen nur Rechnungen, die da sind — keine Schätzung
+für noch nicht abgerechnete Tools (Tim, 02.10.2026). Die Tabelle `fixed_costs`
+(Tool-Stack, rund 315 € netto im Monat) bleibt stehen, das Dashboard liest sie
+nicht mehr. Rechnung in `state.js` → `finanzen`:
+USt ab dem ersten Euro (regelbesteuert, Rechnungen mit 19 %), Steuer-Rücklage
+30 % erst auf den Jahresgewinn über 24.500 € (Gewerbesteuer-Freibetrag; Tim und
+Simon haben sonst kein Einkommen), Puffer von 3 Monatsausgaben aus den ersten
+Gewinnen. Stellschrauben in `settings`: `steuer_ruecklage_prozent`,
+`steuerfrei_gewinn_jahr`, `puffer_monatsausgaben`, `auszahlung_anteil_tim`.
+STRATO und Google Workspace schicken die Rechnungen seit 02.10. per Mail.
+Google Workspace Juli–September fehlt noch — aus admin.google.com
+herunterladen und an info@ schicken, dann liest der Abgleich sie ein.
 
-**Termine und Anrufe aus Close (seit 01.10.2026) — in dieser Reihenfolge:**
+**Termine, Anrufe, Kanäle, Kampagnen** laufen über Railway (`sql/010`–`014`
+ausgeführt, alter Close-Abgleich auf dem Mac entfernt). Noch offen:
 
-1. **`sql/010_termine_aus_kalender.sql` und `sql/011_anrufe_aus_close.sql`** im
-   Supabase-SQL-Editor ausführen. Legen nur Tabellen an, löschen nichts.
-2. **In Railway am Service `XPO_Agentic_Workflow`** (nicht `web`) drei Variablen
-   eintragen: `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `APP_SECRET`. Werte und Gründe im
-   README von `tools/vertrieb_sync/` im Workflow-Repo.
-3. **Beide Repos pushen** — Workflow-Repo zuerst. Der erste Cron-Lauf holt alles ab
-   13.07. und dauert rund 8 Minuten; danach stellt das Dashboard von selbst um.
-4. **Prüfen:** Unter „Termine gebucht" und bei „Calls je Person" steht „Abgleich
-   vor … Min.", nichts ist orange.
-5. **Erst dann auf Tims Mac `./time_tracker/install.sh` erneut ausführen.** Es
-   entfernt den alten Close-Abgleich (LaunchAgent `com.xpo.closesync`). Bei Simon
-   schadet es nicht, es findet dort nur nichts zum Entfernen.
-6. **Einmal durchklicken:** „ohne Spur – bestätigen" unter der Show-up-Kennzahl
+- **Einmal durchklicken:** „ohne Spur – bestätigen" unter der Show-up-Kennzahl
    (seit Juli 8 Erstgespräche ohne Aufnahme oder Telefonat) und im
    Nachtragen-Dialog „Sebastian x XPO" (10.09.) auf Folgetermin stellen.
 
@@ -92,7 +87,8 @@ Datenquelle:
 | Vertrieb | Kommen wir ans Ziel? | Ein Zeitraum für die ganze Seite; Erstgespräche, Show-up-Rate, Aufträge, Anrufe; Tim & Simon; je Woche |
 | Kunden | Wer lohnt sich? | Stundenlohn je Kunde, Umsätze, Zeiterfassung nach Kunde |
 | Arbeit | Woran arbeiten wir? | Hebel-Stand, Aufgaben-Board und Projekte als Umschalter |
-| Projekte | Wo steht der Sprint? | Erst Projektauswahl, dann Scrum-Board je Entwicklungsprojekt (zuerst Mail-Agent), ohne Fahrplan-Kopf: Sprintziel, Resttage, Tickets mit Story und Kriterien, Sprint Planning. Claude liest und schreibt über `tools/tickets/` im jeweiligen Repo. Braucht `sql/014` |
+| Projekte | Wo steht der Sprint? | Erst Projektauswahl, dann Scrum-Board je Entwicklungsprojekt (zuerst Mail-Agent), ohne Fahrplan-Kopf: Sprintziel, Resttage, Tickets mit Story und Kriterien, Sprint Planning. Claude liest und schreibt über `tools/tickets/` im jeweiligen Repo. Braucht `sql/014_tickets` |
+| Finanzen | Was bleibt uns? | Einnahmen, Ausgaben (aus Rechnungs-Mails), Gewinn, Zurücklegen (USt, Steuer), auszahlbar je Person, je Monat |
 | Verlauf | Wie entwickelt es sich? | Umsatz gegen das Ziel, Stunden je Woche, Hebel je Woche, Hebel gesamt, Bestenliste, Tabellen, CSV |
 | Angebote & Verträge | Was schicken wir dem Kunden? | Umschalter: Angebot aus dem Transkript, Vertrag aus Bausteinen |
 

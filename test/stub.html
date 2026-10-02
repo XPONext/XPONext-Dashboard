@@ -64,7 +64,9 @@ const FAKE = {
   settings: [
     {key:"call_value_eur", value:3.35}, {key:"call_history_calls", value:1550},
     {key:"call_history_revenue", value:5200}, {key:"call_target_default", value:20},
-    {key:"target_hourly_rate_eur", value:100}
+    {key:"target_hourly_rate_eur", value:100},
+    // Freibetrag im Test klein, damit die Ruecklage greift (echt: 24.500)
+    {key:"steuerfrei_gewinn_jahr", value:2000}
   ],
   tracker_options: [
     {kind:"leistung", name:"Webseite", active:true, sort_order:10},
@@ -150,6 +152,20 @@ const FAKE = {
   instantly_daily: [
     {date:"2026-08-10", campaign_id:"camp1", campaign_name:"Architekten_Test_Kampagne", sent:200, replies:10, replies_auto:2, opportunities:3},
     {date:tagRelativ(-1), campaign_id:"camp1", campaign_name:"Architekten_Test_Kampagne", sent:50, replies:1, replies_auto:0, opportunities:0}
+  ],
+  // Finanzen (sql/014), laufender Monat: Einnahmen 3.800 (Protours + Chuong).
+  // Ausgaben netto, nur Rechnungen: Close 50,80 (USA, Reverse Charge) +
+  // Telekom 100 + unsichere Rechnung 10 = 160,80. Vorsteuer 19 + 1,90 = 20,90.
+  // Gewinn 3.639,20 (Marge 96 %). USt ans Finanzamt 722 - 20,90 = 701,10.
+  // Ruecklage 30 % ueber dem Test-Freibetrag 2.000 = 491,76. Puffer im ersten
+  // Monat 3 x 160,80 = 482,40. Zuruecklegen 1.675,26; auszahlbar 2.665,04,
+  // je Person 1.332,52.
+  expenses: [
+    {id:"gmail_e1", lieferant:"Close", rechnungsdatum:M+"-03", netto_eur:50.80, ust_eur:0, brutto_eur:50.80, reverse_charge:true, kategorie:"Software & Tools", status:"ok"},
+    {id:"gmail_e2", lieferant:"Telekom", rechnungsdatum:M+"-05", netto_eur:100, ust_eur:19, brutto_eur:119, reverse_charge:false, kategorie:"Büro & Kommunikation", status:"ok"},
+    {id:"gmail_e3", lieferant:null, rechnungsdatum:null, status:"verworfen", grund:"Newsletter"},
+    {id:"gmail_e4", lieferant:"Unbekannt GmbH", rechnungsdatum:M+"-07", netto_eur:10, ust_eur:1.90, brutto_eur:11.90, reverse_charge:false,
+     kategorie:"Sonstiges", status:"pruefen", grund:"beim Auslesen unsicher", absender:"rechnung@unbekannt.de", betreff:"Ihre Rechnung"}
   ],
   daily_call_targets: [
     {date:tagRelativ(0),  target:26, target_overdue:5},
@@ -765,6 +781,32 @@ setTimeout(async ()=>{
     pruefeDialog("Korrektur zaehlt sofort: 7 gebucht", zahl("statTermineGebucht") === "7");
     pruefeDialog("Korrektur zurueckgenommen statt gespeichert",
       FAKE.sales_meetings.find(t=>t.id === "cal_c1").kind_override === null);
+
+    // ---- Finanzen ----
+    document.querySelector('[data-view="finanzen"]').click();
+    await new Promise(r=>setTimeout(r, 150));
+    const fi = id=>document.getElementById(id).textContent.trim();
+    pruefeDialog("Finanzen: Einnahmen 3.800, Ausgaben 161 aus 3 Rechnungen, nichts geschaetzt",
+      fi("fiEinnahmen") === "€3.800" && /4\.522 aufs Konto/.test(fi("fiEinnahmenFuss")) && fi("fiAusgaben") === "€161" &&
+      /3 Rechnungen · 1 zu prüfen/.test(fi("fiAusgabenFuss")));
+    pruefeDialog("Finanzen: Gewinn 3.639 gruen (Marge 96 %), je Person 1.333 nach Ruecklage und Puffer",
+      fi("fiGewinn") === "€3.639" && document.getElementById("fiGewinn").classList.contains("is-plus") &&
+      /Marge 96/.test(fi("fiGewinnFuss")) && fi("fiAuszahlbar") === "€1.333");
+    pruefeDialog("Finanzen: 1.675 zuruecklegen (USt 701 + Ruecklage 492 ueber Freibetrag + Puffer 482)",
+      /€1\.675/.test(fi("fiZuruecklegen")) && /€701/.test(fi("fiRechnung")) && /Jahresgewinn über €2\.000[^€]*€3\.639\)\s*€492/.test(fi("fiRechnung")) && /Puffer[^€]*€482/.test(fi("fiRechnung")));
+    pruefeDialog("Finanzen: verworfene Mail zaehlt nicht, keine Zeile ohne Rechnung",
+      !/Newsletter|erwartet|fehlt|geschätzt/.test(document.getElementById("fiLieferanten").textContent) &&
+      /Close/.test(document.getElementById("fiLieferanten").textContent));
+    document.getElementById("fiPruefenBtn").click();
+    await new Promise(r=>setTimeout(r, 80));
+    const dlgF = document.querySelector("dialog.dlg[open]");
+    pruefeDialog("Pruefen-Dialog zeigt die unsichere Rechnung", !!dlgF && /Rechnung prüfen \(1 offen\)/.test(dlgF.textContent));
+    dlgF.querySelector('[name="netto_eur"]').value = "20";
+    dlgF.querySelector('[data-dlg="submit"]').click();
+    await new Promise(r=>setTimeout(r, 250));
+    pruefeDialog("Korrigierte Rechnung zaehlt sofort: Ausgaben 171, nicht mehr zu pruefen",
+      fi("fiAusgaben") === "€171" && FAKE.expenses.find(x=>x.id === "gmail_e4").status === "ok" &&
+      FAKE.expenses.find(x=>x.id === "gmail_e4").korrigiert === true);
   }catch(e){
     window.__dialogChecks.push("Dialogpruefung abgebrochen: " + (e && e.message));
   }

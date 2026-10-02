@@ -29,7 +29,7 @@ export async function fetchAllData(){
   const [personalRes, teamRes, timeRes, tasksRes, goalsRes, commitRes, projRes, stepRes,
          custRes, revMonRes, revRes, callsRes, setRes, leistRes, meetRes,
          monthRes, salesRes, anrufRes, vorgabeRes, syncRes, leadRes, instRes,
-         ticketRes, sprintRes] = await Promise.all([
+         ticketRes, sprintRes, ausgabenRes] = await Promise.all([
     db.from("daily_personal").select("*"),
     db.from("daily_team").select("*"),
     alleZeilen("time_entries", "id"),
@@ -53,7 +53,8 @@ export async function fetchAllData(){
     db.from("sales_leads").select("*"),
     alleZeilen("instantly_daily", ["date", "campaign_id"]),
     db.from("tickets").select("*").order("id", { ascending: true }),
-    db.from("sprints").select("*").order("nummer", { ascending: true })
+    db.from("sprints").select("*").order("nummer", { ascending: true }),
+    alleZeilen("expenses", "id")
   ]);
   if(projRes.error){ console.error(projRes.error); state.projects = []; }
   else{ state.projects = projRes.data; }
@@ -120,11 +121,14 @@ export async function fetchAllData(){
   state.salesLeadsTabelleDa = !leadRes.error;
   // Cold Emails je Kampagne und Tag aus Instantly (sql/013)
   state.instantlyDaily = instRes.error ? [] : instRes.data;
-  // Tickets und Sprints gibt es erst nach sql/014. Bis dahin erklaert der
-  // Reiter, was fehlt — "keine Tickets" saehe sonst aus wie ein leeres Board.
+  // Tickets und Sprints gibt es erst nach sql/014_tickets. Bis dahin erklaert
+  // der Reiter, was fehlt — "keine Tickets" saehe sonst aus wie ein leeres Board.
   state.ticketTabelleDa = !ticketRes.error && !sprintRes.error;
   state.tickets = ticketRes.error ? [] : ticketRes.data;
   state.sprints = sprintRes.error ? [] : sprintRes.data;
+  // Finanzen (sql/014_finanzen): Ausgaben aus den Rechnungs-Mails
+  state.finanzenTabelleDa = !ausgabenRes.error;
+  state.expenses = ausgabenRes.error ? [] : ausgabenRes.data;
   if(setRes.error){ console.error(setRes.error); state.settings = {}; }
   else{
     state.settings = {};
@@ -315,7 +319,7 @@ export async function einstellungSpeichern(key, wert){
 }
 
 
-/* ---------- Tickets und Sprints (sql/014) ----------
+/* ---------- Tickets und Sprints (sql/014_tickets) ----------
    Dieselben Zeilen liest und schreibt Claude ueber tools/tickets/ im
    jeweiligen Repo — Feldnamen deshalb nur zusammen mit dem Tool aendern. */
 
@@ -367,4 +371,20 @@ export async function sprintSpeichern(nutzlast){
   }
   if(!data || !data.length) throw new Error("Die Datenbank hat den Sprint nicht übernommen — bitte die Seite neu laden.");
   return data[0];
+}
+
+/* ---------- Finanzen ---------- */
+
+/* Eine Ausgabe korrigieren oder von Hand anlegen. Korrigierte Zeilen fasst der
+   Rechnungsabgleich nie wieder an (korrigiert = true). */
+export async function ausgabeSpeichern(werte, id){
+  const nutzlast = { ...werte, korrigiert: true, updated_at: new Date().toISOString() };
+  const zeile = id ? { ...nutzlast, id }
+    : { ...nutzlast, id: "hand_" + (crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(36)), source: "hand" };
+  const abfrage = id
+    ? db.from("expenses").update(nutzlast).eq("id", id)
+    : db.from("expenses").insert(zeile);
+  const { error } = await abfrage;
+  if(error){ console.error(error); throw new Error("Ausgabe konnte nicht gespeichert werden: " + error.message); }
+  return zeile;
 }

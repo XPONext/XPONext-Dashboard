@@ -8,8 +8,8 @@
   background:var(--bg);
   border:1px solid var(--border);
   border-radius:var(--r-lg);
-  padding:1.7rem;
-  margin-bottom:1.3rem;
+  padding:1.25rem 1.35rem;
+  margin-bottom:1rem;
   box-shadow:var(--shadow-sm);
   transition:box-shadow .2s var(--ease);
 }
