@@ -89,7 +89,10 @@ check("Show-up-Rate", text_of("vtShowupQuote"), "71\u00a0%")
 # 2: die Testwoche aus daily_personal plus die laufende Woche, in der die
 # getrackten Hebel-Stunden aus dem Zeittracker liegen.
 check("Erfasste Wochen", text_of("streakWeeksLogged"), "2")
-check("Zeittracking heute (Std.)", text_of("ztTodayHours"), "24")
+# Arbeitszeit je Person ohne Pausen: Tim 6 x 30 Min., Simon 42 x 30 Min. — alles heute
+check("Arbeitszeit Tim heute (Std.)", text_of("az-tim-tag"), "3")
+check("Arbeitszeit Simon heute (Std.)", text_of("az-simon-tag"), "21")
+check("Arbeitszeit Simon Monat (Std.)", text_of("az-simon-monat"), "21")
 
 # 3) Wurde ueberhaupt gerendert?
 if count(r'class="(bar|kpi)-fill') < 10:

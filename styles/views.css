@@ -990,6 +990,12 @@ table.ruhig .rate-basis{display:block;font-size:0.68rem;color:var(--text-muted);
 .mini-balken{display:block;width:72px;height:3px;margin:0.4rem 0 0 auto;border-radius:var(--r-pill);background:var(--accent-light);overflow:hidden;}
 .mini-balken > span{display:block;height:100%;border-radius:var(--r-pill);background:var(--accent);}
 table.ruhig tr.is-laufend th, table.ruhig tr.is-laufend td{background:var(--bg-subtle);}
+/* Arbeitszeit auf "Heute": zwei Zeilen, drei Zeitraeume */
+.card.arbeitszeit{margin-top:var(--sp-4);}
+table.ruhig .th-basis{display:block;font-size:0.62rem;font-weight:var(--fw-normal);text-transform:none;letter-spacing:0;margin-top:0.1rem;}
+table.ruhig .rate small{font-size:0.7rem;color:var(--text-muted);}
+.az-leer{color:var(--text-muted);}
+
 /* Kompakte Tabelle (Finanzen je Monat): Monat und Unterzeile nicht umbrechen */
 table.ruhig.kompakt tbody th, table.ruhig.kompakt .rate-basis{white-space:nowrap;}
 table.ruhig.wochen tbody th .rate-basis{font-weight:var(--fw-normal);}

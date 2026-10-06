@@ -47,6 +47,20 @@ osascript -e 'display notification "Zeittracking läuft — alle 30 Min ein Popu
 TAKT=1800          # regulaerer Abstand zwischen zwei Fenstern
 NACHFASSEN=180     # kurz nachschauen, solange niemand am Rechner ist
 
+# Nach der Uhr warten, nicht mit einem langen "sleep": Solange der Mac schlaeft
+# (Deckel zu), steht der Zaehler von sleep still. Aus "in 30 Minuten" wurde so
+# "in 30 Minuten plus die Zeit mit zugeklapptem Deckel" — Tim am 06.10.2026:
+# Fenster um 05:51, Deckel 05:53–06:16 zu, das naechste waere erst um 06:44
+# gekommen statt um 06:21. Daher die vielen Luecken von 60–90 Minuten.
+# In kurzen Schritten auf die Uhr schauen: Ist die halbe Stunde beim
+# Aufklappen schon um, kommt das Fenster innerhalb von 20 Sekunden.
+warte() {
+  local ziel=$(( $(date +%s) + $1 ))
+  while [ "$(date +%s)" -lt "$ziel" ]; do
+    sleep 20
+  done
+}
+
 while true; do
   python3 "$DIR/popup.py"
   ERGEBNIS=$?
@@ -63,8 +77,8 @@ while true; do
   # nach der Rueckkehr mit bis zu einer halben Stunde Verspaetung. Umgekehrt
   # stapelt sich nichts mehr, weil waehrend der Abwesenheit gar nichts aufgeht.
   if [ "$ERGEBNIS" -eq 10 ]; then
-    sleep "$NACHFASSEN"
+    warte "$NACHFASSEN"
   else
-    sleep "$TAKT"
+    warte "$TAKT"
   fi
 done

@@ -84,11 +84,21 @@
           <div class="cockpit-kzahl" id="clRueckstand">—</div>
           <div class="cockpit-klbl" id="clRueckstandSub">überfällige Call-Tasks in Close</div>
         </div>
-        <div class="cockpit-karte" id="ztTodayCard">
-          <div class="cockpit-kzahl"><span id="ztTodayHours">0</span><span class="cockpit-ziel"> Std.</span></div>
-          <div class="cockpit-klbl" id="ztTodaySub">Zeit heute</div>
+      </div>
+    </div>
+
+    <!-- Arbeitszeit je Person (Tim, 06.10.2026: „wie viele Stunden ich heute,
+         diese Woche, diesen Monat gearbeitet habe — Simon und meine Zahlen
+         trennen"). Ersetzt die Cockpit-Karte „Zeit heute", die beide
+         zusammenzaehlte. Folgt dem oben gewaehlten Tag. -->
+    <div class="card arbeitszeit">
+      <div class="karten-kopf">
+        <div>
+          <h3>Arbeitszeit</h3>
+          <p>Aus dem Zeittracker, ohne Pausen</p>
         </div>
       </div>
+      <div id="azTabelle"></div>
     </div>
 
     <!-- Monatsprojekt: das größere Vorhaben, auf das die Wochenprojekte

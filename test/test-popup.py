@@ -129,6 +129,20 @@ except SystemExit as e:
            f"war {e.code}")
     pruefe("Sperre wird dabei freigegeben", bool(freigegeben))
 
+# ---- 2d) Fenster ging nicht auf: in 3 Minuten neu versuchen, nicht in 30 ----
+# Vorher lief ein osascript-Fehler wie ein Abbruch in die vollen 30 Minuten.
+# Und jeder Durchlauf hinterlaesst eine Zeile im Protokoll.
+idle(5)
+popup.LOG_FILE = popup.Path(tempfile.mkdtemp()) / "popup.log"
+popup.run_flow = lambda: "FEHLER"
+try:
+    popup.main()
+    pruefe("Fenster nicht aufgegangen: Neuversuch mit Code 10", False, "main() lief durch")
+except SystemExit as e:
+    pruefe("Fenster nicht aufgegangen: Neuversuch mit Code 10", e.code == popup.EXIT_NIEMAND_DA, f"war {e.code}")
+pruefe("Durchlauf steht im Protokoll",
+       popup.LOG_FILE.exists() and "ging nicht auf" in popup.LOG_FILE.read_text())
+
 # ---- 3) Rückfall, wenn die Datenbank nicht erreichbar ist ----
 def netz_weg(*a, **k):
     raise OSError("kein Netz")

@@ -42,6 +42,12 @@ STRATO und Google Workspace schicken die Rechnungen seit 02.10. per Mail.
 Google Workspace Juli–September fehlt noch — aus admin.google.com
 herunterladen und an info@ schicken, dann liest der Abgleich sie ein.
 
+**Zeittracker (06.10.2026):** wartet jetzt nach der Uhr statt mit `sleep` —
+der stand bei zugeklapptem Deckel still, daher die vielen Lücken von 60–90
+Minuten. Jeder Durchlauf steht in `~/.xpo-time-tracker/.tmp/popup.log`. Auf
+Tims Mac installiert; **Simon:** `git pull` und `./time_tracker/install.sh`.
+Arbeitszeit je Person (heute, Woche, Monat) steht auf „Heute" unter dem Cockpit.
+
 **Termine, Anrufe, Kanäle, Kampagnen** laufen über Railway (`sql/010`–`014`
 ausgeführt, alter Close-Abgleich auf dem Mac entfernt). Noch offen:
 

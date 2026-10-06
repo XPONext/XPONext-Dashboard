@@ -105,6 +105,25 @@ AS_TIMEOUT = "-1712"
 LEERLAUF_GRENZE = 10 * 60   # Sekunden
 EXIT_NIEMAND_DA = 10        # Rueckgabewert an start_loop.sh
 
+# Eine Zeile je Durchlauf: wann, was dabei herauskam. Ohne das liess sich eine
+# Luecke in den Eintraegen nicht erklaeren — war niemand da, wurde abgebrochen,
+# lief das Fenster ab oder gab es einen Fehler? (Simon hatte am 05.10.2026
+# zweimal genau drei Stunden ohne Eintrag.)
+LOG_FILE = ROOT / ".tmp" / "popup.log"
+LOG_MAX_BYTES = 200_000
+
+
+def protokoll(ergebnis):
+    try:
+        LOG_FILE.parent.mkdir(exist_ok=True)
+        if LOG_FILE.exists() and LOG_FILE.stat().st_size > LOG_MAX_BYTES:
+            zeilen = LOG_FILE.read_text().splitlines()
+            LOG_FILE.write_text("\n".join(zeilen[len(zeilen) // 2:]) + "\n")
+        with LOG_FILE.open("a") as f:
+            f.write(f"{datetime.now():%Y-%m-%d %H:%M:%S}  {ergebnis}\n")
+    except Exception:
+        pass   # Protokoll ist Beiwerk — darf das Tracking nie stoeren
+
 
 
 # ─── AppleScript-Helfer ──────────────────────────────────────────────────────
@@ -171,6 +190,8 @@ def run_flow():
         end timeout
     '''
     result = subprocess.run(["osascript", "-e", script], capture_output=True, text=True)
+    if result.returncode != 0 and AS_TIMEOUT not in (result.stderr or "") and "-128" not in (result.stderr or ""):
+        protokoll("osascript-Fehler: " + (result.stderr or "").strip()[:200])
     if result.returncode != 0:
         # Abgelaufen heisst: Das Fenster stand da, aber niemand hat geantwortet —
         # entweder war der Platz leer oder es ist hinter anderen Fenstern
@@ -178,7 +199,9 @@ def run_flow():
         # die vollen dreissig Minuten verstreichen zu lassen. Sitzt wirklich
         # niemand davor, faengt die Leerlauf-Pruefung den naechsten Versuch ab
         # und es geht gar kein Fenster auf.
-        return "TIMEOUT" if AS_TIMEOUT in (result.stderr or "") else None
+        if AS_TIMEOUT in (result.stderr or ""):
+            return "TIMEOUT"
+        return "CANCELLED" if "-128" in (result.stderr or "") else "FEHLER"
     return result.stdout.strip()
 
 
@@ -326,6 +349,7 @@ def release_lock():
 
 def main():
     if not acquire_lock():
+        protokoll("übersprungen — ein anderes Fenster ist noch offen")
         return  # es hängt noch ein unbeantwortetes Fenster — nichts Neues zeigen
 
     try:
@@ -334,7 +358,9 @@ def main():
         # unbeantwortete Fenster uebereinander. Der Loop fragt danach schneller
         # nach, damit man nach der Rueckkehr nicht bis zur naechsten halben
         # Stunde warten muss.
-        if leerlauf_sekunden() > LEERLAUF_GRENZE:
+        leerlauf = leerlauf_sekunden()
+        if leerlauf > LEERLAUF_GRENZE:
+            protokoll(f"niemand am Rechner (seit {leerlauf // 60:.0f} Min.)")
             sys.exit(EXIT_NIEMAND_DA)   # das finally gibt die Sperre frei
 
         if not SUPABASE_URL or not SUPABASE_ANON_KEY or not APP_SECRET or not PERSON:
@@ -342,15 +368,20 @@ def main():
             return
 
         result = run_flow()
-        if result == "TIMEOUT":
-            # Fenster lief ab, ohne dass jemand geantwortet hat. Derselbe
-            # Rueckgabewert wie bei "niemand am Rechner" — der Loop fasst dann
-            # in wenigen Minuten nach, statt eine halbe Stunde zu warten.
+        if result in ("TIMEOUT", "FEHLER"):
+            # Fenster lief ab, ohne dass jemand geantwortet hat — oder es ging
+            # gar nicht erst auf. Derselbe Rueckgabewert wie bei "niemand am
+            # Rechner": Der Loop fasst in wenigen Minuten nach, statt eine
+            # halbe Stunde zu warten.
+            protokoll("Fenster abgelaufen, niemand hat geantwortet" if result == "TIMEOUT"
+                      else "Fenster ging nicht auf — in 3 Min. neuer Versuch")
             sys.exit(EXIT_NIEMAND_DA)   # das finally gibt die Sperre frei
-        if result is None or result == "CANCELLED":
+        if result == "CANCELLED":
+            protokoll("abgebrochen")
             return  # bewusst abgebrochen — nichts speichern, regulaer weiter
 
         if result == "STOP":
+            protokoll("Feierabend")
             # Feierabend, zwei Dateien mit zwei Aufgaben:
             #   stop.flag       — kurzlebiges Signal an start_loop.sh ("beende dich
             #                     nach diesem Durchlauf"), wird dort gleich gelöscht
@@ -363,7 +394,7 @@ def main():
             return
 
         if result == "PAUSE":
-            post_entry("Pause", None)
+            protokoll("Pause" + ("" if post_entry("Pause", None) else " — Speichern fehlgeschlagen"))
             return
 
         # Defensiv: fehlende Felder (z.B. durch einen unerwarteten AppleScript-Rückgabewert)
@@ -373,8 +404,10 @@ def main():
         parts += [""] * (3 - len(parts))
         zuordnung, state, hebel = parts[:3]
         if not state:
+            protokoll("leere Antwort, nichts gespeichert")
             return  # nichts Sinnvolles zum Speichern
-        post_entry(state, zuordnung or None, hebel or None)
+        ok = post_entry(state, zuordnung or None, hebel or None)
+        protokoll(f"eingetragen: {state} · {zuordnung or '–'}" + ("" if ok else " — Speichern fehlgeschlagen"))
     finally:
         release_lock()
 

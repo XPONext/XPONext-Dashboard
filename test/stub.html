@@ -502,7 +502,8 @@ setTimeout(async ()=>{
     pruefeDialog("Gestern: Calls des Vortags im Cockpit", document.getElementById("clHeute").textContent === "20");
     pruefeDialog("Gestern: Ueberschrift im Cockpit nennt den Tag", /^Calls am /.test(document.getElementById("clCallsLbl").textContent));
     pruefeDialog("Ueberschrift sagt Gestern", document.getElementById("tagHeading").textContent === "Gestern");
-    pruefeDialog("Zeit am Vortag statt heute", document.getElementById("ztTodayHours").textContent === "0");
+    pruefeDialog("Zeit am Vortag statt heute",
+      document.getElementById("az-tim-tag").textContent.trim() === "–" && document.getElementById("az-simon-tag").textContent.trim() === "–");
     pruefeDialog("Nach vorn geht es wieder", !document.getElementById("tagNext").disabled);
     // Sieben Tage zurueck landet sicher in der Vorwoche — der Wochenteil geht mit
     for(let i=0;i<6;i++){ document.getElementById("tagPrev").click(); await warte(60); }
@@ -564,12 +565,12 @@ setTimeout(async ()=>{
     pruefeDialog("Zurueck zur laufenden Woche", /3x Cold Call/.test(cl()) && document.getElementById("fokusHeuteBtn").hidden);
 
     // Zweite Regression: Blaettern in der Zeiterfassung (Kunden-Reiter) hat
-    // "Zeit heute" auf der Heute-Seite ausgeblendet.
+    // "Zeit heute" auf der Heute-Seite ausgeblendet. Seit 06.10.2026 je Person.
     document.getElementById("ztPrevWeek").click();
     await warte(150);
-    pruefeDialog("Zeit heute bleibt sichtbar, wenn die Zeiterfassung blaettert",
-      document.getElementById("ztTodayCard").style.display !== "none" &&
-      document.getElementById("ztTodayHours").textContent === "24");
+    const az = id=>document.getElementById(id).textContent.trim();
+    pruefeDialog("Arbeitszeit bleibt, wenn die Zeiterfassung blaettert — je Person getrennt",
+      az("az-tim-tag") === "3 Std." && az("az-simon-tag") === "21 Std." && az("az-tim-woche") === "3 Std.");
     document.getElementById("ztNextWeek").click();
     await warte(100);
 

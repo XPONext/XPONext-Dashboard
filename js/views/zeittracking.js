@@ -7,10 +7,10 @@
    Der "Highscore-Tag" ist entfallen: Er beantwortete keine Frage, die
    irgendjemand stellt. */
 
-import { WEEKS, N_WEEKS } from "../config.js";
+import { WEEKS, N_WEEKS, PERSONS } from "../config.js";
 import { num, fmtDate, weekLabel, localDateStr, escapeHtml } from "../utils/format.js";
-import { findCurrentWeekIndex } from "../utils/weeks.js";
-import { state, gewaehlterTag } from "../state.js";
+import { findCurrentWeekIndex, weekIndexForDate } from "../utils/weeks.js";
+import { state, gewaehlterTag, monatsStart, letzterTagDesMonats } from "../state.js";
 import { onRender } from "../ui/bus.js";
 import { emptyState } from "../ui/components.js";
 import { serienFarbe } from "../ui/chart.js";
@@ -79,6 +79,42 @@ function renderAltbestand(entries){
       `<span class="zt-chip">${escapeHtml(k)} · ${num(m/60,1)} Std.</span>`).join("")}</div>`;
 }
 
+/* Arbeitszeit je Person: Tag, Woche und Monat des auf "Heute" gewaehlten Tages.
+   Pausen zaehlen nicht. Die Woche kommt aus WEEKS (Mo–So wie ueberall im
+   Dashboard); liegt der Tag ausserhalb, zaehlt die Kalenderwoche ab Montag. */
+const MONATE = ["Januar","Februar","März","April","Mai","Juni","Juli","August","September","Oktober","November","Dezember"];
+
+function wocheVon(tag){
+  const i = weekIndexForDate(tag);
+  if(i >= 0) return WEEKS[i];
+  const d = new Date(tag + "T12:00:00");
+  const montag = new Date(d); montag.setDate(d.getDate() - ((d.getDay() + 6) % 7));
+  const sonntag = new Date(montag); sonntag.setDate(montag.getDate() + 6);
+  return [localDateStr(montag.toISOString()), localDateStr(sonntag.toISOString())];
+}
+
+function renderArbeitszeit(){
+  const tag = gewaehlterTag();
+  const heute = localDateStr(new Date().toISOString());
+  const [wVon, wBis] = wocheVon(tag);
+  const mVon = monatsStart(tag), mBis = letzterTagDesMonats(mVon);
+  const spalten = [
+    { name: tag === heute ? "Heute" : fmtDate(tag), von: tag, bis: tag },
+    { name: "Woche", basis: fmtDate(wVon) + "–" + fmtDate(wBis), von: wVon, bis: wBis },
+    { name: MONATE[Number(mVon.slice(5, 7)) - 1], von: mVon, bis: mBis }
+  ];
+  const stunden = (person, s)=>sumMinutes(filterTimeEntries({ dateFrom: s.von, dateTo: s.bis, person }), true) / 60;
+  const zelle = h=>h > 0 ? `${num(h, 1)}<small> Std.</small>` : `<span class="az-leer">–</span>`;
+  document.getElementById("azTabelle").innerHTML = `<div class="table-wrap is-ruhig"><table class="ruhig kompakt">
+    <thead><tr><th></th>${spalten.map(s=>`<th class="zahl">${s.name}${s.basis ? `<span class="th-basis">${s.basis}</span>` : ""}</th>`).join("")}</tr></thead>
+    <tbody>${PERSONS.map(([p, name])=>`
+      <tr>
+        <th scope="row">${name}</th>
+        ${spalten.map((s, i)=>`<td class="zahl"><span class="rate" id="az-${p}-${["tag","woche","monat"][i]}">${zelle(stunden(p, s))}</span></td>`).join("")}
+      </tr>`).join("")}
+    </tbody></table></div>`;
+}
+
 function renderZeittracking(){
   const todayStr = localDateStr(new Date().toISOString());
   const curIdx = findCurrentWeekIndex();
@@ -110,17 +146,7 @@ function renderZeittracking(){
   document.getElementById("ztWeekSimonSub").textContent =
     arbeit > 0 ? num((simon/arbeit)*100, 0) + "% der Zeit" : "Stunden";
 
-  // "Zeit heute" steht seit dem Reiter-Umbau im Cockpit auf "Heute" und hat mit
-  // der hier gewaehlten Woche nichts mehr zu tun. Frueher wurde die Karte
-  // ausgeblendet, sobald man in der Zeiterfassung zurueckblaetterte — damit
-  // verschwand sie auf einer ganz anderen Seite.
-  // Folgt dem auf "Heute" gewaehlten Tag, nicht der hier gewaehlten Woche.
-  const tag = gewaehlterTag();
-  const tagAll = filterTimeEntries({dateFrom: tag, dateTo: tag});
-  document.getElementById("ztTodayCard").style.display = "";
-  document.getElementById("ztTodayHours").textContent = num(sumMinutes(tagAll, true)/60, 1);
-  document.getElementById("ztTodaySub").textContent =
-    (tag === todayStr ? "Zeit heute · " : "Zeit am ") + fmtDate(tag);
+  renderArbeitszeit();
 
   renderAufteilung(weekAll, "zuordnung", "ztByZuordnung",
     "In dieser Woche wurde noch keine Zeit einem Kunden zugeordnet.");
