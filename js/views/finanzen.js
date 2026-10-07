@@ -245,11 +245,13 @@ function renderAuszahlungen(){
     : `Verdient nach Rücklage und Puffer seit dem ersten Umsatz: ${eur(a.verdient)} je Person, abzüglich der Auszahlungen.`}</p>`;
 }
 
-/* Konten — keins ist angebunden. Das Geschaeftskonto schreibt
-   geschaeftskontoAm() ab dem letzten eingetragenen Stand fort; die Herleitung
-   und was als Naechstes kommt, stehen eingeklappt darunter. Die anderen tragt
-   ihr von Hand ein: je Konto der neueste Stand und die Veraenderung seit dem
-   Eintrag davor, gelb ab zehn Tagen ohne neuen Stand. */
+/* Konten — keins ist angebunden. Je Konto eine grosse Kachel, die den Dialog
+   direkt in ihrem Feld oeffnet (Tim klickte auf die Zeilen, und nichts
+   passierte). Das Geschaeftskonto schreibt geschaeftskontoAm() ab dem letzten
+   eingetragenen Stand fort; die Herleitung und was als Naechstes kommt, stehen
+   eingeklappt darunter. Die anderen tragt ihr von Hand ein: je Konto der
+   neueste Stand und die Veraenderung seit dem Eintrag davor, gelb ab zehn
+   Tagen ohne neuen Stand. */
 function renderKonten(){
   const box = document.getElementById("fiKonten");
   const auf = document.getElementById("fiKontoAuf");
@@ -262,44 +264,40 @@ function renderKonten(){
   const heute = todayIso();
   const gk = geschaeftskontoAm(heute);
   const konten = kontoStaende().map(k=>({ ...k, wert: k.gerechnet ? (gk ? gk.betrag : null) : (k.aktuell ? k.aktuell.betrag : null) }));
-  if(!konten.some(k=>k.wert != null)){
-    box.innerHTML = `<p class="leer-hinweis">Noch kein Stand eingetragen — oben rechts auf „Stände eintragen".</p>`;
-    return;
-  }
   const vorschauBis = letzterTagDesMonats(folgemonat(monatsStart(heute)));
   const vorschau = kontoVorschau(vorschauBis);
 
-  const zeilen = konten.map(k=>{
+  const fuss = (text, art = "")=>`<span class="kpi-fuss${art}">${text}</span>`;
+  const kacheln = konten.map(k=>{
+    let zeilen;
     if(k.wert == null){
-      return `<tr><th scope="row">${escapeHtml(k.name)}<span class="rate-basis">noch kein Stand</span></th>
-        <td class="zahl"><span class="rate">–</span></td></tr>`;
-    }
-    const minus = k.wert < 0 ? " is-minus" : "";
-    if(k.gerechnet){
+      zeilen = fuss(k.gerechnet ? "einmal eintragen, dann rechnet das Dashboard weiter" : "noch kein Stand");
+    } else if(k.gerechnet){
       const naechste = vorschau[0];
-      const basis = gk.anker.datum === heute ? "Stand heute" : `gerechnet ab Stand ${fmtDate(gk.anker.datum)}`;
-      return `<tr>
-        <th scope="row">${escapeHtml(k.name)}<span class="rate-basis">${basis}</span></th>
-        <td class="zahl"><span class="rate${minus}">${eur(k.wert)}</span>${naechste
-          ? `<span class="rate-basis">${mitVorzeichen(naechste.betrag)} am ${fmtDate(naechste.datum)}</span>` : ""}</td>
-      </tr>`;
+      zeilen = fuss(gk.anker.datum === heute ? "Stand heute" : `gerechnet ab Stand ${fmtDate(gk.anker.datum)}`) +
+        (naechste ? fuss(`als Nächstes ${mitVorzeichen(naechste.betrag)} am ${fmtDate(naechste.datum)}`) : "");
+    } else {
+      const alt = tageHer(k.aktuell.datum);
+      const diff = k.vorher ? k.aktuell.betrag - k.vorher.betrag : null;
+      zeilen = fuss(alt === 0 ? "Stand heute" : `Stand ${fmtDate(k.aktuell.datum)}` + (alt > 10 ? ` · vor ${alt} Tagen` : ""), alt > 10 ? " is-warn" : "") +
+        (diff === null ? "" : fuss(`${diff === 0 ? "unverändert" : (diff > 0 ? "▲ " : "▼ ") + euro(Math.abs(diff))} seit ${fmtDate(k.vorher.datum)}`));
     }
-    const alt = tageHer(k.aktuell.datum);
-    const stand = alt === 0 ? "Stand heute" : `Stand ${fmtDate(k.aktuell.datum)}` + (alt > 10 ? ` · vor ${alt} Tagen` : "");
-    const diff = k.vorher ? k.aktuell.betrag - k.vorher.betrag : null;
-    const veraenderung = diff === null ? ""
-      : `<span class="rate-basis">${diff === 0 ? "unverändert" : (diff > 0 ? "▲ " : "▼ ") + euro(Math.abs(diff))} seit ${fmtDate(k.vorher.datum)}</span>`;
-    return `<tr>
-      <th scope="row">${escapeHtml(k.name)}<span class="rate-basis${alt > 10 ? " is-warn" : ""}">${stand}</span></th>
-      <td class="zahl"><span class="rate${minus}">${eur(k.wert)}</span>${veraenderung}</td>
-    </tr>`;
+    return `<button type="button" class="konto-kachel" data-konto="${escapeHtml(k.key)}" title="${escapeHtml(k.name)} eintragen">
+      <span class="kpi-lbl">${escapeHtml(k.name)}</span>
+      <span class="kk-wert${k.wert == null ? " is-leer" : k.wert < 0 ? " is-minus" : ""}">${k.wert == null ? "–" : eur(k.wert)}</span>
+      ${zeilen}
+      <span class="kk-aendern">${k.wert == null ? "Stand eintragen" : k.gerechnet ? "Echten Stand eintragen" : "Neuen Stand eintragen"}</span>
+    </button>`;
   });
   const mitWert = konten.filter(k=>k.wert != null);
   const summe = mitWert.reduce((s, k)=>s + k.wert, 0);
-  box.innerHTML = `<div class="table-wrap is-ruhig"><table class="ruhig">
-    <tbody>${zeilen.join("")}${mitWert.length > 1
-      ? `<tr class="is-summe"><th scope="row">Zusammen</th><td class="zahl"><span class="rate${summe < 0 ? " is-minus" : ""}">${eur(summe)}</span></td></tr>` : ""}
-    </tbody></table></div>`;
+  box.innerHTML = `<div class="konto-reihe">${kacheln.join("")}
+    <div class="konto-kachel is-summe">
+      <span class="kpi-lbl">Zusammen</span>
+      <span class="kk-wert${!mitWert.length ? " is-leer" : summe < 0 ? " is-minus" : ""}">${mitWert.length ? eur(summe) : "–"}</span>
+      ${fuss(mitWert.length === konten.length ? "auf allen Konten" : `${mitWert.length} von ${konten.length} Konten eingetragen`)}
+    </div>
+  </div>`;
 
   if(!gk) return;
   // Herleitung: vom eingetragenen Stand bis heute, dann was sicher kommt
@@ -365,9 +363,15 @@ async function neuDialog(){
 /* Alle Konten in einem Dialog — eingetragen wird einmal die Woche, meist alle
    zusammen. Leere Felder bleiben, wie sie sind: Ein vorausgefuellter alter
    Wert bekaeme sonst still das neue Datum und saehe frisch aus. */
-async function kontenDialog(){
+async function kontenDialog(fokus){
   const konten = kontoStaende();
   const feld = k=>"konto_" + k.key;
+  // Von einer Kachel aus geoeffnet: gleich in deren Feld. openModal hat den
+  // Dialog beim Zurueckkommen schon geoeffnet, darum reicht der naechste Takt.
+  if(fokus) setTimeout(()=>{
+    const el = document.querySelector(`dialog.dlg[open] [name="konto_${fokus}"]`);
+    if(el) el.focus();
+  }, 0);
   const ergebnis = await openModal({
     title: "Kontostände eintragen",
     submitLabel: "Speichern",
@@ -380,7 +384,8 @@ async function kontenDialog(){
           name: feld(k), label: k.name + " in Euro", type:"text",
           placeholder: gk ? `gerechnet ${eur(gk.betrag)}`
             : k.aktuell ? `zuletzt ${eur(k.aktuell.betrag)} am ${fmtDate(k.aktuell.datum)}` : "noch kein Stand",
-          hint: k.gerechnet ? "Rechnet das Dashboard selbst weiter — nur eintragen, wenn es nicht stimmt."
+          hint: k.gerechnet ? (gk ? "Rechnet das Dashboard selbst weiter — nur eintragen, wenn es nicht stimmt."
+                                  : "Einmal den echten Stand eintragen, danach rechnet das Dashboard selbst weiter.")
             : i === konten.length - 1 ? "Leer lassen, was sich nicht geändert hat." : ""
         };
       })
@@ -437,6 +442,10 @@ document.getElementById("fiZeitraum").addEventListener("click", ev=>{
 });
 document.getElementById("fiNeuBtn").addEventListener("click", neuDialog);
 document.getElementById("fiPruefenBtn").addEventListener("click", pruefenDialog);
-document.getElementById("fiKontenBtn").addEventListener("click", kontenDialog);
+document.getElementById("fiKontenBtn").addEventListener("click", ()=>kontenDialog(null));
+document.getElementById("fiKonten").addEventListener("click", ev=>{
+  const kachel = ev.target.closest("[data-konto]");
+  if(kachel) kontenDialog(kachel.dataset.konto);
+});
 
 onRender("finanzen", renderFinanzen);

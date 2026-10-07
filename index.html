@@ -481,6 +481,27 @@
       </div>
     </div>
 
+    <!-- Keins der Konten ist angebunden (sql/015). Das Geschäftskonto
+         schreibt das Dashboard ab dem letzten eingetragenen Stand fort, die
+         anderen tragt ihr von Hand ein. Über die ganze Breite und vor der
+         Rechnung (Tim, 07.10.2026: „größer machen und über das Rücklagen-Ding");
+         jede Kachel öffnet den Dialog direkt in ihrem Feld. -->
+    <div class="card">
+      <div class="karten-kopf">
+        <div>
+          <h3>Konten</h3>
+          <p>Geschäftskonto gerechnet ab eurem letzten Stand, die anderen von Hand — zum Eintragen auf ein Konto klicken</p>
+        </div>
+        <button type="button" class="btn-leise" id="fiKontenBtn">Stände eintragen</button>
+      </div>
+      <div id="fiKonten"></div>
+      <div class="save-msg" id="fiKontenMsg">Gespeichert ✓</div>
+      <details class="erklaerung" id="fiKontoAuf" hidden>
+        <summary>Wie das Geschäftskonto gerechnet wird</summary>
+        <div id="fiKontoRechnung"></div>
+      </details>
+    </div>
+
     <div class="grid2">
       <!-- Nur die beiden Ergebnisse offen, die Herleitung eingeklappt (Tim,
            07.10.2026: „das muss nicht die ganze Zeit offen sein"). Das
@@ -524,36 +545,15 @@
       </div>
     </div>
 
-    <div class="grid2">
-      <!-- Keins der Konten ist angebunden (sql/015). Das Geschäftskonto
-           schreibt das Dashboard ab dem letzten eingetragenen Stand fort,
-           die anderen tragt ihr von Hand ein. -->
-      <div class="card">
-        <div class="karten-kopf">
-          <div>
-            <h3>Konten</h3>
-            <p>Geschäftskonto gerechnet ab eurem letzten Stand, die anderen von Hand</p>
-          </div>
-          <button type="button" class="btn-leise" id="fiKontenBtn">Stände eintragen</button>
+    <div class="card">
+      <div class="karten-kopf">
+        <div>
+          <h3>Ausgaben nach Lieferant</h3>
+          <p>Netto im Zeitraum — nur Rechnungen, die schon da sind. Neue kommen automatisch dazu, sobald sie per Mail eintreffen.</p>
         </div>
-        <div id="fiKonten"></div>
-        <div class="save-msg" id="fiKontenMsg">Gespeichert ✓</div>
-        <details class="erklaerung" id="fiKontoAuf" hidden>
-          <summary>Wie das Geschäftskonto gerechnet wird</summary>
-          <div id="fiKontoRechnung"></div>
-        </details>
+        <button type="button" class="btn-leise" id="fiPruefenBtn">Rechnungen prüfen</button>
       </div>
-
-      <div class="card">
-        <div class="karten-kopf">
-          <div>
-            <h3>Ausgaben nach Lieferant</h3>
-            <p>Netto im Zeitraum — nur Rechnungen, die schon da sind. Neue kommen automatisch dazu, sobald sie per Mail eintreffen.</p>
-          </div>
-          <button type="button" class="btn-leise" id="fiPruefenBtn">Rechnungen prüfen</button>
-        </div>
-        <div id="fiLieferanten"></div>
-      </div>
+      <div id="fiLieferanten"></div>
     </div>
 
     <div class="card">

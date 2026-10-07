@@ -1078,3 +1078,26 @@ table.ruhig tr.is-summe th, table.ruhig tr.is-summe .rate{font-weight:var(--fw-s
 /* Zwischentitel in der eingeklappten Herleitung (Konten) */
 .rechnung-titel{font-size:0.66rem;font-weight:var(--fw-semi);color:var(--text-muted);text-transform:uppercase;letter-spacing:0.06em;margin:var(--sp-3) 0 0.2rem;}
 details.erklaerung .rechnung-titel + .rechnung{margin-top:0;}
+
+/* Konten: je Konto eine grosse Kachel zum Anklicken, rechts die Summe.
+   Gleiche Typografie wie die Kennzahl-Reihe, nur groesser. */
+.konto-reihe{display:grid;grid-template-columns:repeat(4,1fr);gap:var(--sp-3);}
+.konto-kachel{
+  display:flex;flex-direction:column;align-items:flex-start;text-align:left;
+  font-family:var(--font);background:var(--bg);color:inherit;cursor:pointer;
+  border:1px solid var(--border);border-radius:12px;padding:0.95rem 1.05rem 0.85rem;
+  transition:border-color .12s var(--ease), box-shadow .12s var(--ease);
+}
+.konto-kachel:hover{border-color:var(--accent);box-shadow:var(--shadow-sm);}
+.konto-kachel:focus-visible{outline:2px solid var(--accent);outline-offset:2px;}
+.konto-kachel.is-summe{cursor:default;background:var(--bg-subtle);}
+.konto-kachel.is-summe:hover{border-color:var(--border);box-shadow:none;}
+.kk-wert{display:block;font-size:1.75rem;font-weight:var(--fw-semi);color:var(--text-primary);letter-spacing:-0.025em;line-height:1.15;margin:0.35rem 0 0.4rem;font-variant-numeric:tabular-nums;}
+.kk-wert.is-minus{color:var(--red);}
+.kk-wert.is-leer{color:var(--text-muted);}
+.konto-kachel .kpi-fuss{display:block;}
+.konto-kachel .kpi-fuss.is-warn{color:var(--amber);font-weight:var(--fw-semi);}
+.kk-aendern{margin-top:auto;padding-top:0.6rem;font-size:0.72rem;font-weight:var(--fw-semi);color:var(--text-muted);transition:color .12s var(--ease);}
+.konto-kachel:hover .kk-aendern{color:var(--accent-dark);}
+@media(max-width:900px){ .konto-reihe{grid-template-columns:repeat(2,1fr);} }
+@media(max-width:520px){ .konto-reihe{grid-template-columns:1fr;} }

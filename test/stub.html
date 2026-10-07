@@ -856,32 +856,34 @@ setTimeout(async ()=>{
     const gkErwartet = 8000 + Number(FAKE.revenues.find(r=>r.id === "r1").amount) * 1.19 - rechnungenSeit - auszahlungSeit;
     const konten = ()=>document.getElementById("fiKonten").textContent.replace(/\s+/g, " ");
     pruefeDialog("Konten: Geschaeftskonto gerechnet " + euroTest(gkErwartet) + ", Ruecklagen 2.500 vor 20 Tagen, Auszahlungskonto ohne Stand",
-      new RegExp("Geschäftskonto\\s*gerechnet ab Stand [\\d.]+\\s*" + esc(euroTest(gkErwartet))).test(konten()) &&
-      /Rücklagenkonto\s*Stand [\d.]+ · vor 20 Tagen\s*€2\.500/.test(konten()) &&
-      /Auszahlungskonto\s*noch kein Stand/.test(konten()) &&
-      !!document.querySelector("#fiKonten .rate-basis.is-warn") &&
+      new RegExp("Geschäftskonto\\s*" + esc(euroTest(gkErwartet)) + "\\s*gerechnet ab Stand [\\d.]+").test(konten()) &&
+      /Rücklagenkonto\s*€2\.500\s*Stand [\d.]+ · vor 20 Tagen/.test(konten()) &&
+      /Auszahlungskonto\s*–\s*noch kein Stand/.test(konten()) &&
+      !!document.querySelector("#fiKonten .kpi-fuss.is-warn") &&
       new RegExp("Zusammen\\s*" + esc(euroTest(gkErwartet + 2500))).test(konten()));
     const herleitung = document.getElementById("fiKontoRechnung").textContent.replace(/\s+/g, " ");
     pruefeDialog("Konten: Herleitung eingeklappt, mit Zahlung, Rechnungen und dem, was als Naechstes kommt",
       !document.getElementById("fiKontoAuf").hidden && !document.getElementById("fiKontoAuf").open &&
       /Eingetragen am [\d.]+\s*€8\.000/.test(herleitung) && /Zahlungseingänge \(1, brutto\)/.test(herleitung) &&
       /Als Nächstes/.test(herleitung) && /Chuong/.test(herleitung));
-    document.getElementById("fiKontenBtn").click();
+    // Klick auf die Kachel oeffnet den Dialog gleich im Feld dieses Kontos
+    document.querySelector('#fiKonten [data-konto="ruecklagen"]').click();
     await new Promise(r=>setTimeout(r, 80));
     const dlgK = document.querySelector("dialog.dlg[open]");
-    pruefeDialog("Konten-Dialog: Geschaeftskonto zeigt den gerechneten Stand, Felder leer",
-      !!dlgK && dlgK.querySelector('[name="konto_geschaeftskonto"]').placeholder === "gerechnet " + euroTest(gkErwartet) &&
+    pruefeDialog("Konten-Dialog aus der Kachel: Fokus im Ruecklagen-Feld, Geschaeftskonto zeigt den gerechneten Stand",
+      !!dlgK && document.activeElement === dlgK.querySelector('[name="konto_ruecklagen"]') &&
+      dlgK.querySelector('[name="konto_geschaeftskonto"]').placeholder === "gerechnet " + euroTest(gkErwartet) &&
       dlgK.querySelector('[name="konto_ruecklagen"]').value === "" && !!dlgK.querySelector('[name="konto_auszahlungen"]'));
     dlgK.querySelector('[name="konto_ruecklagen"]').value = "3.100,50";
     dlgK.querySelector('[data-dlg="submit"]').click();
     await new Promise(r=>setTimeout(r, 250));
     // 600,50 aufs Ruecklagenkonto: vom Geschaeftskonto umgebucht, zusammen gleich
     pruefeDialog("Konten: 3.100,50 gelesen, 600,50 vom Geschaeftskonto umgebucht, zusammen unveraendert",
-      /Rücklagenkonto\s*Stand heute\s*€3\.101\s*▲ €601 seit/.test(konten()) &&
-      new RegExp("Geschäftskonto\\s*gerechnet ab Stand [\\d.]+\\s*" + esc(euroTest(gkErwartet - 600.5))).test(konten()) &&
+      /Rücklagenkonto\s*€3\.101\s*Stand heute\s*▲ €601 seit/.test(konten()) &&
+      new RegExp("Geschäftskonto\\s*" + esc(euroTest(gkErwartet - 600.5)) + "\\s*gerechnet ab Stand [\\d.]+").test(konten()) &&
       new RegExp("Zusammen\\s*" + esc(euroTest(gkErwartet + 2500))).test(konten()) &&
       /Aufs Rücklagenkonto umgebucht\s*−€601/.test(document.getElementById("fiKontoRechnung").textContent) &&
-      !document.querySelector("#fiKonten .rate-basis.is-warn") &&
+      !document.querySelector("#fiKonten .kpi-fuss.is-warn") &&
       FAKE.kontostaende.some(z=>z.konto === "ruecklagen" && z.datum === tagRelativ(0) && z.betrag === 3100.5) &&
       !FAKE.kontostaende.some(z=>z.konto === "geschaeftskonto" && z.datum === tagRelativ(0)));
 
@@ -896,8 +898,8 @@ setTimeout(async ()=>{
     dlgK2.querySelector('[data-dlg="submit"]').click();
     await new Promise(r=>setTimeout(r, 250));
     pruefeDialog("Konten: Steuer vom Ruecklagenkonto zaehlt nicht als Umbuchung zurueck (umgebucht 1.101)",
-      /Rücklagenkonto\s*Stand heute\s*€3\.101\s*▲ €1\.101 seit/.test(konten()) &&
-      new RegExp("Geschäftskonto\\s*gerechnet ab Stand [\\d.]+\\s*" + esc(euroTest(gkErwartet - 1100.5))).test(konten()) &&
+      /Rücklagenkonto\s*€3\.101\s*Stand heute\s*▲ €1\.101 seit/.test(konten()) &&
+      new RegExp("Geschäftskonto\\s*" + esc(euroTest(gkErwartet - 1100.5)) + "\\s*gerechnet ab Stand [\\d.]+").test(konten()) &&
       new RegExp("Zusammen\\s*" + esc(euroTest(gkErwartet + 2000))).test(konten()) &&
       /Aufs Rücklagenkonto umgebucht\s*−€1\.101/.test(document.getElementById("fiKontoRechnung").textContent));
 
