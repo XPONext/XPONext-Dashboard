@@ -109,12 +109,21 @@ function renderKopf(sprint, sprintTickets){
   }
 }
 
-function karte(t, zeigeSprint){
+/* Blockiert ist ein Ticket nur, solange ein Blocker offen ist. Ein Verweis auf
+   ein fertiges Ticket des Boards zaehlt nicht mehr; alles andere (z.B.
+   "offener Punkt 8") kann das Board nicht pruefen und blockiert weiter. */
+function offeneBlocker(t, erledigt){
+  if(t.status === "fertig") return [];
+  return (t.blockiert_durch || []).filter(b=>!erledigt.has(b));
+}
+
+function karte(t, zeigeSprint, erledigt){
+  const blocker = offeneBlocker(t, erledigt);
   const badges = [
     `<span class="task-badge prio-${escapeHtml(t.prioritaet)}">${escapeHtml(PRIO_LABEL[t.prioritaet] || t.prioritaet)}</span>`,
     personBadge(t.assignee),
     t.aufwand != null ? `<span class="task-badge kunde">${escapeHtml(t.aufwand)} SP</span>` : "",
-    (t.blockiert_durch || []).length ? `<span class="task-badge prio-hoch" title="${escapeHtml(t.blockiert_durch.join(", "))}">blockiert</span>` : "",
+    blocker.length ? `<span class="task-badge prio-hoch" title="${escapeHtml(blocker.join(", "))}">blockiert</span>` : "",
     zeigeSprint && t.sprint != null ? `<span class="task-badge kunde">Sprint ${escapeHtml(t.sprint)}</span>` : ""
   ].join("");
   return `
@@ -205,6 +214,9 @@ function renderBoard(){
   sprintBtn.textContent = sprint ? "Sprint bearbeiten" : "Sprint planen";
 
   const sichtbar = modus === "sprint" ? sprintTickets : alle;
+  // Aus allen Tickets des Boards, nicht nur den sichtbaren: Der Blocker eines
+  // Sprint-Tickets liegt oft ausserhalb des Sprints.
+  const erledigt = new Set(alle.filter(t=>t.status === "fertig").map(t=>t.key));
   spalten.innerHTML = TICKET_STATUS.map(([key, label])=>{
     const inSpalte = sichtbar.filter(t=>t.status === key).sort((a,b)=>{
       const pa = PRIORITY_ORDER[a.prioritaet] ?? 1, pb = PRIORITY_ORDER[b.prioritaet] ?? 1;
@@ -212,7 +224,7 @@ function renderBoard(){
       return String(a.key).localeCompare(String(b.key), "de", { numeric: true });
     });
     const karten = inSpalte.length
-      ? inSpalte.map(t=>karte(t, modus === "alle")).join("")
+      ? inSpalte.map(t=>karte(t, modus === "alle", erledigt)).join("")
       : `<div class="kanban-empty">–</div>`;
     return `
       <div class="kanban-col">

@@ -261,12 +261,15 @@ const FAKE = {
   sprints: [
     {board:"mail-agent", nummer:1, ziel:"Board steht", start_date:wochenStart(), end_date:sonntagDerWoche()}
   ],
-  // MA-005 ohne MA-003/004: Die naechste Nummer muss MA-006 sein, nicht MA-004
+  // MA-005 ohne MA-004: Die naechste Nummer muss MA-006 sein, nicht MA-004
   // (geloeschte Tickets hinterlassen Luecken, eine Nummer gibt es nur einmal).
+  // MA-003 wartet nur auf das fertige MA-002 und ist damit nicht mehr blockiert;
+  // MA-005 wartet zusaetzlich auf das offene MA-001 und bleibt es.
   tickets: [
     {id:1, board:"mail-agent", key:"MA-001", titel:"Close-Sync <i>lesend</i>", status:"in_arbeit", sprint:1, prioritaet:"hoch",    aufwand:3,    assignee:"simon", branch:"ticket/MA-001-close-sync", blockiert_durch:[],         user_story:"Als Team …", akzeptanz:"- [ ] läuft", umsetzung:null, notizen:null},
     {id:2, board:"mail-agent", key:"MA-002", titel:"Projektquelle",            status:"fertig",    sprint:1, prioritaet:"mittel",  aufwand:2,    assignee:"tim",   branch:"ticket/MA-002-projektquelle", blockiert_durch:[],    user_story:null, akzeptanz:null, umsetzung:null, notizen:null},
-    {id:5, board:"mail-agent", key:"MA-005", titel:"Agent-Tools",              status:"backlog",   sprint:null, prioritaet:"niedrig", aufwand:null, assignee:null,    branch:"ticket/MA-005-agent-tools", blockiert_durch:["MA-001"], user_story:null, akzeptanz:null, umsetzung:null, notizen:null}
+    {id:3, board:"mail-agent", key:"MA-003", titel:"Zuordnen",                 status:"backlog",   sprint:null, prioritaet:"hoch",    aufwand:null, assignee:null,    branch:"ticket/MA-003-zuordnen", blockiert_durch:["MA-002"], user_story:null, akzeptanz:null, umsetzung:null, notizen:null},
+    {id:5, board:"mail-agent", key:"MA-005", titel:"Agent-Tools",              status:"backlog",   sprint:null, prioritaet:"niedrig", aufwand:null, assignee:null,    branch:"ticket/MA-005-agent-tools", blockiert_durch:["MA-002", "MA-001"], user_story:null, akzeptanz:null, umsetzung:null, notizen:null}
   ]
 };
 
@@ -655,7 +658,13 @@ setTimeout(async ()=>{
     // Alle Tickets
     document.querySelector('[data-tk-ansicht="alle"]').click();
     await new Promise(r=>setTimeout(r, 80));
-    pruefeDialog("Tickets: 'Alle' zeigt auch den Backlog", document.querySelectorAll("#tkBoardSpalten .ticket-card").length === 4);
+    pruefeDialog("Tickets: 'Alle' zeigt auch den Backlog", document.querySelectorAll("#tkBoardSpalten .ticket-card").length === 5);
+    const tkBlockiert = id=>[...document.querySelectorAll(`#tkBoardSpalten [data-ticket="${id}"] .task-badge`)]
+      .find(b=>b.textContent === "blockiert");
+    pruefeDialog("Tickets: offener Blocker zeigt 'blockiert', Tooltip nur mit dem offenen",
+      !!tkBlockiert(5) && tkBlockiert(5).title === "MA-001");
+    pruefeDialog("Tickets: Blocker fertig, also nicht mehr blockiert",
+      !!document.querySelector('#tkBoardSpalten [data-ticket="3"]') && !tkBlockiert(3));
 
     // Sprint Planning: MA-005 in den Sprint holen
     document.getElementById("tkSprintBtn").click();
