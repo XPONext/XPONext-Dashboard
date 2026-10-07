@@ -159,6 +159,11 @@ async function umsatzDialog(customerId, vorhandener){
         hint:"Beim Einzelauftrag zählt der volle Betrag in diesem Monat." },
       { name:"period_end", label:"Bis", type:"date",
         hint:"Beim laufenden Retainer leer lassen. Beim Einzelauftrag nur zur Info." },
+      // Fuer das Geschaeftskonto im Finanzen-Reiter (sql/015)
+      { name:"zahlung_am", label:"Geld kommt am", type:"date",
+        hint:"Leer = zwei Wochen nach „beauftragt am“. Beim Retainer die erste Rate." },
+      { name:"zahlung_raten", label:"In Raten", type:"number", min:"1", step:"1",
+        hint:"Leer = Einzelauftrag auf einmal, Retainer jeden Monat. 1 = alles auf einmal." },
       { name:"title", label:"Bezeichnung", type:"text", width:"full",
         placeholder:"z.B. Betreuung Q3 (optional)" }
     ],

@@ -482,15 +482,66 @@
     </div>
 
     <div class="grid2">
+      <!-- Nur die beiden Ergebnisse offen, die Herleitung eingeklappt (Tim,
+           07.10.2026: „das muss nicht die ganze Zeit offen sein"). Das
+           details-Element steht hier statt im JavaScript, damit es beim
+           Neuzeichnen nicht wieder zuklappt. -->
       <div class="card">
         <div class="karten-kopf">
           <div>
-            <h3>Zurücklegen</h3>
-            <p id="fiRuecklageSub">Steuern und Puffer — was auf dem Konto stehen bleibt</p>
+            <h3>Zurücklegen und auszahlen</h3>
+            <p id="fiRuecklageSub">Steuern und Puffer bleiben auf dem Konto, der Rest darf raus</p>
           </div>
-          <div class="karten-kopf-zahl" id="fiZuruecklegen"></div>
         </div>
-        <div id="fiRechnung"></div>
+        <div class="finanz-paar">
+          <div>
+            <div class="kpi-lbl">Zurücklegen</div>
+            <div class="fp-wert" id="fiZuruecklegen">—</div>
+            <div class="kpi-fuss" id="fiZuruecklegenFuss">—</div>
+          </div>
+          <div>
+            <div class="kpi-lbl">Auszahlbar</div>
+            <div class="fp-wert" id="fiAuszahlbarSumme">—</div>
+            <div class="kpi-fuss" id="fiAuszahlbarSummeFuss">—</div>
+          </div>
+        </div>
+        <details class="erklaerung" id="fiRechnungAuf">
+          <summary>Rechnung anzeigen</summary>
+          <div id="fiRechnung"></div>
+        </details>
+      </div>
+
+      <!-- Bisher insgesamt, unabhängig vom Zeitraum oben -->
+      <div class="card">
+        <div class="karten-kopf">
+          <div>
+            <h3>Auszahlungen</h3>
+            <p id="fiAuszahlungSub">Was ihr euch bisher ausgezahlt habt</p>
+          </div>
+          <div class="karten-kopf-zahl" id="fiAusgezahlt"></div>
+        </div>
+        <div id="fiAuszahlungen"></div>
+      </div>
+    </div>
+
+    <div class="grid2">
+      <!-- Keins der Konten ist angebunden (sql/015). Das Geschäftskonto
+           schreibt das Dashboard ab dem letzten eingetragenen Stand fort,
+           die anderen tragt ihr von Hand ein. -->
+      <div class="card">
+        <div class="karten-kopf">
+          <div>
+            <h3>Konten</h3>
+            <p>Geschäftskonto gerechnet ab eurem letzten Stand, die anderen von Hand</p>
+          </div>
+          <button type="button" class="btn-leise" id="fiKontenBtn">Stände eintragen</button>
+        </div>
+        <div id="fiKonten"></div>
+        <div class="save-msg" id="fiKontenMsg">Gespeichert ✓</div>
+        <details class="erklaerung" id="fiKontoAuf" hidden>
+          <summary>Wie das Geschäftskonto gerechnet wird</summary>
+          <div id="fiKontoRechnung"></div>
+        </details>
       </div>
 
       <div class="card">
@@ -521,7 +572,9 @@
         <strong>Ausgaben</strong>: die Rechnungen aus euren Postfächern, netto, im Monat des Rechnungsdatums; Fremdwährung zum EZB-Kurs am Rechnungsdatum. Es zählen nur Rechnungen, die da sind — nichts wird vorausgeschätzt.
         <strong>Umsatzsteuer</strong>: Satz auf die Einnahmen minus Vorsteuer aus den Rechnungen mit deutscher Umsatzsteuer — bei Reverse Charge (ausländische Anbieter) heben sich beide Seiten auf.
         <strong>Rücklage</strong> für Einkommen- und Gewerbesteuer: ein fester Anteil vom Jahresgewinn über dem Freibetrag (24.500 €), bis euer Steuerberater einen genauen Satz nennt — eine vorsichtige Näherung, keine Steuerberechnung.
-        <strong>Puffer</strong>: drei Monatsausgaben (Schnitt der Vormonate), aus den ersten Gewinnen aufgebaut; erst was darüber liegt, ist auszahlbar.</p>
+        <strong>Puffer</strong>: drei Monatsausgaben (Schnitt der Vormonate), aus den ersten Gewinnen aufgebaut; erst was darüber liegt, ist auszahlbar.
+        <strong>Auszahlungen</strong>: der Retainer, je Person am 28. jedes Monats, seit Oktober 2026. Auszahlungen sind keine Ausgaben — sie mindern den Gewinn nicht, nur was noch auszahlbar ist. Ist mehr raus als nach Rücklage und Puffer verdient, geht es vom Puffer ab.
+        <strong>Konten</strong>: Rücklagen- und Auszahlungskonto von Hand, je Konto der neueste Stand. Das Geschäftskonto geht vom letzten eingetragenen Stand aus: plus was Kunden zahlen (brutto, zwei Wochen nach „beauftragt am“, wenn am Umsatz nichts anderes steht), minus Rechnungen (brutto, am Rechnungsdatum), minus Auszahlungen, minus was auf den anderen Konten dazukam. Geht etwas vom Rücklagenkonto ab, ist das die Steuer ans Finanzamt und zählt nicht zurück. Stimmt es nicht, den echten Stand eintragen — ab da wird neu gerechnet.</p>
       </details>
     </div>
   </div>

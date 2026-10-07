@@ -1057,3 +1057,24 @@ details.erklaerung p{font-size:0.8rem;color:var(--text-muted);line-height:1.65;m
 .rechnung-zeile.is-leise{color:var(--text-muted);padding-top:0.15rem;padding-bottom:0.15rem;}
 .rate-basis.is-warn{color:var(--amber);font-weight:var(--fw-semi);}
 .rate-basis.is-minus{color:var(--red);font-weight:var(--fw-semi);}
+
+/* Zwei Ergebnisse nebeneinander (Zuruecklegen | Auszahlbar), die Rechnung
+   darunter eingeklappt. Gleiche ruhige Kaestchen wie die Trichter-Stufen. */
+#view-finanzen .grid2{margin-bottom:1rem;}
+.finanz-paar{display:grid;grid-template-columns:1fr 1fr;gap:var(--sp-3);}
+.finanz-paar > div{padding:0.65rem 0.9rem;background:var(--bg-subtle);border:1px solid var(--border);border-radius:10px;}
+.fp-wert{font-size:1.25rem;font-weight:var(--fw-semi);color:var(--text-primary);letter-spacing:-0.02em;line-height:1.2;margin:0.2rem 0 0.15rem;}
+.fp-wert.is-plus{color:var(--green);}
+.fp-wert.is-minus{color:var(--red);}
+details.erklaerung .rechnung{margin-top:var(--sp-2);}
+.rechnung + .tabellen-fuss{margin-top:var(--sp-3);}
+.tabellen-fuss.is-minus{color:var(--red);}
+
+/* Summenzeile in der ruhigen Tabelle (Konten zusammen) */
+/* Linie als Schatten: Bei border-collapse gewinnt sonst die Haarlinie der Zeile darueber. */
+table.ruhig tr.is-summe th, table.ruhig tr.is-summe td{box-shadow:inset 0 1px 0 var(--text-primary);}
+table.ruhig tr.is-summe th, table.ruhig tr.is-summe .rate{font-weight:var(--fw-semi);}
+@media(max-width:520px){ .finanz-paar{grid-template-columns:1fr;} }
+/* Zwischentitel in der eingeklappten Herleitung (Konten) */
+.rechnung-titel{font-size:0.66rem;font-weight:var(--fw-semi);color:var(--text-muted);text-transform:uppercase;letter-spacing:0.06em;margin:var(--sp-3) 0 0.2rem;}
+details.erklaerung .rechnung-titel + .rechnung{margin-top:0;}

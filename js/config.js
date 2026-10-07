@@ -66,6 +66,42 @@ export const TICKET_STATUS = [
 ];
 export const SPRINT_TAGE = 7; // Standardlänge; ein Sprint darf im Dialog länger werden
 
+/* ---------- Finanzen ----------
+   Eure Konten (sql/015) — keins davon ist angebunden. Rücklagen- und
+   Auszahlungskonto tragt ihr von Hand ein. Das Geschäftskonto (gerechnet)
+   schreibt das Dashboard ab eurem letzten eingetragenen Stand selbst fort:
+   plus Zahlungseingänge, minus Rechnungen, minus Auszahlungen, minus was ihr
+   auf die anderen Konten umgebucht habt (Tim, 07.10.2026: „so halten wir den
+   aktuell und so muss ich dich trotzdem nicht syncen"). Stimmt es nicht,
+   tragt ihr es neu ein, und es geht von dort aus weiter.
+
+   zahltSteuern: Von diesem Konto geht die Umsatzsteuer ans Finanzamt (Tim,
+   07.10.2026). Was dort abgeht, ist darum eine Steuerzahlung, keine
+   Umbuchung zurück aufs Geschäftskonto — nur was dazukommt, kam von dort.
+
+   Ein weiteres Konto braucht nur eine Zeile hier, kein neues SQL. Den key nie
+   ändern, sonst hängen die bisherigen Stände an keinem Konto mehr. */
+export const KONTEN = [
+  { key:"geschaeftskonto", name:"Geschäftskonto", gerechnet:true },
+  { key:"ruecklagen",      name:"Rücklagenkonto", zahltSteuern:true },
+  { key:"auszahlungen",    name:"Auszahlungskonto" }
+];
+
+/* Wann das Geld eines Auftrags kommt, wenn am Umsatz nichts anderes steht:
+   so viele Tage nach "beauftragt am". Einzelauftrag auf einmal, Retainer
+   jeden Monat eine Rate (Tim, 07.10.2026: „zwei Wochen nach dem Abschluss"). */
+export const ZAHLUNGSZIEL_TAGE = 14;
+
+/* Was sich Tim und Simon auszahlen, je Person. Entnahmen, keine Ausgaben —
+   sie mindern den Gewinn nicht, nur das, was noch auszahlbar ist.
+   Tim, 07.10.2026: Retainer je 1.000 € im Monat, am 28., ab Oktober 2026.
+   Ändert sich der Betrag, eine neue Zeile mit späterem "ab" anhängen statt
+   die alte zu ändern — sonst rechnen die vergangenen Monate mit dem neuen
+   Betrag. jePerson: 0 setzt die Auszahlungen aus. */
+export const AUSZAHLUNGEN = [
+  { ab:"2026-10", tag:28, jePerson:1000 }
+];
+
 /* ---------- Supabase ----------
    Anon-Key und URL sind öffentlich — der eigentliche Schutz sind die
    RLS-Policies, die auf den Header x-app-secret prüfen. Das Team-Passwort

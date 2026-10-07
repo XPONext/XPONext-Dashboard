@@ -42,6 +42,26 @@ STRATO und Google Workspace schicken die Rechnungen seit 02.10. per Mail.
 Google Workspace Juli–September fehlt noch — aus admin.google.com
 herunterladen und an info@ schicken, dann liest der Abgleich sie ein.
 
+**Finanzen, Auszahlungen und Konten (07.10.2026):** Der Retainer (je 1.000 €
+am 28., ab Oktober 2026) steht als Regel in `config.js` → `AUSZAHLUNGEN`; das
+Dashboard rechnet daraus „bisher ausgezahlt", die nächste Auszahlung und was
+nach Rücklage und Puffer noch auszahlbar ist. Kontostände (Geschäftskonto,
+Rücklagenkonto; weitere in `KONTEN`) trägt Tim einmal die Woche von Hand ein.
+Die Rechnung hinter „Zurücklegen" ist eingeklappt. Drei Konten: Rücklagen-
+und Auszahlungskonto von Hand, das **Geschäftskonto rechnet das Dashboard ab
+dem letzten eingetragenen Stand fort** (plus Zahlungseingänge brutto, minus
+Rechnungen brutto, minus Auszahlungen, minus Umbuchungen auf die anderen
+Konten — `geschaeftskontoAm()` in `state.js`). Wann Kundengeld kommt: 14 Tage
+nach „beauftragt am", Einzelauftrag auf einmal, Retainer monatlich; je Umsatz
+überschreibbar („Geld kommt am", „In Raten" im Kunden-Reiter). **Offen:**
+`sql/015_kontostaende.sql` im SQL-Editor ausführen (legt Tabelle und Spalten
+an und trägt den Stand vom 07.10. ein: alles außer Zittrich am 12.10.,
+Zittrich in 2 Raten ab 07.11., Rücklagen 1.000 €), danach pushen und
+Geschäfts- und Auszahlungskonto einmal eintragen. Die Umsatzsteuer zahlt
+ihr vom Rücklagenkonto: Ein Rückgang dort gilt als Steuerzahlung, nicht als
+Geld zurück aufs Geschäftskonto (`zahltSteuern` in `KONTEN`). Nebenbei behoben: „2026" und „Je Monat"
+rechneten ab Januar und setzten den Puffer dadurch zu niedrig an.
+
 **Zeittracker (06.10.2026):** wartet jetzt nach der Uhr statt mit `sleep` —
 der stand bei zugeklapptem Deckel still, daher die vielen Lücken von 60–90
 Minuten. Jeder Durchlauf steht in `~/.xpo-time-tracker/.tmp/popup.log`. Auf
@@ -94,7 +114,7 @@ Datenquelle:
 | Kunden | Wer lohnt sich? | Stundenlohn je Kunde, Umsätze, Zeiterfassung nach Kunde |
 | Arbeit | Woran arbeiten wir? | Hebel-Stand, Aufgaben-Board und Projekte als Umschalter |
 | Projekte | Wo steht der Sprint? | Erst Projektauswahl, dann Scrum-Board je Entwicklungsprojekt (zuerst Mail-Agent), ohne Fahrplan-Kopf: Sprintziel, Resttage, Tickets mit Story und Kriterien, Sprint Planning. Claude liest und schreibt über `tools/tickets/` im jeweiligen Repo. Braucht `sql/014_tickets` |
-| Finanzen | Was bleibt uns? | Einnahmen, Ausgaben (aus Rechnungs-Mails), Gewinn, Zurücklegen (USt, Steuer), auszahlbar je Person, je Monat |
+| Finanzen | Was bleibt uns? | Einnahmen, Ausgaben (aus Rechnungs-Mails), Gewinn, Zurücklegen (USt, Steuer), auszahlbar je Person, Auszahlungen (Retainer), Kontostände von Hand, je Monat |
 | Verlauf | Wie entwickelt es sich? | Umsatz gegen das Ziel, Stunden je Woche, Hebel je Woche, Hebel gesamt, Bestenliste, Tabellen, CSV |
 | Angebote & Verträge | Was schicken wir dem Kunden? | Umschalter: Angebot aus dem Transkript, Vertrag aus Bausteinen |
 

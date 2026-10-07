@@ -167,6 +167,14 @@ const FAKE = {
     {id:"gmail_e4", lieferant:"Unbekannt GmbH", rechnungsdatum:M+"-07", netto_eur:10, ust_eur:1.90, brutto_eur:11.90, reverse_charge:false,
      kategorie:"Sonstiges", status:"pruefen", grund:"beim Auslesen unsicher", absender:"rechnung@unbekannt.de", betreff:"Ihre Rechnung"}
   ],
+  // Kontostaende (sql/015): Geschaeftskonto vor 7 Tagen 8.000 eingetragen, ab da
+  // gerechnet; Ruecklagenkonto vor 20 Tagen 2.500 -> veraltet (gelb);
+  // Auszahlungskonto noch ohne Stand.
+  kontostaende: [
+    {konto:"geschaeftskonto", datum:tagRelativ(-14), betrag:7000},
+    {konto:"geschaeftskonto", datum:tagRelativ(-7),  betrag:8000},
+    {konto:"ruecklagen",      datum:tagRelativ(-20), betrag:2500}
+  ],
   daily_call_targets: [
     {date:tagRelativ(0),  target:26, target_overdue:5},
     {date:tagRelativ(-1), target:20, target_overdue:0},
@@ -190,8 +198,13 @@ const FAKE = {
     {id:"i1", name:"XPO intern", kind:"intern", status:"aktiv", active:true,  sort_order:90, note:null}
   ],
   revenues: [
-    {id:"r1", customer_id:"k1", kind:"retainer", service:"Webseite", title:"Betreuung", amount:3000, period_start:M+"-01", period_end:null, note:null},
-    {id:"r2", customer_id:"k2", kind:"einmalig", service:"GEO-Optimierung", title:"Relaunch",  amount:800,  period_start:M+"-01", period_end:MONATSENDE, note:null}
+    // zahlung_am relativ zu heute (sql/015): Protours zahlte vor 3 Tagen die
+    // erste Rate, Chuong zahlt in 5 Tagen — so liegt genau eine Zahlung
+    // zwischen dem Kontostand von vor 7 Tagen und heute.
+    {id:"r1", customer_id:"k1", kind:"retainer", service:"Webseite", title:"Betreuung", amount:3000, period_start:M+"-01", period_end:null, note:null,
+     zahlung_am:tagRelativ(-3), zahlung_raten:null},
+    {id:"r2", customer_id:"k2", kind:"einmalig", service:"GEO-Optimierung", title:"Relaunch",  amount:800,  period_start:M+"-01", period_end:MONATSENDE, note:null,
+     zahlung_am:tagRelativ(5), zahlung_raten:null}
   ],
   revenue_months: [
     // Protours: Retainer 3.000 EUR im laufenden Monat
@@ -277,10 +290,13 @@ function result(table){
 
   function ausfuehren(){
     if(aktion === "insert" || aktion === "upsert"){
-      const neu = Object.assign(
-        { id: "neu"+(++idZaehler), created_at: new Date().toISOString() }, nutzlast);
-      tabelle.push(neu);
-      return [neu];
+      // Auch eine Liste von Zeilen — die Kontostaende kommen im Rutsch
+      return [].concat(nutzlast).map(zeile=>{
+        const neu = Object.assign(
+          { id: "neu"+(++idZaehler), created_at: new Date().toISOString() }, zeile);
+        tabelle.push(neu);
+        return neu;
+      });
     }
     if(aktion === "update"){
       const geaendert = [];
@@ -798,6 +814,93 @@ setTimeout(async ()=>{
     pruefeDialog("Finanzen: verworfene Mail zaehlt nicht, keine Zeile ohne Rechnung",
       !/Newsletter|erwartet|fehlt|geschätzt/.test(document.getElementById("fiLieferanten").textContent) &&
       /Close/.test(document.getElementById("fiLieferanten").textContent));
+    // Zuruecklegen und auszahlbar offen, die Rechnung eingeklappt
+    pruefeDialog("Finanzen: Rechnung eingeklappt, offen nur 1.675 zuruecklegen und 2.665 auszahlbar (je Person 1.333)",
+      document.getElementById("fiRechnungAuf").open === false && fi("fiZuruecklegen") === "€1.675" &&
+      /USt €701 · ESt\/GewSt €492 · Puffer €482/.test(fi("fiZuruecklegenFuss")) &&
+      fi("fiAuszahlbarSumme") === "€2.665" && /je Person €1\.333/.test(fi("fiAuszahlbarSummeFuss")));
+    // Auszahlungen: Retainer je 1.000 am 28. seit Oktober 2026. Wie viele schon
+    // raus sind, haengt am Tag des Testlaufs — darum hier mitgezaehlt.
+    let raus = 0;
+    for(let d = new Date(2026, 9, 28); d <= new Date(); d.setMonth(d.getMonth() + 1)) raus++;
+    const euroTest = n=>(n < 0 ? "−" : "") + "€" + Math.round(Math.abs(n)).toLocaleString("de-DE");
+    const spielraum = 1332.52 - 1000 * raus;
+    pruefeDialog("Auszahlungen: bisher " + raus + " x 1.000 je Person, Rest aus dem Gewinn " + euroTest(spielraum),
+      new RegExp("^" + euroTest(1000 * raus).replace(".", "\\.") + "je Person bisher$").test(fi("fiAusgezahlt")) &&
+      /Retainer je Person €1\.000 am 28\./.test(fi("fiAuszahlungSub")) &&
+      /Nächste Auszahlung am 28\.\d\d\.\s*je €1\.000/.test(fi("fiAuszahlungen")) &&
+      fi("fiAuszahlungen").includes("Noch auszahlbar je Person" + euroTest(spielraum)) &&
+      document.querySelector("#fiAuszahlungen .is-summe").classList.contains(spielraum < 0 ? "is-minus" : "is-plus"));
+    // Dieselbe Zeile wie oben: Puffer 482, je Person 1.333 (bis 07.10.2026 rechnete
+    // die Tabelle ab Januar und kam auf Puffer 0 und 1.574)
+    const monatsZelle = i=>document.querySelectorAll("#fiMonate tbody tr:first-child td")[i].textContent.trim();
+    pruefeDialog("Je Monat: gleiche Zahlen wie oben, Spalte Ausgezahlt je Person zeigt den Retainer",
+      monatsZelle(5) === "€482" && monatsZelle(6) === "€1.333" &&
+      /Ausgezahlt je Person/.test(fi("fiMonate")) &&
+      /€1\.000(am 28\.\d\d\. geplant)?$/.test(document.querySelector("#fiMonate tbody tr td:last-child").textContent.trim()));
+
+    // Konten: Das Geschaeftskonto ist gerechnet — 8.000 vom Stand vor 7 Tagen,
+    // plus die Protours-Rate vor 3 Tagen (brutto), minus Rechnungen und
+    // Auszahlungen seitdem. Was davon in die 7 Tage faellt, haengt am Tag des
+    // Testlaufs, der Betrag der Rate an der Bearbeitung im Kunden-Reiter.
+    const esc = t=>t.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const seit = tagRelativ(-7), bisHeute = tagRelativ(0);
+    const rechnungenSeit = FAKE.expenses
+      .filter(x=>(x.status === "ok" || x.status === "pruefen") && x.rechnungsdatum > seit && x.rechnungsdatum <= bisHeute)
+      .reduce((s, x)=>s + x.brutto_eur, 0);
+    let auszahlungSeit = 0;
+    for(let d = new Date(2026, 9, 28); d <= new Date(); d.setMonth(d.getMonth() + 1)){
+      const t = d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-28";
+      if(t > seit && t <= bisHeute) auszahlungSeit += 2000;
+    }
+    const gkErwartet = 8000 + Number(FAKE.revenues.find(r=>r.id === "r1").amount) * 1.19 - rechnungenSeit - auszahlungSeit;
+    const konten = ()=>document.getElementById("fiKonten").textContent.replace(/\s+/g, " ");
+    pruefeDialog("Konten: Geschaeftskonto gerechnet " + euroTest(gkErwartet) + ", Ruecklagen 2.500 vor 20 Tagen, Auszahlungskonto ohne Stand",
+      new RegExp("Geschäftskonto\\s*gerechnet ab Stand [\\d.]+\\s*" + esc(euroTest(gkErwartet))).test(konten()) &&
+      /Rücklagenkonto\s*Stand [\d.]+ · vor 20 Tagen\s*€2\.500/.test(konten()) &&
+      /Auszahlungskonto\s*noch kein Stand/.test(konten()) &&
+      !!document.querySelector("#fiKonten .rate-basis.is-warn") &&
+      new RegExp("Zusammen\\s*" + esc(euroTest(gkErwartet + 2500))).test(konten()));
+    const herleitung = document.getElementById("fiKontoRechnung").textContent.replace(/\s+/g, " ");
+    pruefeDialog("Konten: Herleitung eingeklappt, mit Zahlung, Rechnungen und dem, was als Naechstes kommt",
+      !document.getElementById("fiKontoAuf").hidden && !document.getElementById("fiKontoAuf").open &&
+      /Eingetragen am [\d.]+\s*€8\.000/.test(herleitung) && /Zahlungseingänge \(1, brutto\)/.test(herleitung) &&
+      /Als Nächstes/.test(herleitung) && /Chuong/.test(herleitung));
+    document.getElementById("fiKontenBtn").click();
+    await new Promise(r=>setTimeout(r, 80));
+    const dlgK = document.querySelector("dialog.dlg[open]");
+    pruefeDialog("Konten-Dialog: Geschaeftskonto zeigt den gerechneten Stand, Felder leer",
+      !!dlgK && dlgK.querySelector('[name="konto_geschaeftskonto"]').placeholder === "gerechnet " + euroTest(gkErwartet) &&
+      dlgK.querySelector('[name="konto_ruecklagen"]').value === "" && !!dlgK.querySelector('[name="konto_auszahlungen"]'));
+    dlgK.querySelector('[name="konto_ruecklagen"]').value = "3.100,50";
+    dlgK.querySelector('[data-dlg="submit"]').click();
+    await new Promise(r=>setTimeout(r, 250));
+    // 600,50 aufs Ruecklagenkonto: vom Geschaeftskonto umgebucht, zusammen gleich
+    pruefeDialog("Konten: 3.100,50 gelesen, 600,50 vom Geschaeftskonto umgebucht, zusammen unveraendert",
+      /Rücklagenkonto\s*Stand heute\s*€3\.101\s*▲ €601 seit/.test(konten()) &&
+      new RegExp("Geschäftskonto\\s*gerechnet ab Stand [\\d.]+\\s*" + esc(euroTest(gkErwartet - 600.5))).test(konten()) &&
+      new RegExp("Zusammen\\s*" + esc(euroTest(gkErwartet + 2500))).test(konten()) &&
+      /Aufs Rücklagenkonto umgebucht\s*−€601/.test(document.getElementById("fiKontoRechnung").textContent) &&
+      !document.querySelector("#fiKonten .rate-basis.is-warn") &&
+      FAKE.kontostaende.some(z=>z.konto === "ruecklagen" && z.datum === tagRelativ(0) && z.betrag === 3100.5) &&
+      !FAKE.kontostaende.some(z=>z.konto === "geschaeftskonto" && z.datum === tagRelativ(0)));
+
+    // Umsatzsteuer geht vom Ruecklagenkonto: gestern 500 ans Finanzamt (2.500 ->
+    // 2.000), heute auf 3.100,50 aufgefuellt. Umgebucht ist nur das Auffuellen
+    // (1.100,50) — der Rueckgang ist kein Geld zurueck aufs Geschaeftskonto.
+    document.getElementById("fiKontenBtn").click();
+    await new Promise(r=>setTimeout(r, 80));
+    const dlgK2 = document.querySelector("dialog.dlg[open]");
+    dlgK2.querySelector('[name="datum"]').value = tagRelativ(-1);
+    dlgK2.querySelector('[name="konto_ruecklagen"]').value = "2000";
+    dlgK2.querySelector('[data-dlg="submit"]').click();
+    await new Promise(r=>setTimeout(r, 250));
+    pruefeDialog("Konten: Steuer vom Ruecklagenkonto zaehlt nicht als Umbuchung zurueck (umgebucht 1.101)",
+      /Rücklagenkonto\s*Stand heute\s*€3\.101\s*▲ €1\.101 seit/.test(konten()) &&
+      new RegExp("Geschäftskonto\\s*gerechnet ab Stand [\\d.]+\\s*" + esc(euroTest(gkErwartet - 1100.5))).test(konten()) &&
+      new RegExp("Zusammen\\s*" + esc(euroTest(gkErwartet + 2000))).test(konten()) &&
+      /Aufs Rücklagenkonto umgebucht\s*−€1\.101/.test(document.getElementById("fiKontoRechnung").textContent));
+
     document.getElementById("fiPruefenBtn").click();
     await new Promise(r=>setTimeout(r, 80));
     const dlgF = document.querySelector("dialog.dlg[open]");

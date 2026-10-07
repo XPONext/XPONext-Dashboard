@@ -86,6 +86,15 @@ laden ES-Module nicht mehr über `file://`). Browser-Konsole offen lassen:
 - [ ] Aufteilungen (State / Zuordnung / Aktivität) zeigen Balken
 - [ ] Woche ohne Daten zeigt einen Hinweis statt leerer Fläche
 
+## Finanzen
+
+- [ ] „Stände eintragen": nur ein Konto ausfüllen → das andere behält sein altes Datum
+- [ ] „12.340,50" und „12340" landen als 12.340,50 € bzw. 12.340 € in der Karte
+- [ ] Denselben Tag noch einmal eintragen → Wert ersetzt, keine zweite Zeile
+- [ ] „Rechnung anzeigen" aufklappen, Zeitraum wechseln → bleibt aufgeklappt
+- [ ] Rücklagenkonto erhöhen → Geschäftskonto sinkt um denselben Betrag, „Zusammen" bleibt
+- [ ] Umsatz mit „Geld kommt am" in einer Woche anlegen → steht unter „Als Nächstes" (brutto)
+
 ## Modals allgemein
 
 - [ ] ESC schließt jedes Modal

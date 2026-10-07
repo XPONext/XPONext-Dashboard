@@ -29,7 +29,7 @@ export async function fetchAllData(){
   const [personalRes, teamRes, timeRes, tasksRes, goalsRes, commitRes, projRes, stepRes,
          custRes, revMonRes, revRes, callsRes, setRes, leistRes, meetRes,
          monthRes, salesRes, anrufRes, vorgabeRes, syncRes, leadRes, instRes,
-         ticketRes, sprintRes, ausgabenRes] = await Promise.all([
+         ticketRes, sprintRes, ausgabenRes, kontoRes] = await Promise.all([
     db.from("daily_personal").select("*"),
     db.from("daily_team").select("*"),
     alleZeilen("time_entries", "id"),
@@ -54,7 +54,8 @@ export async function fetchAllData(){
     alleZeilen("instantly_daily", ["date", "campaign_id"]),
     db.from("tickets").select("*").order("id", { ascending: true }),
     db.from("sprints").select("*").order("nummer", { ascending: true }),
-    alleZeilen("expenses", "id")
+    alleZeilen("expenses", "id"),
+    db.from("kontostaende").select("*")
   ]);
   if(projRes.error){ console.error(projRes.error); state.projects = []; }
   else{ state.projects = projRes.data; }
@@ -129,6 +130,10 @@ export async function fetchAllData(){
   // Finanzen (sql/014_finanzen): Ausgaben aus den Rechnungs-Mails
   state.finanzenTabelleDa = !ausgabenRes.error;
   state.expenses = ausgabenRes.error ? [] : ausgabenRes.data;
+  // Kontostaende von Hand gibt es erst nach sql/015. Bis dahin sagt die Karte,
+  // was fehlt — "noch kein Stand" saehe sonst aus wie vergessenes Eintragen.
+  state.kontenTabelleDa = !kontoRes.error;
+  state.kontostaende = kontoRes.error ? [] : kontoRes.data;
   if(setRes.error){ console.error(setRes.error); state.settings = {}; }
   else{
     state.settings = {};
@@ -231,6 +236,12 @@ export async function umsatzSpeichern(werte, id){
     note: werte.note || null,
     updated_at: new Date().toISOString()
   };
+  // Wann das Geld kommt (sql/015). Vorher die Spalten gar nicht erst schicken,
+  // solange niemand etwas eintraegt — sonst scheiterte jedes Speichern.
+  if(werte.zahlung_am || werte.zahlung_raten || state.revenues.some(r=>"zahlung_am" in r)){
+    nutzlast.zahlung_am = werte.zahlung_am || null;
+    nutzlast.zahlung_raten = Number(werte.zahlung_raten) >= 1 ? Math.round(Number(werte.zahlung_raten)) : null;
+  }
   const antwort = id
     ? await db.from("revenues").update(nutzlast).eq("id", id).select()
     : await db.from("revenues").insert(nutzlast).select();
@@ -238,6 +249,9 @@ export async function umsatzSpeichern(werte, id){
     console.error(antwort.error);
     // Fehlt die Spalte, ist sql/006 in Supabase noch nicht gelaufen. Supabase
     // meldet das als "schema cache" — damit weiss niemand, was zu tun ist.
+    if(/zahlung/.test(antwort.error.message || "")){
+      throw new Error("„Geld kommt am“ fehlt noch in der Datenbank. Dafür einmal sql/015_kontostaende.sql im Supabase-SQL-Editor ausführen.");
+    }
     if(/service/.test(antwort.error.message || "")){
       throw new Error("Die Leistungsart fehlt noch in der Datenbank. Dafür einmal sql/006_leistung_und_budget.sql im Supabase-SQL-Editor ausführen.");
     }
@@ -387,4 +401,23 @@ export async function ausgabeSpeichern(werte, id){
   const { error } = await abfrage;
   if(error){ console.error(error); throw new Error("Ausgabe konnte nicht gespeichert werden: " + error.message); }
   return zeile;
+}
+
+/* Kontostaende eines Tages, alle in einem Rutsch — sonst stuende nach einem
+   Fehler beim zweiten Konto nur das erste da. Ein Tag, fuer den es schon einen
+   Stand gibt, wird ueberschrieben: So korrigiert man einen Tippfehler. */
+export async function kontostaendeSpeichern(zeilen){
+  const jetzt = new Date().toISOString();
+  const { data, error } = await db.from("kontostaende")
+    .upsert(zeilen.map(z=>({ ...z, updated_at: jetzt })), { onConflict: "konto,datum" })
+    .select();
+  if(error){
+    console.error(error);
+    if(sqlFehlt(error)){
+      throw new Error("Die Kontostände fehlen noch in der Datenbank. Dafür einmal sql/015_kontostaende.sql im Supabase-SQL-Editor ausführen.");
+    }
+    throw new Error("Kontostand konnte nicht gespeichert werden: " + error.message);
+  }
+  if(!data || data.length < zeilen.length) throw new Error("Die Datenbank hat die Kontostände nicht übernommen — bitte die Seite neu laden.");
+  return data;
 }

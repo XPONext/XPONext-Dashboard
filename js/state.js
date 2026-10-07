@@ -1,7 +1,8 @@
 /* Zentraler Anwendungszustand und die daraus abgeleiteten Kennzahlen.
    Kein DOM, keine Netzwerkzugriffe — nur Daten und Rechnen. */
 
-import { WEEKS, N_WEEKS, PERSONS, LEVERS, WEEKLY_TARGET, STATUS_COLUMNS } from "./config.js";
+import { WEEKS, N_WEEKS, PERSONS, LEVERS, WEEKLY_TARGET, STATUS_COLUMNS, KONTEN, AUSZAHLUNGEN,
+         ZAHLUNGSZIEL_TAGE } from "./config.js";
 import { weekIndexForDate } from "./utils/weeks.js";
 import { localDateStr } from "./utils/format.js";
 
@@ -35,6 +36,8 @@ export const state = {
   instantlyDaily: [], // Cold Emails je Kampagne und Tag ("instantly_daily", sql/013)
   expenses:      [], // Ausgaben aus Rechnungs-Mails und von Hand ("expenses", sql/014)
   finanzenTabelleDa: false,
+  kontostaende:  [], // Kontostaende von Hand, je Konto und Tag ("kontostaende", sql/015)
+  kontenTabelleDa: false,
   calls:         [], // Calls je Tag und Person aus "daily_calls"
   settings:      {}, // Stellschrauben aus "settings", key -> Zahl
   leistungen:    [], // Leistungsarten aus tracker_options (kind = leistung)
@@ -983,9 +986,10 @@ export function gewaehlterTag(){
                        „ein Puffer von 3 Monatsausgaben sollte definitiv bestehen")
      Auszahlbar      = Gewinn - Steuerruecklage - Puffer-Zufuehrung, nach Anteil
 
-   Den Kontostand kennt das Dashboard nicht (keine Bankanbindung). Der Puffer gilt
-   darum als aufgebaut, wenn die Gewinne dafuer gereicht haben — vorausgesetzt,
-   ausgezahlt wurde nur, was hier als auszahlbar stand. */
+   Die Kontostaende tragt ihr von Hand ein (kontoStaende, sql/015) — die Rechnung
+   hier liest sie nicht. Der Puffer gilt darum als aufgebaut, wenn die Gewinne
+   dafuer gereicht haben — vorausgesetzt, ausgezahlt wurde nur, was hier als
+   auszahlbar stand. Ob das so ist, zeigt auszahlungsStand(). */
 
 export function finanzEinstellungen(){
   const zahl = (k, vorgabe)=>{ const w = Number(state.settings[k]); return Number.isFinite(w) ? w : vorgabe; };
@@ -1009,6 +1013,12 @@ function ausgabeNetto(e){
   return 0;
 }
 
+/* Was vom Konto abgeht: brutto. Bei Reverse Charge ist das der Nettobetrag. */
+function ausgabeBrutto(e){
+  if(e.brutto_eur != null) return Number(e.brutto_eur);
+  return ausgabeNetto(e) + (Number(e.ust_eur) || 0);
+}
+
 export function zaehlendeAusgaben(von, bis){
   return state.expenses.filter(e=>{
     if(e.status !== "ok" && e.status !== "pruefen") return false;
@@ -1029,9 +1039,11 @@ function monateZwischen(von, bis){
   return raus;
 }
 
-/* Kennzahlen je Monat und fuer den ganzen Zeitraum. */
+/* Kennzahlen je Monat und fuer den ganzen Zeitraum. von = null heisst: seit
+   dem ersten Umsatz oder der ersten Rechnung. */
 export function finanzen(von, bis){
   const e = finanzEinstellungen();
+  const heute = localDateStr(new Date());
   // Puffer und Jahres-Ruecklage bauen sich ueber alle Monate seit dem ersten
   // Umsatz oder der ersten Rechnung auf — darum ab dort rechnen, auch wenn nur
   // ein Monat angezeigt wird.
@@ -1039,7 +1051,12 @@ export function finanzen(von, bis){
     ...state.revenueMonths.map(r=>r.month_start),
     ...state.expenses.filter(x=>x.status === "ok" || x.status === "pruefen").map(ausgabeTag)
   ].filter(Boolean).map(monatsStart).sort()[0];
-  const alle = monateZwischen(erster && erster < von ? erster : von, bis).map(m=>{
+  // Immer ab dem ersten Monat mit Daten, auch wenn der Zeitraum spaeter oder
+  // frueher beginnt. Bis 07.10.2026 begann "2026" im Januar: Die leeren
+  // Monate davor zogen das Puffer-Ziel nach unten, und dieselbe Zeile stand
+  // in "Je Monat" mit einem anderen Puffer da als unter "Dieser Monat".
+  const start = erster || von || monatsStart(bis);
+  const alle = monateZwischen(start, bis).map(m=>{
     const ende = letzterTagDesMonats(m);
     const einnahmen = state.revenueMonths.filter(r=>r.month_start === m)
       .reduce((s, r)=>s + (Number(r.amount) || 0), 0);
@@ -1048,8 +1065,13 @@ export function finanzen(von, bis){
     const vorsteuer = rechnungen.filter(x=>!x.reverse_charge).reduce((s, x)=>s + (Number(x.ust_eur) || 0), 0);
     const gewinn = einnahmen - ausgaben;
     const ustZahllast = einnahmen * e.ust - vorsteuer;
+    // Auszahlungen je Person: was schon raus ist, und was in diesem Monat noch kommt
+    const termine = auszahlungsTermine(m, ende);
+    const ausgezahlt = termine.filter(t=>t.datum <= heute).reduce((s, t)=>s + t.jePerson, 0);
+    const geplant = termine.filter(t=>t.datum > heute).reduce((s, t)=>s + t.jePerson, 0);
     // Steuerruecklage, Puffer und Auszahlbares haengen an den Vormonaten — siehe unten.
     return { monat: m, einnahmen, ausgaben, vorsteuer, gewinn, ustZahllast, steuer: 0, auszahlbar: 0,
+             ausgezahlt, geplant, auszahlungstag: termine.length ? termine[0].datum : null,
              rechnungen: rechnungen.length, pruefen: rechnungen.filter(x=>x.status === "pruefen").length };
   });
   // Puffer: Ziel = 3 x Durchschnitt der Ausgaben der (bis zu) 3 Monate davor —
@@ -1073,10 +1095,11 @@ export function finanzen(von, bis){
     m.pufferBestand = bestand;
     m.auszahlbar -= m.puffer;
   });
-  const monate = alle.filter(m=>m.monat >= monatsStart(von));
+  const monate = von ? alle.filter(m=>m.monat >= monatsStart(von)) : alle;
   const summe = feld => monate.reduce((s, m)=>s + m[feld], 0);
   const gesamt = {};
-  ["einnahmen", "ausgaben", "vorsteuer", "gewinn", "ustZahllast", "steuer", "puffer", "auszahlbar", "rechnungen", "pruefen"].forEach(f=>{ gesamt[f] = summe(f); });
+  ["einnahmen", "ausgaben", "vorsteuer", "gewinn", "ustZahllast", "steuer", "puffer", "auszahlbar",
+   "ausgezahlt", "geplant", "rechnungen", "pruefen"].forEach(f=>{ gesamt[f] = summe(f); });
   const letzter = monate[monate.length - 1];
   gesamt.pufferZiel = letzter ? letzter.pufferZiel : 0;
   gesamt.pufferBestand = letzter ? letzter.pufferBestand : 0;
@@ -1102,4 +1125,183 @@ export function ausgabenNachLieferant(von, bis){
     if(x.status === "pruefen") g.pruefen++;
   });
   return [...gruppen.values()].sort((a, b)=>b.netto - a.netto);
+}
+
+/* ---------- Auszahlungen (config.js, AUSZAHLUNGEN) ----------
+   Entnahmen, keine Ausgaben: Sie mindern den Gewinn nicht, nur das, was noch
+   auszahlbar ist. Gerechnet aus der Regel statt eingetragen — der Retainer
+   laeuft von allein (Tim, 07.10.2026). */
+
+/* Jeder Auszahlungstermin in [von, bis] mit dem Betrag je Person. */
+export function auszahlungsTermine(von, bis){
+  const raus = [];
+  AUSZAHLUNGEN.forEach((regel, i)=>{
+    const abgeloest = AUSZAHLUNGEN[i + 1] ? AUSZAHLUNGEN[i + 1].ab + "-01" : null;
+    monateZwischen(regel.ab + "-01", bis).forEach(m=>{
+      if(regel.jePerson <= 0 || (abgeloest && m >= abgeloest)) return;
+      // Ein Tag nach dem 28. rutscht im Februar auf den letzten des Monats.
+      const tag = Math.min(regel.tag, Number(letzterTagDesMonats(m).slice(8)));
+      const datum = m.slice(0, 8) + String(tag).padStart(2, "0");
+      if(datum >= von && datum <= bis) raus.push({ datum, jePerson: regel.jePerson });
+    });
+  });
+  return raus;
+}
+
+/* Was bisher ausgezahlt ist, was als Naechstes kommt, und ob der Gewinn das
+   traegt: verdient = Gewinn nach Ruecklage und Puffer seit dem ersten Umsatz,
+   je Person. Ist mehr raus als verdient, geht es vom Puffer ab. */
+export function auszahlungsStand(){
+  const heute = localDateStr(new Date());
+  const anfang = AUSZAHLUNGEN.length ? AUSZAHLUNGEN[0].ab + "-01" : heute;
+  const bisher = auszahlungsTermine(anfang, heute);
+  const [j, m] = heute.split("-").map(Number);
+  const naechsterMonat = m === 12 ? (j + 1) + "-01-01" : j + "-" + String(m + 1).padStart(2, "0") + "-01";
+  const naechste = auszahlungsTermine(anfang, letzterTagDesMonats(naechsterMonat)).find(t=>t.datum > heute) || null;
+  const regel = AUSZAHLUNGEN.filter(a=>a.ab + "-01" <= monatsStart(heute)).pop() || AUSZAHLUNGEN[0] || null;
+  const jePerson = bisher.reduce((s, t)=>s + t.jePerson, 0);
+  const { gesamt } = finanzen(null, heute);
+  const verdient = Math.min(gesamt.tim, gesamt.simon);
+  return {
+    jePerson, zusammen: jePerson * PERSONS.length, anzahl: bisher.length,
+    naechste, regel, seit: anfang, verdient, spielraum: verdient - jePerson
+  };
+}
+
+/* ---------- Kontostaende (sql/015) ----------
+   Von Hand eingetragen, je Konto und Tag eine Zeile — das Geschaeftskonto ist
+   bewusst nicht angebunden. Je Konto aus KONTEN der neueste Stand und der
+   davor, fuer die Veraenderung seit dem letzten Eintragen. */
+export function kontoStaende(){
+  return KONTEN.map(k=>{
+    const zeilen = state.kontostaende.filter(z=>z.konto === k.key)
+      .sort((a, b)=>String(b.datum).localeCompare(String(a.datum)));
+    const stand = z=>z ? { datum: String(z.datum).slice(0, 10), betrag: Number(z.betrag) || 0 } : null;
+    return { ...k, aktuell: stand(zeilen[0]), vorher: stand(zeilen[1]) };
+  });
+}
+
+/* "2026-10-07" + 14 Tage */
+function tagPlus(datum, tage){
+  const d = new Date(datum + "T12:00:00");
+  d.setDate(d.getDate() + tage);
+  return localDateStr(d);
+}
+
+/* Derselbe Tag n Monate spaeter; ein 31. rutscht auf den letzten des Monats. */
+function monatePlus(datum, n){
+  const [j, m, t] = datum.split("-").map(Number);
+  const ziel = new Date(j, m - 1 + n, 1);
+  const letzter = new Date(ziel.getFullYear(), ziel.getMonth() + 1, 0).getDate();
+  return ziel.getFullYear() + "-" + String(ziel.getMonth() + 1).padStart(2, "0") + "-" +
+    String(Math.min(t, letzter)).padStart(2, "0");
+}
+
+/* ---------- Zahlungseingaenge ----------
+   Wann das Geld eines Umsatzes aufs Konto kommt, bis einschliesslich "bis".
+   Brutto: Die Auftraege sind netto gebucht, der Kunde ueberweist mit USt.
+
+   Ohne Angabe am Umsatz (Tim, 07.10.2026): ZAHLUNGSZIEL_TAGE nach "beauftragt
+   am" kommt beim Einzelauftrag der ganze Betrag, beim Retainer die erste
+   Monatsrate, danach jeden Monat eine. zahlung_am und zahlung_raten (sql/015)
+   ueberschreiben das je Umsatz: erste Zahlung an diesem Tag, das Ganze in so
+   vielen Monatsraten. Ein laufender Retainer ohne Ende zahlt immer monatlich. */
+export function zahlungsPlan(r, bis){
+  const ust = finanzEinstellungen().ust;
+  const betrag = Number(r.amount) || 0;
+  const beauftragt = String(r.period_start).slice(0, 10);
+  const erste = r.zahlung_am ? String(r.zahlung_am).slice(0, 10) : tagPlus(beauftragt, ZAHLUNGSZIEL_TAGE);
+  let raten = Infinity, jeRate = betrag;
+  if(r.kind !== "retainer" || r.period_end){
+    // Retainer mit Ende: so viele Monate wie in revenue_months
+    const monate = r.kind === "retainer" ? monateZwischen(monatsStart(beauftragt), String(r.period_end).slice(0, 10)).length : 1;
+    raten = Math.max(1, Math.round(Number(r.zahlung_raten)) || monate);
+    jeRate = betrag * monate / raten;
+  }
+  const kunde = kundeNach(r.customer_id);
+  const raus = [];
+  for(let i = 0; i < raten; i++){
+    const datum = monatePlus(erste, i);
+    if(datum > bis) break;
+    raus.push({ datum, betrag: jeRate * (1 + ust), revenueId: r.id,
+                kunde: kunde ? kunde.name : "Unbekannt", rate: i + 1, raten });
+  }
+  return raus;
+}
+
+/* Alle Zahlungseingaenge nach dem Tag "nach" bis einschliesslich "bis". */
+export function zahlungseingaenge(nach, bis){
+  return state.revenues.flatMap(r=>zahlungsPlan(r, bis))
+    .filter(z=>z.datum > nach)
+    .sort((a, b)=>a.datum.localeCompare(b.datum));
+}
+
+/* ---------- Geschaeftskonto, fortgeschrieben ----------
+   Ab dem letzten eingetragenen Stand: plus Zahlungseingaenge, minus Rechnungen
+   (brutto, am Rechnungsdatum), minus Auszahlungen, minus Umbuchungen. Eine
+   Umbuchung ist, was auf den anderen Konten seit dem Stand dazukam — die
+   fuellt ihr nur vom Geschaeftskonto aus. Der erste Eintrag eines Kontos ist
+   sein Anfangsstand, keine Umbuchung. Beim Konto, von dem die Steuern gehen
+   (zahltSteuern), zaehlt nur, was dazukam: Ein Rueckgang dort ist eine
+   Zahlung ans Finanzamt und kein Geld zurueck aufs Geschaeftskonto. */
+
+function kontoZeilen(key){
+  return state.kontostaende.filter(z=>z.konto === key)
+    .map(z=>({ datum: String(z.datum).slice(0, 10), betrag: Number(z.betrag) || 0 }))
+    .sort((a, b)=>a.datum.localeCompare(b.datum));
+}
+
+function standAm(zeilen, datum){
+  const bis = zeilen.filter(z=>z.datum <= datum);
+  return bis.length ? bis[bis.length - 1].betrag : (zeilen.length ? zeilen[0].betrag : 0);
+}
+
+export function geschaeftskontoAm(bis){
+  const gk = KONTEN.find(k=>k.gerechnet);
+  if(!gk) return null;
+  const eintraege = kontoZeilen(gk.key).filter(z=>z.datum <= bis);
+  const anker = eintraege[eintraege.length - 1];
+  if(!anker) return null;
+  const ab = tagPlus(anker.datum, 1);
+  const summe = (liste, f)=>liste.reduce((s, x)=>s + f(x), 0);
+  const zahlungen = zahlungseingaenge(anker.datum, bis);
+  const rechnungen = zaehlendeAusgaben(ab, bis);
+  const ausgezahlt = summe(auszahlungsTermine(ab, bis), t=>t.jePerson) * PERSONS.length;
+  const umbuchungen = KONTEN.filter(k=>!k.gerechnet).map(k=>{
+    const zeilen = kontoZeilen(k.key);
+    if(!k.zahltSteuern) return { name: k.name, betrag: standAm(zeilen, bis) - standAm(zeilen, anker.datum) };
+    // Eintrag fuer Eintrag nur die Zuwaechse
+    let vorher = standAm(zeilen, anker.datum), betrag = 0;
+    zeilen.filter(z=>z.datum > anker.datum && z.datum <= bis).forEach(z=>{
+      betrag += Math.max(0, z.betrag - vorher);
+      vorher = z.betrag;
+    });
+    return { name: k.name, betrag };
+  }).filter(u=>u.betrag);
+  const ein = summe(zahlungen, z=>z.betrag);
+  const raus = summe(rechnungen, ausgabeBrutto);
+  const umgebucht = summe(umbuchungen, u=>u.betrag);
+  return { konto: gk, anker, ein, zahlungen: zahlungen.length, raus, rechnungen: rechnungen.length,
+           ausgezahlt, umbuchungen, umgebucht, betrag: anker.betrag + ein - raus - ausgezahlt - umgebucht };
+}
+
+/* Was nach heute bis "bis" sicher kommt oder geht, je Tag zusammengefasst:
+   Zahlungseingaenge nach Plan, Auszahlungen, schon vorliegende Rechnungen.
+   Kuenftige Rechnungen werden nicht geschaetzt (Tim, 02.10.2026). */
+export function kontoVorschau(bis){
+  const heute = localDateStr(new Date());
+  const ab = tagPlus(heute, 1);
+  const gruppen = new Map();
+  const dazu = (datum, art, was, betrag)=>{
+    const k = datum + art;
+    if(!gruppen.has(k)) gruppen.set(k, { datum, art, was: [], betrag: 0 });
+    const g = gruppen.get(k);
+    if(!g.was.includes(was)) g.was.push(was);
+    g.betrag += betrag;
+  };
+  zahlungseingaenge(heute, bis).forEach(z=>dazu(z.datum, "ein",
+    z.kunde + (z.raten > 1 && z.raten !== Infinity ? ` · Rate ${z.rate} von ${z.raten}` : ""), z.betrag));
+  zaehlendeAusgaben(ab, bis).forEach(x=>dazu(ausgabeTag(x), "rechnung", x.lieferant || "Rechnung", -ausgabeBrutto(x)));
+  auszahlungsTermine(ab, bis).forEach(t=>dazu(t.datum, "auszahlung", "Auszahlung Tim und Simon", -t.jePerson * PERSONS.length));
+  return [...gruppen.values()].sort((a, b)=>a.datum.localeCompare(b.datum) || a.art.localeCompare(b.art));
 }
