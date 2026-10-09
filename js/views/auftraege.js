@@ -138,14 +138,23 @@ function baueFormular(){
 
     <div class="card" id="aCardVerguetung" hidden>
       <h2>Vergütung</h2>
-      <div class="field" style="max-width:340px;">
-        <label for="aModell">Modell</label>
-        <select id="aModell">
-          <option value="einmalig">Einmalig für die ganze Laufzeit</option>
-          <option value="monatlich">Monatlich</option>
-          <option value="setup_monatlich">Einrichtung einmalig + monatlich</option>
-          <option value="raten">Gesamtbetrag in Raten</option>
-        </select>
+      <div class="form-grid">
+        <div class="field">
+          <label for="aModell">Modell</label>
+          <select id="aModell">
+            <option value="einmalig">Einmalig für die ganze Laufzeit</option>
+            <option value="monatlich">Monatlich</option>
+            <option value="setup_monatlich">Einrichtung einmalig + monatlich</option>
+            <option value="raten">Gesamtbetrag in Raten</option>
+          </select>
+        </div>
+        <div class="field" id="aRechnungFeld">
+          <label for="aRechnung">Rechnung je Monat</label>
+          <select id="aRechnung">
+            <option value="beginn">zu Beginn des Leistungsmonats</option>
+            <option value="ende">zum Ende des Leistungsmonats</option>
+          </select>
+        </div>
       </div>
       <div class="form-grid form-grid-3" id="aVergFelder"></div>
     </div>
@@ -336,6 +345,10 @@ function baueVergFelder(){
                       ["raten_betrag","je Rate <small>berechnet</small>"]],
   }[$("aModell").value];
 
+  // Bei einer Einmalzahlung gibt es keinen Leistungsmonat, zu dessen Beginn
+  // oder Ende abgerechnet würde.
+  $("aRechnungFeld").hidden = $("aModell").value === "einmalig";
+
   const ziel = $("aVergFelder");
   const alt = {};
   ziel.querySelectorAll("input").forEach(i=>{ alt[i.dataset.v] = i.value; });
@@ -397,7 +410,21 @@ function verdrahte(){
     $(id).addEventListener("change", ()=>{ rechneEnde(); aktualisiere(); }));
   $("aEnde").addEventListener("input", ()=>{ endeVonHand = true; aktualisiere(); });
   $("aModell").addEventListener("change", ()=>{ baueVergFelder(); aktualisiere(); });
+  $("aRechnung").addEventListener("change", aktualisiere);
   $("auftragErzeugen").addEventListener("click", erzeuge);
+
+  // Wer in die Vorschau tippt, hat ab da das letzte Wort — sonst würde die
+  // nächste Formularänderung die eigene Ergänzung kommentarlos überschreiben.
+  $("auftragVorschau").addEventListener("input", ()=>{
+    if(vonHand) return;
+    vonHand = true;
+    $("auftragVonHand").hidden = false;
+  });
+  $("auftragVerwerfen").addEventListener("click", ()=>{
+    vonHand = false;
+    $("auftragVonHand").hidden = true;
+    aktualisiere();
+  });
 
   // Close-Vorschläge für die Firmendaten
   let suchLauf = null;
@@ -463,6 +490,7 @@ function sammle(){
     verguetung: {
       gesamt: v("gesamt"), monat: v("monat"), monat_folge: v("monat_folge"),
       setup: v("setup"), raten_anzahl: v("raten_anzahl"), raten_betrag: v("raten_betrag"),
+      rechnung: $("aRechnung").value,
     },
     agb_stand: $("aAgbStand").value,
     // Der formulierte Absatz hat Vorrang, sobald er dasteht — aber nur, solange
@@ -476,9 +504,13 @@ function sammle(){
   };
 }
 
+/* Die Vorschau ist zugleich der Editor. Solange niemand hineintippt, folgt sie
+   dem Formular; danach (vonHand) bleibt sie stehen, bis „Verwerfen" geklickt
+   wird, und genau dieser Text geht ins PDF. */
+let vonHand = false;
 let vorschauLauf = null;
 function aktualisiere(){
-  if(!paket) return;
+  if(!paket || vonHand) return;
   clearTimeout(vorschauLauf);
   vorschauLauf = setTimeout(async ()=>{
     let antwort;
@@ -488,7 +520,10 @@ function aktualisiere(){
         body: JSON.stringify(sammle()),
       });
     }catch(e){ antwort = { fehler: String(e.message || e) }; }
-    $("auftragVorschau").textContent = antwort.markdown || ("Fehler: " + antwort.fehler);
+    if(vonHand) return;   // während der Anfrage angefangen zu tippen
+    const feld = $("auftragVorschau");
+    feld.value = antwort.markdown || ("Fehler: " + antwort.fehler);
+    feld.readOnly = !antwort.markdown;
   }, 180);
 }
 
@@ -549,6 +584,8 @@ async function erzeuge(){
       + ". Diese Klauseln setzt der Generator nicht von selbst.");
   }
 
+  if(vonHand) daten.markdown = $("auftragVorschau").value;
+
   const knopf = $("auftragErzeugen");
   knopf.disabled = true;
   knopf.textContent = "Erzeuge …";
@@ -561,6 +598,19 @@ async function erzeuge(){
   }catch(err){ e = { erfolg:false, fehler:String(err.message || err) }; }
   knopf.disabled = false;
   knopf.textContent = "Vertrag erzeugen";
+
+  // Ein Server mit altem Stand ignoriert den bearbeiteten Text und baut den
+  // Vertrag aus dem Formular — das sähe plausibel aus, nur fehlten die
+  // eigenen Änderungen. Darum hier laut werden statt einen Download anbieten.
+  if(vonHand && (e.erfolg || e.markdown) && !e.von_hand){
+    return melde(false, "<strong>Deine Änderungen fehlen im Vertrag.</strong> Der Generator "
+      + "läuft noch mit einem alten Stand und hat aus dem Formular erzeugt. "
+      + (ablage === "download"
+          ? "Railway aktualisiert sich gerade — in ein paar Minuten noch einmal erzeugen."
+          : "<code>./serve.sh</code> beenden und neu starten, dann noch einmal erzeugen.")
+      + driveZeile(e.drive)
+      + (e.drive?.erfolg ? " — diese Fassung ohne Änderungen bitte dort löschen." : ""));
+  }
 
   if(ablage === "download") return meldeDownload(e);
 

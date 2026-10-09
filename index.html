@@ -821,8 +821,13 @@
     <div class="auftrag-formular" id="auftragFormular"></div>
     <div class="auftrag-vorschau">
       <div class="card">
-        <h2>Vorschau <small>Was hier steht, steht gleich im PDF.</small></h2>
-        <pre class="auftrag-pre" id="auftragVorschau">Wähle ein Paket, um zu beginnen.</pre>
+        <h2>Vorschau <small>Zum Ändern einfach hineinschreiben — was hier steht, steht im PDF.</small></h2>
+        <div class="auftrag-vonhand" id="auftragVonHand" hidden>
+          <span>Von Hand bearbeitet — Änderungen im Formular werden nicht mehr übernommen.</span>
+          <button type="button" class="btn-outline" id="auftragVerwerfen">Verwerfen</button>
+        </div>
+        <textarea class="auftrag-pre" id="auftragVorschau" spellcheck="false" readonly
+                  placeholder="Wähle ein Paket, um zu beginnen."></textarea>
         <button class="btn" id="auftragErzeugen" disabled>Vertrag erzeugen</button>
         <div class="auftrag-ergebnis" id="auftragErgebnis" hidden></div>
       </div>
