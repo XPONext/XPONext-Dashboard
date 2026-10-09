@@ -61,6 +61,7 @@ async function oeffne(){
   }
 
   $("auftragRaster").hidden = false;
+  verdrahteVorschau();
   baueFormular();
 }
 
@@ -392,6 +393,47 @@ function rechneEnde(){
 
 /* ---------- Verdrahtung ---------- */
 
+/* Vorschau und Erzeugen-Knopf liegen außerhalb des Formulars und überleben
+   „Nächsten Vertrag beginnen" — darum nur einmal verdrahten, sonst hingen nach
+   jedem neuen Vertrag zwei Klick-Handler mehr daran. */
+function verdrahteVorschau(){
+  $("auftragErzeugen").addEventListener("click", erzeuge);
+
+  // Wer in die Vorschau tippt, hat ab da das letzte Wort — sonst würde die
+  // nächste Formularänderung die eigene Ergänzung kommentarlos überschreiben.
+  $("auftragVorschau").addEventListener("input", ()=>{
+    if(vonHand) return;
+    vonHand = true;
+    $("auftragVonHandText").textContent =
+      "Von Hand bearbeitet — Änderungen im Formular werden nicht mehr übernommen.";
+    $("auftragVonHand").hidden = false;
+  });
+  $("auftragVerwerfen").addEventListener("click", ()=>{
+    vonHand = false;
+    $("auftragVonHand").hidden = true;
+    aktualisiere();
+  });
+}
+
+/* Alles auf Anfang für den nächsten Kunden. Ohne das blieben Domain,
+   Freitexte und ein von Hand bearbeiteter Text vom vorigen Vertrag stehen —
+   so stand am 09.10.2026 beisselschmidt.de im Vertrag für Wiesehahn. */
+function neuerVertrag(){
+  clearTimeout(vorschauLauf);
+  paket = null;
+  vonHand = false;
+  rateVonHand = false;
+  endeVonHand = false;
+  $("auftragVonHand").hidden = true;
+  $("auftragErgebnis").hidden = true;
+  $("auftragErzeugen").disabled = true;
+  const feld = $("auftragVorschau");
+  feld.value = "";
+  feld.readOnly = true;
+  baueFormular();
+  $("auftragRaster").scrollIntoView({ behavior:"smooth", block:"start" });
+}
+
 function verdrahte(){
   ["aFirma","aStrasse","aPlzOrt","aVertreten","aAgbStand","aFreitext","aFormuliert",
    "aETitel","aEFreitext","aEFormuliert"]
@@ -411,20 +453,6 @@ function verdrahte(){
   $("aEnde").addEventListener("input", ()=>{ endeVonHand = true; aktualisiere(); });
   $("aModell").addEventListener("change", ()=>{ baueVergFelder(); aktualisiere(); });
   $("aRechnung").addEventListener("change", aktualisiere);
-  $("auftragErzeugen").addEventListener("click", erzeuge);
-
-  // Wer in die Vorschau tippt, hat ab da das letzte Wort — sonst würde die
-  // nächste Formularänderung die eigene Ergänzung kommentarlos überschreiben.
-  $("auftragVorschau").addEventListener("input", ()=>{
-    if(vonHand) return;
-    vonHand = true;
-    $("auftragVonHand").hidden = false;
-  });
-  $("auftragVerwerfen").addEventListener("click", ()=>{
-    vonHand = false;
-    $("auftragVonHand").hidden = true;
-    aktualisiere();
-  });
 
   // Close-Vorschläge für die Firmendaten
   let suchLauf = null;
@@ -510,7 +538,12 @@ function sammle(){
 let vonHand = false;
 let vorschauLauf = null;
 function aktualisiere(){
-  if(!paket || vonHand) return;
+  if(!paket) return;
+  if(vonHand){
+    $("auftragVonHandText").textContent = 'Formular geändert, aber die Vorschau zeigt noch '
+      + 'deinen bearbeiteten Text. „Verwerfen" übernimmt das Formular.';
+    return;
+  }
   clearTimeout(vorschauLauf);
   vorschauLauf = setTimeout(async ()=>{
     let antwort;
@@ -584,7 +617,17 @@ async function erzeuge(){
       + ". Diese Klauseln setzt der Generator nicht von selbst.");
   }
 
-  if(vonHand) daten.markdown = $("auftragVorschau").value;
+  if(vonHand){
+    daten.markdown = $("auftragVorschau").value;
+    // Der Kunde im Formular bestimmt den Drive-Ordner, der Text den Inhalt.
+    // Passen sie nicht zusammen, landet ein fremder Vertrag im Ordner.
+    const name = daten.kunde_firma.split(",")[0].trim();
+    if(!daten.markdown.includes(name)){
+      return melde(false, `<strong>Der bearbeitete Text gehört zu einem anderen Kunden</strong> — `
+        + `„${escapeHtml(name)}" steht nicht darin. „Verwerfen" baut den Vertrag aus dem `
+        + `Formular neu auf, für einen neuen Kunden „Nächsten Vertrag beginnen".`);
+    }
+  }
 
   const knopf = $("auftragErzeugen");
   knopf.disabled = true;
@@ -612,13 +655,21 @@ async function erzeuge(){
       + (e.drive?.erfolg ? " — diese Fassung ohne Änderungen bitte dort löschen." : ""));
   }
 
-  if(ablage === "download") return meldeDownload(e);
-
-  melde(e.erfolg, (e.erfolg
+  if(ablage === "download") meldeDownload(e);
+  else melde(e.erfolg, (e.erfolg
     ? "Fertig.<br><code>" + escapeHtml(e.pdf_datei) + "</code>"
     : "Markdown liegt, PDF nicht erzeugt.<br><code>"
       + escapeHtml(e.markdown_datei || "") + "</code><br>" + escapeHtml(e.fehler || ""))
     + driveZeile(e.drive));
+
+  if(e.erfolg){
+    const b = document.createElement("button");
+    b.type = "button";
+    b.className = "btn-outline auftrag-naechster";
+    b.textContent = "Nächsten Vertrag beginnen";
+    b.addEventListener("click", neuerVertrag);
+    $("auftragErgebnis").appendChild(b);
+  }
 }
 
 /* Wohin der Vertrag in Google Drive gewandert ist — oder warum nicht.

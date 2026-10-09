@@ -700,6 +700,7 @@ textarea.auftrag-pre:focus{ outline:none; border-color:var(--accent); }
 }
 .auftrag-vonhand[hidden]{ display:none; }
 .auftrag-vonhand .btn-outline{ flex:none; padding:4px 10px; font-size:12px; }
+.auftrag-naechster{ display:block; width:100%; margin-top:var(--sp-2); }
 
 .auftrag-hinweis{
   background:var(--amber-bg); border:1px solid var(--amber); border-radius:var(--r-md);
@@ -801,6 +802,8 @@ textarea.auftrag-pre:focus{ outline:none; border-color:var(--accent); }
 }
 .auftrag-download:hover{ background:var(--accent-hover); color:#fff; }
 .auftrag-ergebnis a{ color:inherit; text-decoration:underline; }
+/* Die Download-Knöpfe sind auch Links — ohne das erben sie Farbe und Unterstrich. */
+.auftrag-ergebnis a.auftrag-download{ color:#fff; text-decoration:none; }
 .auftrag-drive-fehler{ color:var(--amber); }
 .auftrag-formulierzeile{ display:flex; gap:var(--sp-3); align-items:center; margin-top:var(--sp-2); flex-wrap:wrap; }
 .auftrag-formulierzeile .btn{ flex:none; }
