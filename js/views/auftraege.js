@@ -103,6 +103,18 @@ function baueFormular(){
       <h2>Leistungen <small>§ 1 Vertragsgegenstand — Reihenfolge wie hier</small></h2>
       <div id="aLeistungen"></div>
       <div id="aBausteinFelder"></div>
+      <details class="auftrag-freitext auftrag-freitext-leistung">
+        <summary>Eigene Leistung in § 1</summary>
+        <p class="auftrag-notiz">Für alles, was zur Leistung selbst gehört — etwa was
+           eine Aktualisierung umfasst. Steht als eigene Ziffer im Vertragsgegenstand,
+           nicht in den Sondervereinbarungen.</p>
+        <div class="field" style="max-width:340px;">
+          <label for="aETitel">Überschrift <small>leer = „Weitere Leistungen"</small></label>
+          <input type="text" id="aETitel" placeholder="Umfang der Aktualisierung">
+        </div>
+        ${formulierFelder("aE",
+          "z. B.: neue Startseite, Projektseiten ergänzen, Team-Fotos tauschen")}
+      </details>
     </div>
 
     <div class="card" id="aCardLaufzeit" hidden>
@@ -152,21 +164,9 @@ function baueFormular(){
       <details class="auftrag-freitext">
         <summary>Individuelle Vereinbarungen</summary>
         <p class="auftrag-notiz">Kommt als eigener Absatz in die Sondervereinbarungen.
-           Stichworte genügen — „Formulieren lassen" macht daraus Vertragssprache.</p>
-        <textarea id="aFreitext" rows="3"
-          placeholder="z. B.: monatlicher Jour fixe, Kunde stellt Projektfotos"></textarea>
-        <div class="auftrag-formulierzeile">
-          <button type="button" class="btn btn-outline" id="aFormulieren">Formulieren lassen</button>
-          <span class="auftrag-notiz" id="aFormulierStatus"></span>
-        </div>
-        <div id="aFormuliertBlock" hidden>
-          <label class="auftrag-formuliert-label" for="aFormuliert">
-            Formulierter Absatz — <strong>bitte lesen</strong>, Änderungen hier möglich
-          </label>
-          <textarea id="aFormuliert" rows="6"></textarea>
-          <p class="auftrag-notiz">Dieser Text geht in den Vertrag. Leeren, um
-             stattdessen die Stichworte oben zu verwenden.</p>
-        </div>
+           Stichworte genügen — „Formulieren lassen" macht daraus Vertragssprache.
+           Was zur Leistung selbst gehört, gehört oben unter „Eigene Leistung in § 1".</p>
+        ${formulierFelder("a", "z. B.: monatlicher Jour fixe, Kunde stellt Projektfotos")}
       </details>
     </div>`;
 
@@ -177,6 +177,26 @@ function baueFormular(){
   baueSchalter();
   baueVergFelder();
   verdrahte();
+}
+
+/* Stichworte, „Formulieren lassen" und das Feld für den formulierten Text —
+   zweimal gebraucht: für eine eigene Leistung in § 1 (Präfix aE) und für die
+   Sondervereinbarungen (Präfix a). */
+function formulierFelder(px, platzhalter){
+  return `
+        <textarea id="${px}Freitext" rows="3" placeholder="${platzhalter}"></textarea>
+        <div class="auftrag-formulierzeile">
+          <button type="button" class="btn btn-outline" id="${px}Formulieren">Formulieren lassen</button>
+          <span class="auftrag-notiz" id="${px}FormulierStatus"></span>
+        </div>
+        <div id="${px}FormuliertBlock" hidden>
+          <label class="auftrag-formuliert-label" for="${px}Formuliert">
+            Formulierter Text — <strong>bitte lesen</strong>, Änderungen hier möglich
+          </label>
+          <textarea id="${px}Formuliert" rows="6"></textarea>
+          <p class="auftrag-notiz">Dieser Text geht in den Vertrag. Leeren, um
+             stattdessen die Stichworte oben zu verwenden.</p>
+        </div>`;
 }
 
 function baueKacheln(){
@@ -221,7 +241,14 @@ function baueLeistungen(){
       </div>
       <details><summary>Wortlaut</summary>
         <p class="auftrag-volltext">${escapeHtml(l.text)}</p></details>`;
-    zeile.querySelector("input").addEventListener("change", ()=>{
+    zeile.querySelector("input").addEventListener("change", ev=>{
+      // Erstellung, Aktualisierung und Landingpage schließen einander aus —
+      // zwei davon ergäben einen § 1, der sich selbst widerspricht.
+      if(ev.target.checked && l.gruppe){
+        for(const andere of katalog.pakete[paket].leistungen){
+          if(andere.id !== l.id && andere.gruppe === l.gruppe) $("aL_"+andere.id).checked = false;
+        }
+      }
       baueBausteinFelder();
       aktualisiere();
     });
@@ -353,14 +380,18 @@ function rechneEnde(){
 /* ---------- Verdrahtung ---------- */
 
 function verdrahte(){
-  ["aFirma","aStrasse","aPlzOrt","aVertreten","aAgbStand","aFreitext","aFormuliert"]
+  ["aFirma","aStrasse","aPlzOrt","aVertreten","aAgbStand","aFreitext","aFormuliert",
+   "aETitel","aEFreitext","aEFormuliert"]
     .forEach(id=>$(id).addEventListener("input", aktualisiere));
 
-  $("aFormulieren").addEventListener("click", formulieren);
+  $("aFormulieren").addEventListener("click", ()=>formulieren("a", "sondervereinbarung"));
+  $("aEFormulieren").addEventListener("click", ()=>formulieren("aE", "leistung"));
   if(!formulierhilfe){
-    $("aFormulieren").disabled = true;
-    $("aFormulierStatus").textContent =
-      "Kein Schlüssel hinterlegt — die Stichworte gehen unverändert in den Vertrag.";
+    for(const px of ["a","aE"]){
+      $(px+"Formulieren").disabled = true;
+      $(px+"FormulierStatus").textContent =
+        "Kein Schlüssel hinterlegt — die Stichworte gehen unverändert in den Vertrag.";
+    }
   }
   ["aStart","aLaufzeit"].forEach(id=>
     $(id).addEventListener("change", ()=>{ rechneEnde(); aktualisiere(); }));
@@ -438,6 +469,10 @@ function sammle(){
     // er nicht geleert wurde. So kommt man mit einem leeren Feld zurück zu den
     // eigenen Stichworten, ohne den Reiter neu zu laden.
     freitext: ($("aFormuliert").value.trim() || $("aFreitext").value),
+    leistung_frei: {
+      titel: $("aETitel").value,
+      text: ($("aEFormuliert").value.trim() || $("aEFreitext").value),
+    },
   };
 }
 
@@ -466,34 +501,36 @@ function aktualisiere(){
    Vertrag — und der Knopf heißt danach „Nochmal formulieren", damit klar ist,
    dass man es mehrfach versuchen kann. */
 
-async function formulieren(){
-  const stichworte = $("aFreitext").value.trim();
+/* px ist das Präfix der Felder (s. formulierFelder), abschnitt sagt dem Server,
+   ob eine Leistung für § 1 oder eine Sondervereinbarung daraus werden soll. */
+async function formulieren(px, abschnitt){
+  const stichworte = $(px+"Freitext").value.trim();
   if(!stichworte){
-    $("aFormulierStatus").textContent = "Erst ein paar Stichworte eintippen.";
+    $(px+"FormulierStatus").textContent = "Erst ein paar Stichworte eintippen.";
     return;
   }
-  const knopf = $("aFormulieren");
+  const knopf = $(px+"Formulieren");
   knopf.disabled = true;
-  $("aFormulierStatus").textContent = "Formuliere …";
+  $(px+"FormulierStatus").textContent = "Formuliere …";
 
   let e;
   try{
     e = await hole("/api/vertrag/formulieren", {
       method:"POST", headers:{"Content-Type":"application/json"},
-      body: JSON.stringify({ stichworte }),
+      body: JSON.stringify({ stichworte, abschnitt }),
     });
   }catch(err){ e = { erfolg:false, fehler:String(err.message || err) }; }
 
   knopf.disabled = false;
   if(!e.erfolg){
-    $("aFormulierStatus").textContent = e.fehler || "Hat nicht geklappt.";
+    $(px+"FormulierStatus").textContent = e.fehler || "Hat nicht geklappt.";
     return;
   }
 
-  $("aFormuliert").value = e.text;
-  $("aFormuliertBlock").hidden = false;
+  $(px+"Formuliert").value = e.text;
+  $(px+"FormuliertBlock").hidden = false;
   knopf.textContent = "Nochmal formulieren";
-  $("aFormulierStatus").textContent = "Fertig — bitte durchlesen.";
+  $(px+"FormulierStatus").textContent = "Fertig — bitte durchlesen.";
   aktualisiere();
 }
 

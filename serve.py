@@ -176,7 +176,8 @@ class Handler(SimpleHTTPRequestHandler):
         if self.path == "/api/vertrag/formulieren":
             try:
                 import formulierung
-                return self._json(formulierung.formuliere(daten.get("stichworte", "")))
+                return self._json(formulierung.formuliere(
+                    daten.get("stichworte", ""), daten.get("abschnitt", "sondervereinbarung")))
             except Exception as e:
                 return self._json({"erfolg": False, "fehler": str(e)}, code=500)
 
